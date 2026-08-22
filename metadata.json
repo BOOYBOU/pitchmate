@@ -1,6 +1,6 @@
 {
   "name": "PitchMate",
-  "description": "Full-stack soccer match organizer with real-time rosters, pitch location picker, voice notes, live audio calling, and admin controls.",
+  "description": "Full-stack soccer match organizer with real-time rosters, tactical pitch formations, auto-balanced teams, WhatsApp share cards, player reliability scoring, voice notes, and admin controls.",
   "requestFramePermissions": ["geolocation", "microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

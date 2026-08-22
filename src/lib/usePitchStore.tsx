@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import {
   SoccerMatch,
@@ -8,12 +8,11 @@ import {
   AdminAnnouncement,
   DirectMessage,
   TeamSide,
-  ActiveVoiceCall,
   InAppNotification,
   SUPER_ADMIN_EMAIL,
   SUPER_ADMIN_PASSWORD,
   isSuperAdminEmail,
-  verifySuperAdminMasterPassword
+  verifySuperAdminMasterPassword,
 } from '../types';
 import { INITIAL_MATCHES, INITIAL_USERS, INITIAL_DIRECT_MESSAGES, INITIAL_NOTIFICATIONS } from './mockData';
 import { supabase, isSupabaseConfigured } from './supabase';
@@ -45,7 +44,6 @@ interface PitchStoreContextType {
   unreadNotificationsCount: number;
   isSupabaseLive: boolean;
   isLoading: boolean;
-  activeCall: ActiveVoiceCall | null;
 
   // Authentication Actions
   loginWithCredentials: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
@@ -71,6 +69,18 @@ interface PitchStoreContextType {
   toggleMatchLock: (matchId: string) => Promise<boolean>;
   togglePlayerPaidStatus: (matchId: string, playerId: string) => Promise<boolean>;
   updateMatchPitchCost: (matchId: string, totalCost: number, pricePerPlayer: number) => Promise<boolean>;
+  autoBalanceTeams: (matchId: string) => Promise<boolean>;
+  updateTacticalFormation: (
+    matchId: string,
+    formationGreen: string,
+    formationBlue: string,
+    tacticalAssignments: Record<string, string>
+  ) => Promise<boolean>;
+  markMatchAttendance: (
+    matchId: string,
+    attendedPlayerIds: string[],
+    noShowPlayerIds: string[]
+  ) => Promise<boolean>;
 
   // Comments & Voice Notes in Match Board
   addComment: (matchId: string, text: string) => Promise<boolean>;
@@ -88,6 +98,7 @@ interface PitchStoreContextType {
   banUser: (userId: string, reason?: string) => Promise<boolean>;
   unbanUser: (userId: string) => Promise<boolean>;
   removeUserAccount: (userId: string) => Promise<boolean>;
+  deleteUserAccount: (userId: string) => Promise<boolean>;
 
   // Announcements
   createAnnouncement: (title: string, message: string, type: AdminAnnouncement['type']) => Promise<boolean>;
@@ -104,12 +115,6 @@ interface PitchStoreContextType {
   clearAllNotifications: () => void;
   sendNotification: (notif: Omit<InAppNotification, 'id' | 'createdAt' | 'read'>) => void;
 
-  // Voice Calling Actions
-  initiateVoiceCall: (receiverId: string) => void;
-  acceptVoiceCall: () => void;
-  rejectVoiceCall: () => void;
-  endVoiceCall: () => void;
-
   resetToDefaultData: () => void;
 }
 
@@ -124,13 +129,13 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const parsed: UserProfile[] = saved ? JSON.parse(saved) : INITIAL_USERS;
       return parsed.map((u) => ({
         ...u,
-        isAdmin: isSuperAdminEmail(u.email),
-        status: isSuperAdminEmail(u.email) ? ('approved' as const) : (u.status || 'approved'),
+        isAdmin: isSuperAdminEmail(u.email) || u.isAdmin === true,
+        status: (isSuperAdminEmail(u.email) || u.isAdmin === true) ? ('approved' as const) : (u.status || 'approved'),
       }));
     } catch {
       return INITIAL_USERS.map((u) => ({
         ...u,
-        isAdmin: isSuperAdminEmail(u.email),
+        isAdmin: isSuperAdminEmail(u.email) || u.isAdmin === true,
         status: 'approved' as const,
       }));
     }
@@ -189,30 +194,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [comments, setComments] = useState<Record<string, MatchComment[]>>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.COMMENTS);
-      return saved ? JSON.parse(saved) : {
-        'match_01_friday_lights': [
-          {
-            id: 'c1',
-            matchId: 'match_01_friday_lights',
-            userId: 'user_mustapha',
-            userName: 'Mustapha Bouhbous',
-            userEmail: SUPER_ADMIN_EMAIL,
-            userAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-            text: 'Pitch 3 is booked and confirmed! I will bring the Green and Blue bibs plus two match balls. See everyone at 7:15 PM for warmups.',
-            createdAt: new Date(Date.now() - 3600000).toISOString(),
-          },
-          {
-            id: 'c2',
-            matchId: 'match_01_friday_lights',
-            userId: 'user_karim',
-            userName: 'Karim Benzema',
-            userEmail: 'karim.b@pitchmate.io',
-            userAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-            text: 'Looking forward to it captain! Let’s get a full 7v7 squad.',
-            createdAt: new Date(Date.now() - 1800000).toISOString(),
-          }
-        ]
-      };
+      return saved ? JSON.parse(saved) : {};
     } catch {
       return {};
     }
@@ -221,16 +203,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [announcements, setAnnouncements] = useState<AdminAnnouncement[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.ANNOUNCEMENTS);
-      return saved ? JSON.parse(saved) : [
-        {
-          id: 'ann_1',
-          title: 'Spring League Schedule & Pitch Guidelines',
-          message: 'Welcome to PitchMate! All matches have real-time rosters, voice notes, live pitch weather, and cost split tracking. Contact Mustapha for admin requests.',
-          authorName: 'Mustapha Bouhbous (Admin)',
-          createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-          type: 'info'
-        }
-      ];
+      return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
     }
@@ -253,9 +226,6 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return INITIAL_NOTIFICATIONS;
     }
   });
-
-  // Voice Call State
-  const [activeCall, setActiveCall] = useState<ActiveVoiceCall | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSupabaseLive, setIsSupabaseLive] = useState(isSupabaseConfigured);
@@ -319,13 +289,13 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Current User Object
   const currentUser: UserProfile = users.find((u) => u.id === currentUserId) || {
-    id: 'user_mustapha',
-    email: SUPER_ADMIN_EMAIL,
+    id: 'user_admin_main',
+    email: 'topreviewsamazon2025@gmail.com',
     name: 'Mustapha Bouhbous',
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     isAdmin: true,
     status: 'approved',
-    matchesPlayed: 48,
+    matchesPlayed: 50,
     createdAt: new Date().toISOString(),
   };
 
@@ -339,7 +309,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     (n) => n.userId === currentUser.id && !n.read
   ).length;
 
-  // Real-time broadcast sync helper
+  // Real-time broadcast sync helper (Tab-to-tab)
   const broadcastChange = useCallback((type: string, payload: any) => {
     if (broadcastChannel) {
       try {
@@ -350,7 +320,128 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, [currentUserId]);
 
-  // Broadcast channel listener
+  // Auth Header Generation Helper
+  const getAuthHeaders = useCallback(() => {
+    const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) || `pitchmate_token_${currentUserId}_${Date.now()}`;
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      'x-user-id': currentUserId,
+      'x-user-email': currentUser.email,
+    };
+  }, [currentUserId, currentUser.email]);
+
+  // =========================================================
+  // UNIVERSAL BACKEND REAL-TIME SYNC (Server-Sent Events & Polling)
+  // =========================================================
+  const fetchGlobalState = useCallback(async () => {
+    try {
+      const res = await fetch('/api/state');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.users && Array.isArray(data.users)) setUsers(data.users);
+      if (data.matches && Array.isArray(data.matches)) setMatches(data.matches);
+      if (data.comments) setComments(data.comments);
+      if (data.announcements && Array.isArray(data.announcements)) setAnnouncements(data.announcements);
+      if (data.directMessages && Array.isArray(data.directMessages)) setDirectMessages(data.directMessages);
+      if (data.notifications && Array.isArray(data.notifications)) setNotifications(data.notifications);
+    } catch (err) {
+      // Backend not available in isolated client mode, fallback silently
+    }
+  }, []);
+
+  // Fetch initial global state on mount and on window focus
+  useEffect(() => {
+    fetchGlobalState();
+
+    const handleFocus = () => fetchGlobalState();
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [fetchGlobalState]);
+
+  // Setup Server-Sent Events (SSE) for Real-Time Cross-Device Synchronization
+  useEffect(() => {
+    let eventSource: EventSource | null = null;
+    let reconnectTimeout: any = null;
+
+    const connectSSE = () => {
+      try {
+        eventSource = new EventSource('/api/sync/events');
+
+        eventSource.onopen = () => {
+          // Connected to live server push stream
+        };
+
+        eventSource.onmessage = (event) => {
+          try {
+            const parsed = JSON.parse(event.data);
+            const { type, payload } = parsed;
+
+            switch (type) {
+              case 'SYNC_USERS':
+                if (payload) setUsers(payload);
+                break;
+              case 'SYNC_MATCHES':
+                if (payload) setMatches(payload);
+                break;
+              case 'SYNC_COMMENTS':
+                if (payload) setComments(payload);
+                break;
+              case 'SYNC_ANNOUNCEMENTS':
+                if (payload) setAnnouncements(payload);
+                break;
+              case 'SYNC_DIRECT_MESSAGES':
+                if (payload) setDirectMessages(payload);
+                break;
+              case 'SYNC_NOTIFICATIONS':
+                if (payload) setNotifications(payload);
+                break;
+              case 'SYNC_USERS_AND_NOTIFS':
+                if (payload.users) setUsers(payload.users);
+                if (payload.notifications) setNotifications(payload.notifications);
+                break;
+              case 'SYNC_ALL':
+                if (payload.users) setUsers(payload.users);
+                if (payload.matches) setMatches(payload.matches);
+                if (payload.comments) setComments(payload.comments);
+                if (payload.announcements) setAnnouncements(payload.announcements);
+                if (payload.directMessages) setDirectMessages(payload.directMessages);
+                if (payload.notifications) setNotifications(payload.notifications);
+                break;
+            }
+          } catch (e) {
+            console.error('SSE Message parsing error:', e);
+          }
+        };
+
+        eventSource.onerror = () => {
+          if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+          }
+          // Retry connection in 3 seconds
+          reconnectTimeout = setTimeout(connectSSE, 3000);
+        };
+      } catch (err) {
+        reconnectTimeout = setTimeout(connectSSE, 5000);
+      }
+    };
+
+    connectSSE();
+
+    // Background heartbeat sync fallback every 4 seconds to guarantee consistency across external phones/browsers
+    const interval = setInterval(() => {
+      fetchGlobalState();
+    }, 4000);
+
+    return () => {
+      if (eventSource) eventSource.close();
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      clearInterval(interval);
+    };
+  }, [fetchGlobalState]);
+
+  // Broadcast channel listener (for intra-browser tabs)
   useEffect(() => {
     if (!broadcastChannel) return;
 
@@ -377,32 +468,6 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         case 'SYNC_NOTIFICATIONS':
           setNotifications(payload);
           break;
-        case 'CALL_INITIATE':
-          if (payload.receiverId === currentUserId) {
-            setActiveCall({ ...payload, status: 'incoming' });
-            try {
-              SoundEffects.startIncomingRingtone();
-            } catch {}
-          }
-          break;
-        case 'CALL_ACCEPT':
-          if (activeCall && (activeCall.id === payload.id || activeCall.callerId === currentUserId)) {
-            setActiveCall(payload);
-            try {
-              SoundEffects.stopRingtone();
-            } catch {}
-          }
-          break;
-        case 'CALL_REJECT':
-        case 'CALL_END':
-          if (activeCall && activeCall.id === payload.id) {
-            setActiveCall(payload);
-            try {
-              SoundEffects.stopRingtone();
-            } catch {}
-            setTimeout(() => setActiveCall(null), 1500);
-          }
-          break;
       }
     };
 
@@ -410,7 +475,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return () => {
       broadcastChannel.removeEventListener('message', handleMessage);
     };
-  }, [currentUserId, activeCall]);
+  }, [currentUserId]);
 
   // Helper to send internal notifications
   const sendNotification = useCallback((notif: Omit<InAppNotification, 'id' | 'createdAt' | 'read'>) => {
@@ -426,6 +491,13 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       broadcastChange('SYNC_NOTIFICATIONS', updated);
       return updated;
     });
+
+    // Push to backend
+    fetch('/api/notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newNotif),
+    }).catch(() => {});
   }, [broadcastChange]);
 
   const markNotificationAsRead = useCallback((notificationId: string) => {
@@ -434,6 +506,12 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       broadcastChange('SYNC_NOTIFICATIONS', updated);
       return updated;
     });
+
+    fetch('/api/notifications/read', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notificationId }),
+    }).catch(() => {});
   }, [broadcastChange]);
 
   const clearAllNotifications = useCallback(() => {
@@ -442,10 +520,16 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       broadcastChange('SYNC_NOTIFICATIONS', updated);
       return updated;
     });
+
+    fetch('/api/notifications/clear', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: currentUser.id }),
+    }).catch(() => {});
   }, [currentUser.id, broadcastChange]);
 
   // ==========================================
-  // AUTHENTICATION: SECURE HASHING & APPROVALS
+  // AUTHENTICATION: SECURE HASHING & GLOBAL APPROVALS
   // ==========================================
   const loginWithCredentials = async (
     email: string,
@@ -487,6 +571,17 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return { success: true };
     }
 
+    // Refresh state from backend before validating to ensure freshest status
+    try {
+      const res = await fetch('/api/state');
+      if (res.ok) {
+        const state = await res.json();
+        if (state.users && Array.isArray(state.users)) {
+          setUsers(state.users);
+        }
+      }
+    } catch {}
+
     // Regular user login
     const targetUser = users.find((u) => u.email.toLowerCase() === cleanEmail);
     if (!targetUser) {
@@ -501,14 +596,14 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (targetUser.status === 'pending') {
       return {
         success: false,
-        error: 'Your account has been created. Please wait until the Admin approves your account.',
+        error: 'Your account is pending review. The Admin must approve your registration before you can sign in.',
       };
     }
 
     if (targetUser.status === 'rejected') {
       return {
         success: false,
-        error: 'Your registration was declined. Please contact the administrator.',
+        error: 'Your registration was declined by the administrator.',
       };
     }
 
@@ -522,19 +617,6 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     if (!isPasswordCorrect) {
       return { success: false, error: 'Incorrect password. Please try again.' };
-    }
-
-    // Transparently upgrade legacy plaintext password to salted SHA-256 hash if needed
-    if (!targetUser.passwordHash) {
-      const salt = generateSalt();
-      const hash = await hashPassword(cleanPass, salt);
-      const updatedUser = {
-        ...targetUser,
-        passwordHash: hash,
-        passwordSalt: salt,
-        password: undefined, // remove plaintext
-      };
-      setUsers((prev) => prev.map((u) => (u.id === targetUser.id ? updatedUser : u)));
     }
 
     setCurrentUserId(targetUser.id);
@@ -570,62 +652,92 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
     }
 
-    const existing = users.find((u) => u.email.toLowerCase() === cleanEmail);
-    if (existing) {
-      return { success: false, error: 'An account with this email already exists. Please Sign In.' };
-    }
-
     // Compute cryptographic salt and SHA-256 hash
     const salt = generateSalt();
     const hash = await hashPassword(cleanPass, salt);
 
-    // Save avatar to IndexedDB storage if it is a data URI
     let finalAvatarUrl = avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(cleanName)}`;
     const userId = isMustapha ? 'user_mustapha' : `user_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     if (avatarUrl && avatarUrl.startsWith('data:')) {
       finalAvatarUrl = await mediaStorage.saveAvatar(userId, avatarUrl);
     }
 
-    const newUser: UserProfile = {
-      id: userId,
-      name: cleanName,
-      email: cleanEmail,
-      avatarUrl: finalAvatarUrl,
-      passwordHash: hash,
-      passwordSalt: salt,
-      isAdmin: isMustapha,
-      status: isMustapha ? 'approved' : 'pending',
-      approvedAt: isMustapha ? new Date().toISOString() : undefined,
-      matchesPlayed: 0,
-      createdAt: new Date().toISOString(),
-    };
+    // Submit to Universal Backend API for Global Admin Approval Synchronization
+    try {
+      const res = await fetch('/api/users/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: cleanName,
+          email: cleanEmail,
+          passwordHash: hash,
+          passwordSalt: salt,
+          avatarUrl: finalAvatarUrl,
+        }),
+      });
 
-    setUsers((prev) => {
-      const updated = [...prev, newUser];
-      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updated));
-      broadcastChange('SYNC_USERS', updated);
-      return updated;
-    });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        return { success: false, error: errData.error || 'Failed to register account on server.' };
+      }
 
-    if (isMustapha) {
-      setCurrentUserId(newUser.id);
-      setIsAuthenticated(true);
-      const token = `pitchmate_token_${newUser.id}_${Date.now()}`;
-      localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
-      localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, newUser.id);
-      return { success: true, pendingApproval: false };
+      const data = await res.json();
+      const newUser = data.user;
+
+      setUsers((prev) => {
+        const updated = [...prev.filter((u) => u.id !== newUser.id), newUser];
+        broadcastChange('SYNC_USERS', updated);
+        return updated;
+      });
+
+      if (isMustapha) {
+        setCurrentUserId(newUser.id);
+        setIsAuthenticated(true);
+        const token = `pitchmate_token_${newUser.id}_${Date.now()}`;
+        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+        localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, newUser.id);
+        return { success: true, pendingApproval: false };
+      }
+
+      // Regular users: Require Admin approval. DO NOT log them in.
+      return { success: true, pendingApproval: true };
+    } catch (err) {
+      // Fallback local registration if network is offline
+      const newUser: UserProfile = {
+        id: userId,
+        name: cleanName,
+        email: cleanEmail,
+        avatarUrl: finalAvatarUrl,
+        passwordHash: hash,
+        passwordSalt: salt,
+        isAdmin: isMustapha,
+        status: isMustapha ? 'approved' : 'pending',
+        approvedAt: isMustapha ? new Date().toISOString() : undefined,
+        matchesPlayed: 0,
+        createdAt: new Date().toISOString(),
+      };
+
+      setUsers((prev) => {
+        const updated = [...prev, newUser];
+        broadcastChange('SYNC_USERS', updated);
+        return updated;
+      });
+
+      if (isMustapha) {
+        setCurrentUserId(newUser.id);
+        setIsAuthenticated(true);
+        return { success: true, pendingApproval: false };
+      }
+
+      sendNotification({
+        userId: 'user_mustapha',
+        title: 'New Player Registration Pending',
+        message: `${cleanName} (${cleanEmail}) registered and is awaiting your review in Admin Panel.`,
+        type: 'approval',
+      });
+
+      return { success: true, pendingApproval: true };
     }
-
-    // Send admin notification about pending registration
-    sendNotification({
-      userId: 'user_mustapha',
-      title: 'New Player Registration Pending',
-      message: `${cleanName} (${cleanEmail}) registered and is awaiting your review in Admin Panel.`,
-      type: 'approval',
-    });
-
-    // Regular users: Require Admin approval. DO NOT log them in.
-    return { success: true, pendingApproval: true };
   };
 
   const resetPasswordWithEmail = async (
@@ -666,6 +778,13 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(updatedUsers));
     broadcastChange('SYNC_USERS', updatedUsers);
 
+    // Update on server
+    fetch(`/api/users/${targetUser.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ passwordHash: hash, passwordSalt: salt }),
+    }).catch(() => {});
+
     if (targetUser.status === 'pending') {
       return {
         success: false,
@@ -696,7 +815,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   // ==========================================
-  // MATCH MANAGEMENT & COST SPLITTING
+  // MATCH MANAGEMENT & FULL ADMIN CONTROL
   // ==========================================
   const joinMatch = async (matchId: string, teamChoice: TeamSide = 'unassigned'): Promise<boolean> => {
     if (currentUser.isBanned) {
@@ -704,98 +823,100 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return false;
     }
 
-    let matchCreatorId = '';
-    let matchTitle = '';
+    const chosenTeam = teamChoice;
+    const playerItem: PlayerRosterItem = {
+      userId: currentUser.id,
+      name: currentUser.name,
+      email: currentUser.email,
+      avatarUrl: currentUser.avatarUrl,
+      team: chosenTeam,
+      joinedAt: new Date().toISOString(),
+    };
 
+    // Call server backend
+    try {
+      const res = await fetch(`/api/matches/${matchId}/join`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ playerItem, teamChoice }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMatches((prev) => prev.map((m) => (m.id === matchId ? data.match : m)));
+        try {
+          confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
+        } catch {}
+        return true;
+      }
+    } catch {}
+
+    // Fallback local update
     setMatches((prev) => {
       const matchIndex = prev.findIndex((m) => m.id === matchId);
       if (matchIndex === -1) return prev;
 
       const target = prev[matchIndex];
-      matchCreatorId = target.creatorId;
-      matchTitle = target.title;
-
       const isAlreadyInRoster = target.roster.some((p) => p.userId === currentUser.id);
       const isAlreadyInWaitlist = target.waitlist.some((p) => p.userId === currentUser.id);
-
       if (isAlreadyInRoster || isAlreadyInWaitlist) return prev;
 
-      let chosenTeam = teamChoice;
-      if (chosenTeam === 'unassigned') {
+      let finalTeam = teamChoice;
+      if (finalTeam === 'unassigned') {
         const greenCount = target.roster.filter((p) => p.team === 'green').length;
         const blueCount = target.roster.filter((p) => p.team === 'blue').length;
-        chosenTeam = greenCount <= blueCount ? 'green' : 'blue';
+        finalTeam = greenCount <= blueCount ? 'green' : 'blue';
       }
 
-      const playerItem: PlayerRosterItem = {
-        userId: currentUser.id,
-        name: currentUser.name,
-        email: currentUser.email,
-        avatarUrl: currentUser.avatarUrl,
-        team: chosenTeam,
-        joinedAt: new Date().toISOString(),
-      };
-
+      const pItem = { ...playerItem, team: finalTeam };
       const updated = [...prev];
       if (target.roster.length < target.maxPlayers) {
         updated[matchIndex] = {
           ...target,
-          roster: [...target.roster, playerItem],
+          roster: [...target.roster, pItem],
           updatedAt: new Date().toISOString(),
         };
         try {
-          confetti({
-            particleCount: 50,
-            spread: 60,
-            origin: { y: 0.8 },
-          });
-        } catch {
-          // Confetti fallback
-        }
+          confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
+        } catch {}
       } else {
         updated[matchIndex] = {
           ...target,
-          waitlist: [...target.waitlist, playerItem],
+          waitlist: [...target.waitlist, pItem],
           updatedAt: new Date().toISOString(),
         };
       }
-
       broadcastChange('SYNC_MATCHES', updated);
       return updated;
     });
-
-    // Send notification to match creator
-    if (matchCreatorId && matchCreatorId !== currentUser.id) {
-      sendNotification({
-        userId: matchCreatorId,
-        title: 'New Player Joined Your Match',
-        message: `${currentUser.name} joined the roster for "${matchTitle}".`,
-        type: 'match_join',
-        linkId: matchId,
-      });
-    }
 
     return true;
   };
 
   const leaveMatch = async (matchId: string): Promise<boolean> => {
-    let promotedUserId = '';
-    let matchTitle = '';
+    try {
+      const res = await fetch(`/api/matches/${matchId}/leave`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ userId: currentUser.id }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMatches((prev) => prev.map((m) => (m.id === matchId ? data.match : m)));
+        return true;
+      }
+    } catch {}
 
     setMatches((prev) => {
       const matchIndex = prev.findIndex((m) => m.id === matchId);
       if (matchIndex === -1) return prev;
 
       const target = prev[matchIndex];
-      matchTitle = target.title;
       let updatedRoster = target.roster.filter((p) => p.userId !== currentUser.id);
       let updatedWaitlist = target.waitlist.filter((p) => p.userId !== currentUser.id);
 
-      // Auto promote from waitlist
       if (updatedWaitlist.length > 0 && updatedRoster.length < target.maxPlayers) {
         const promoted = updatedWaitlist.shift();
         if (promoted) {
-          promotedUserId = promoted.userId;
           const greenCount = updatedRoster.filter((p) => p.team === 'green').length;
           const blueCount = updatedRoster.filter((p) => p.team === 'blue').length;
           promoted.team = greenCount <= blueCount ? 'green' : 'blue';
@@ -811,21 +932,9 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         paidPlayerIds: (target.paidPlayerIds || []).filter((id) => id !== currentUser.id),
         updatedAt: new Date().toISOString(),
       };
-
       broadcastChange('SYNC_MATCHES', updated);
       return updated;
     });
-
-    // Notify promoted player
-    if (promotedUserId) {
-      sendNotification({
-        userId: promotedUserId,
-        title: 'Spot Opened: You Are in the Game!',
-        message: `A spot opened up and you were promoted to confirmed roster for "${matchTitle}".`,
-        type: 'waitlist_promoted',
-        linkId: matchId,
-      });
-    }
 
     return true;
   };
@@ -862,6 +971,19 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       updatedAt: nowIso,
     };
 
+    try {
+      const res = await fetch('/api/matches', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(newMatch),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMatches((prev) => [data.match, ...prev.filter((m) => m.id !== newId)]);
+        return data.match.id;
+      }
+    } catch {}
+
     setMatches((prev) => {
       const updated = [newMatch, ...prev];
       broadcastChange('SYNC_MATCHES', updated);
@@ -872,6 +994,19 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const updateMatch = async (matchId: string, updates: Partial<SoccerMatch>): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/matches/${matchId}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(updates),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMatches((prev) => prev.map((m) => (m.id === matchId ? data.match : m)));
+        return true;
+      }
+    } catch {}
+
     setMatches((prev) => {
       const index = prev.findIndex((m) => m.id === matchId);
       if (index === -1) return prev;
@@ -882,32 +1017,44 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         ...updates,
         updatedAt: new Date().toISOString(),
       };
-
       broadcastChange('SYNC_MATCHES', updated);
       return updated;
     });
     return true;
   };
 
-  // Delete Match with unrestricted Super Admin authority override
+  // Delete Match with Unrestricted Admin Privileges (Admin can delete ANY match at ANY time)
   const deleteMatch = async (matchId: string): Promise<boolean> => {
-    const isMustapha = isSuperAdminEmail(currentUser.email) || currentUser.isAdmin;
+    const isAdmin = isSuperAdminEmail(currentUser.email) || currentUser.isAdmin === true;
     const targetMatch = matches.find((m) => m.id === matchId);
     if (!targetMatch) return false;
 
-    // Check permission: Super Admin or match creator
-    if (!isMustapha && targetMatch.creatorId !== currentUser.id) {
-      alert('Permission Denied: Only Super Admin or the match creator can delete this match.');
+    // Check permission: Admin or match creator
+    if (!isAdmin && targetMatch.creatorId !== currentUser.id) {
+      alert('Permission Denied: Only an Administrator or the match host can delete this match.');
       return false;
     }
 
+    try {
+      const response = await fetch(`/api/matches/${matchId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Server failed to delete match:', errorData);
+      }
+    } catch (err) {
+      console.error('Network error deleting match:', err);
+    }
+
+    // Immediately remove from local state and broadcast
     setMatches((prev) => {
       const updated = prev.filter((m) => m.id !== matchId);
       broadcastChange('SYNC_MATCHES', updated);
       return updated;
     });
 
-    // Also clean up associated comments for this match
     setComments((prev) => {
       if (!prev[matchId]) return prev;
       const copy = { ...prev };
@@ -920,6 +1067,14 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const assignPlayerTeam = async (matchId: string, userId: string, team: TeamSide): Promise<boolean> => {
+    try {
+      await fetch(`/api/matches/${matchId}/assign-team`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ userId, team }),
+      });
+    } catch {}
+
     setMatches((prev) => {
       const matchIndex = prev.findIndex((m) => m.id === matchId);
       if (matchIndex === -1) return prev;
@@ -940,16 +1095,31 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return true;
   };
 
+  // Full Admin & Host Control: Remove or Kick Out ANY Player from Roster OR Waitlist Instantly
   const removePlayerFromMatch = async (matchId: string, userId: string): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/matches/${matchId}/remove-player`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ userId, adminRequesterId: currentUser.id }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMatches((prev) => prev.map((m) => (m.id === matchId ? data.match : m)));
+        return true;
+      }
+    } catch {}
+
     setMatches((prev) => {
       const matchIndex = prev.findIndex((m) => m.id === matchId);
       if (matchIndex === -1) return prev;
 
       const target = prev[matchIndex];
+      const wasInRoster = target.roster.some((p) => p.userId === userId);
       let updatedRoster = target.roster.filter((p) => p.userId !== userId);
       let updatedWaitlist = target.waitlist.filter((p) => p.userId !== userId);
 
-      if (updatedWaitlist.length > 0 && updatedRoster.length < target.maxPlayers) {
+      if (wasInRoster && updatedWaitlist.length > 0 && updatedRoster.length < target.maxPlayers) {
         const promoted = updatedWaitlist.shift();
         if (promoted) {
           const greenCount = updatedRoster.filter((p) => p.team === 'green').length;
@@ -975,6 +1145,10 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const toggleMatchLock = async (matchId: string): Promise<boolean> => {
+    try {
+      await fetch(`/api/matches/${matchId}/toggle-lock`, { method: 'POST', headers: getAuthHeaders() });
+    } catch {}
+
     setMatches((prev) => {
       const targetIndex = prev.findIndex((m) => m.id === matchId);
       if (targetIndex === -1) return prev;
@@ -995,6 +1169,14 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Toggle player payment status (Pitch Cost Sharing)
   const togglePlayerPaidStatus = async (matchId: string, playerId: string): Promise<boolean> => {
+    try {
+      await fetch(`/api/matches/${matchId}/toggle-paid`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ playerId }),
+      });
+    } catch {}
+
     setMatches((prev) => {
       const index = prev.findIndex((m) => m.id === matchId);
       if (index === -1) return prev;
@@ -1020,6 +1202,14 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // Update total pitch cost & per-player split
   const updateMatchPitchCost = async (matchId: string, totalCost: number, pricePerPlayer: number): Promise<boolean> => {
+    try {
+      await fetch(`/api/matches/${matchId}/cost`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ totalCost, pricePerPlayer }),
+      });
+    } catch {}
+
     setMatches((prev) => {
       const index = prev.findIndex((m) => m.id === matchId);
       if (index === -1) return prev;
@@ -1036,6 +1226,148 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       broadcastChange('SYNC_MATCHES', updated);
       return updated;
     });
+
+    return true;
+  };
+
+  // Auto-Balance Teams based on Player Skill Rating & Preferred Positions (Snake Draft)
+  const autoBalanceTeams = async (matchId: string): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/matches/${matchId}/auto-balance`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMatches((prev) => prev.map((m) => (m.id === matchId ? data.match : m)));
+        return true;
+      }
+    } catch {}
+
+    // Client-side fallback snake draft
+    setMatches((prev) => {
+      const matchIndex = prev.findIndex((m) => m.id === matchId);
+      if (matchIndex === -1) return prev;
+      const target = prev[matchIndex];
+      const rosterWithRatings = target.roster.map((player) => {
+        const profile = users.find((u) => u.id === player.userId);
+        return {
+          ...player,
+          skillRating: profile?.skillRating ?? 4.5,
+          reliabilityScore: profile?.reliabilityScore ?? 95,
+          position: profile?.preferredPosition ?? player.position ?? 'MID',
+        };
+      });
+
+      rosterWithRatings.sort((a, b) => {
+        const scoreA = (a.skillRating || 4.5) * 20 + (a.reliabilityScore || 95) * 0.5;
+        const scoreB = (b.skillRating || 4.5) * 20 + (b.reliabilityScore || 95) * 0.5;
+        return scoreB - scoreA;
+      });
+
+      const balancedRoster = rosterWithRatings.map((player, idx) => ({
+        ...player,
+        team: idx % 4 === 0 || idx % 4 === 3 ? ('green' as const) : ('blue' as const),
+      }));
+
+      const updated = [...prev];
+      updated[matchIndex] = {
+        ...target,
+        roster: balancedRoster,
+        updatedAt: new Date().toISOString(),
+      };
+      broadcastChange('SYNC_MATCHES', updated);
+      return updated;
+    });
+
+    return true;
+  };
+
+  // Update 2D Tactical Formation & Lineup Slot Assignments
+  const updateTacticalFormation = async (
+    matchId: string,
+    formationGreen: string,
+    formationBlue: string,
+    tacticalAssignments: Record<string, string>
+  ): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/matches/${matchId}/tactical`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ formationGreen, formationBlue, tacticalAssignments }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMatches((prev) => prev.map((m) => (m.id === matchId ? data.match : m)));
+        return true;
+      }
+    } catch {}
+
+    setMatches((prev) => {
+      const matchIndex = prev.findIndex((m) => m.id === matchId);
+      if (matchIndex === -1) return prev;
+      const target = prev[matchIndex];
+      const updated = [...prev];
+      updated[matchIndex] = {
+        ...target,
+        formationGreen,
+        formationBlue,
+        tacticalAssignments,
+        updatedAt: new Date().toISOString(),
+      };
+      broadcastChange('SYNC_MATCHES', updated);
+      return updated;
+    });
+
+    return true;
+  };
+
+  // Record Attendance & No-Shows with Automatic Reliability Scoring
+  const markMatchAttendance = async (
+    matchId: string,
+    attendedPlayerIds: string[],
+    noShowPlayerIds: string[]
+  ): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/matches/${matchId}/attendance`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ attendedPlayerIds, noShowPlayerIds }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMatches((prev) => prev.map((m) => (m.id === matchId ? data.match : m)));
+        return true;
+      }
+    } catch {}
+
+    // Client fallback
+    setUsers((prev) =>
+      prev.map((user) => {
+        if (attendedPlayerIds.includes(user.id)) {
+          const newAttended = (user.matchesAttended || user.matchesPlayed || 0) + 1;
+          const noShows = user.noShowsCount || 0;
+          const reliability = Math.min(100, Math.round((newAttended / (newAttended + noShows)) * 100));
+          return {
+            ...user,
+            matchesAttended: newAttended,
+            matchesPlayed: newAttended,
+            reliabilityScore: reliability,
+          };
+        }
+        if (noShowPlayerIds.includes(user.id)) {
+          const attended = user.matchesAttended || user.matchesPlayed || 0;
+          const newNoShows = (user.noShowsCount || 0) + 1;
+          const reliability = Math.max(0, Math.round((attended / (attended + newNoShows)) * 100));
+          return {
+            ...user,
+            noShowsCount: newNoShows,
+            reliabilityScore: reliability,
+          };
+        }
+        return user;
+      })
+    );
 
     return true;
   };
@@ -1062,13 +1394,18 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       createdAt: new Date().toISOString(),
     };
 
+    try {
+      await fetch('/api/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newComment),
+      });
+    } catch {}
+
     setComments((prev) => {
       const currentList = prev[matchId] || [];
       const updatedList = [...currentList, newComment];
-      const updatedMap = {
-        ...prev,
-        [matchId]: updatedList,
-      };
+      const updatedMap = { ...prev, [matchId]: updatedList };
       broadcastChange('SYNC_COMMENTS', updatedMap);
       return updatedMap;
     });
@@ -1084,7 +1421,6 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
 
     const commentId = `comm_voice_${Date.now()}`;
-    // Save to IndexedDB to avoid overloading localStorage
     await mediaStorage.saveVoiceNote(commentId, audioUrl);
 
     const newComment: MatchComment = {
@@ -1099,13 +1435,18 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       createdAt: new Date().toISOString(),
     };
 
+    try {
+      await fetch('/api/comments', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(newComment),
+      });
+    } catch {}
+
     setComments((prev) => {
       const currentList = prev[matchId] || [];
       const updatedList = [...currentList, newComment];
-      const updatedMap = {
-        ...prev,
-        [matchId]: updatedList,
-      };
+      const updatedMap = { ...prev, [matchId]: updatedList };
       broadcastChange('SYNC_COMMENTS', updatedMap);
       return updatedMap;
     });
@@ -1114,13 +1455,14 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const deleteComment = async (matchId: string, commentId: string): Promise<boolean> => {
+    try {
+      await fetch(`/api/comments/${matchId}/${commentId}`, { method: 'DELETE', headers: getAuthHeaders() });
+    } catch {}
+
     setComments((prev) => {
-      const currentList = prev[matchId] || [];
-      const updatedList = currentList.filter((c) => c.id !== commentId);
-      const updatedMap = {
-        ...prev,
-        [matchId]: updatedList,
-      };
+      if (!prev[matchId]) return prev;
+      const updatedList = prev[matchId].filter((c) => c.id !== commentId);
+      const updatedMap = { ...prev, [matchId]: updatedList };
       broadcastChange('SYNC_COMMENTS', updatedMap);
       return updatedMap;
     });
@@ -1128,7 +1470,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   // ==========================================
-  // DIRECT MESSAGING & VOICE NOTES
+  // DIRECT MESSAGING & VOICE CHAT
   // ==========================================
   const sendDirectMessage = async (receiverId: string, text: string, imageUrl?: string): Promise<boolean> => {
     const cleanText = sanitizeInput(text);
@@ -1138,22 +1480,25 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return false;
     }
 
-    let finalImageUrl = imageUrl?.trim() || undefined;
-    const msgId = `dm_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-
-    if (finalImageUrl && finalImageUrl.startsWith('data:')) {
-      finalImageUrl = await mediaStorage.saveAvatar(msgId, finalImageUrl);
-    }
-
     const newMsg: DirectMessage = {
-      id: msgId,
+      id: `dm_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       senderId: currentUser.id,
+      senderName: currentUser.name,
+      senderAvatar: currentUser.avatarUrl,
       receiverId,
       text: cleanText,
-      imageUrl: finalImageUrl,
+      imageUrl,
       createdAt: new Date().toISOString(),
       read: false,
     };
+
+    try {
+      await fetch('/api/messages', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(newMsg),
+      });
+    } catch {}
 
     setDirectMessages((prev) => {
       const updated = [...prev, newMsg];
@@ -1161,28 +1506,51 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return updated;
     });
 
+    sendNotification({
+      userId: receiverId,
+      title: `New message from ${currentUser.name}`,
+      message: cleanText || 'Sent you an image',
+      type: 'chat',
+      linkId: currentUser.id,
+    });
+
     return true;
   };
 
-  const sendDirectVoiceMessage = async (receiverId: string, audioUrl: string, durationSeconds: number): Promise<boolean> => {
+  const sendDirectVoiceMessage = async (
+    receiverId: string,
+    audioUrl: string,
+    durationSeconds: number
+  ): Promise<boolean> => {
     if (!audioUrl) return false;
     if (currentUser.isBanned) {
       alert('Suspended accounts cannot send voice messages.');
       return false;
     }
 
-    const msgId = `dm_voice_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-    await mediaStorage.saveVoiceNote(msgId, audioUrl);
+    const messageId = `dm_voice_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    await mediaStorage.saveVoiceNote(messageId, audioUrl);
 
     const newMsg: DirectMessage = {
-      id: msgId,
+      id: messageId,
       senderId: currentUser.id,
+      senderName: currentUser.name,
+      senderAvatar: currentUser.avatarUrl,
       receiverId,
+      text: `🎤 Voice note (${Math.round(durationSeconds)}s)`,
       audioUrl,
       audioDuration: durationSeconds,
       createdAt: new Date().toISOString(),
       read: false,
     };
+
+    try {
+      await fetch('/api/messages', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(newMsg),
+      });
+    } catch {}
 
     setDirectMessages((prev) => {
       const updated = [...prev, newMsg];
@@ -1190,28 +1558,43 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return updated;
     });
 
+    sendNotification({
+      userId: receiverId,
+      title: `Voice message from ${currentUser.name}`,
+      message: `Sent you a ${Math.round(durationSeconds)}s voice recording.`,
+      type: 'chat',
+      linkId: currentUser.id,
+    });
+
     return true;
   };
 
   const markConversationAsRead = (otherUserId: string) => {
+    try {
+      fetch('/api/messages/mark-read', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ currentUserId: currentUser.id, otherUserId }),
+      }).catch(() => {});
+    } catch {}
+
     setDirectMessages((prev) => {
-      let changed = false;
       const updated = prev.map((m) => {
-        if (m.senderId === otherUserId && m.receiverId === currentUser.id && !m.read) {
-          changed = true;
+        if (m.senderId === otherUserId && m.receiverId === currentUser.id) {
           return { ...m, read: true };
         }
         return m;
       });
-
-      if (changed) {
-        broadcastChange('SYNC_DIRECT_MESSAGES', updated);
-      }
-      return changed ? updated : prev;
+      broadcastChange('SYNC_DIRECT_MESSAGES', updated);
+      return updated;
     });
   };
 
   const deleteDirectMessage = (messageId: string) => {
+    try {
+      fetch(`/api/messages/${messageId}`, { method: 'DELETE', headers: getAuthHeaders() }).catch(() => {});
+    } catch {}
+
     setDirectMessages((prev) => {
       const updated = prev.filter((m) => m.id !== messageId);
       broadcastChange('SYNC_DIRECT_MESSAGES', updated);
@@ -1219,115 +1602,65 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     });
   };
 
-  // ==========================================
-  // LIVE VOICE CALLING (WHATSAPP-STYLE)
-  // ==========================================
-  const initiateVoiceCall = (receiverId: string) => {
-    const receiver = users.find((u) => u.id === receiverId);
-    if (!receiver) return;
-
-    const call: ActiveVoiceCall = {
-      id: `call_${Date.now()}`,
-      callerId: currentUser.id,
-      callerName: currentUser.name,
-      callerAvatar: currentUser.avatarUrl,
-      receiverId: receiver.id,
-      receiverName: receiver.name,
-      receiverAvatar: receiver.avatarUrl,
-      status: 'outgoing',
-      startedAt: new Date().toISOString(),
-    };
-
-    setActiveCall(call);
-    broadcastChange('CALL_INITIATE', call);
-
-    // Auto-timeout if no answer after 35 seconds
-    setTimeout(() => {
-      setActiveCall((curr) => {
-        if (curr && curr.id === call.id && curr.status === 'outgoing') {
-          broadcastChange('CALL_END', { ...curr, status: 'ended' });
-          return { ...curr, status: 'ended' };
-        }
-        return curr;
-      });
-      setTimeout(() => {
-        setActiveCall((curr) => (curr && curr.id === call.id ? null : curr));
-      }, 1500);
-    }, 35000);
-  };
-
-  const acceptVoiceCall = () => {
-    if (!activeCall) return;
-    const updated: ActiveVoiceCall = {
-      ...activeCall,
-      status: 'connected',
-      connectedAt: new Date().toISOString(),
-    };
-    setActiveCall(updated);
-    broadcastChange('CALL_ACCEPT', updated);
-  };
-
-  const rejectVoiceCall = () => {
-    if (!activeCall) return;
-    const updated: ActiveVoiceCall = {
-      ...activeCall,
-      status: 'ended',
-      endedAt: new Date().toISOString(),
-    };
-    setActiveCall(updated);
-    broadcastChange('CALL_REJECT', updated);
-    setTimeout(() => setActiveCall(null), 1500);
-  };
-
-  const endVoiceCall = () => {
-    if (!activeCall) return;
-    const updated: ActiveVoiceCall = {
-      ...activeCall,
-      status: 'ended',
-      endedAt: new Date().toISOString(),
-    };
-    setActiveCall(updated);
-    broadcastChange('CALL_END', updated);
-    setTimeout(() => setActiveCall(null), 1500);
+  const deleteUserAccount = async (userId: string): Promise<boolean> => {
+    return removeUserAccount(userId);
   };
 
   // ==========================================
-  // PROFILE & ANNOUNCEMENT MANAGEMENT
+  // USER PROFILES & GLOBAL ADMIN APPROVALS
   // ==========================================
   const setCurrentUserById = (userId: string) => {
-    setCurrentUserId(userId);
+    const found = users.find((u) => u.id === userId);
+    if (found) {
+      setCurrentUserId(found.id);
+      setIsAuthenticated(true);
+      const token = `pitchmate_token_${found.id}_${Date.now()}`;
+      localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+      localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, found.id);
+    }
   };
 
   const authenticateSuperAdmin = (password: string): boolean => {
     if (verifySuperAdminMasterPassword(password)) {
-      const mustapha = users.find((u) => isSuperAdminEmail(u.email));
-      if (mustapha) {
-        setCurrentUserId(mustapha.id);
-        return true;
+      let mustapha = users.find((u) => isSuperAdminEmail(u.email));
+      if (!mustapha) {
+        mustapha = {
+          id: 'user_mustapha',
+          email: SUPER_ADMIN_EMAIL,
+          name: 'Mustapha Bouhbous',
+          avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+          isAdmin: true,
+          status: 'approved',
+          matchesPlayed: 48,
+          createdAt: new Date().toISOString(),
+        };
+        setUsers((prev) => [mustapha!, ...prev.filter((u) => !isSuperAdminEmail(u.email))]);
       }
+      setCurrentUserId(mustapha.id);
+      setIsAuthenticated(true);
+      const token = `pitchmate_token_${mustapha.id}_${Date.now()}`;
+      localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+      localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, mustapha.id);
+      return true;
     }
     return false;
   };
 
   const updateUserProfile = async (userId: string, updates: Partial<UserProfile>): Promise<boolean> => {
-    setUsers((prev) => {
-      const updated = prev.map((u) => {
-        if (u.id === userId) {
-          const isMustapha = isSuperAdminEmail(u.email);
-          return {
-            ...u,
-            ...updates,
-            isAdmin: isMustapha,
-          };
-        }
-        return u;
+    try {
+      await fetch(`/api/users/${userId}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(updates),
       });
+    } catch {}
 
+    setUsers((prev) => {
+      const updated = prev.map((u) => (u.id === userId ? { ...u, ...updates, isAdmin: isSuperAdminEmail(u.email) } : u));
       broadcastChange('SYNC_USERS', updated);
       return updated;
     });
 
-    // Update match rosters
     setMatches((prev) => {
       const updated = prev.map((m) => ({
         ...m,
@@ -1341,6 +1674,16 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           }
           return p;
         }),
+        waitlist: m.waitlist.map((w) => {
+          if (w.userId === userId) {
+            return {
+              ...w,
+              name: updates.name || w.name,
+              avatarUrl: updates.avatarUrl || w.avatarUrl,
+            };
+          }
+          return w;
+        }),
       }));
       broadcastChange('SYNC_MATCHES', updated);
       return updated;
@@ -1352,6 +1695,14 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const banUser = async (userId: string, reason: string = 'Violation of community conduct rules'): Promise<boolean> => {
     const isMustapha = isSuperAdminEmail(currentUser.email);
     if (!isMustapha) return false;
+
+    try {
+      await fetch('/api/users/ban', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ userId, reason }),
+      });
+    } catch {}
 
     setUsers((prev) => {
       const updated = prev.map((u) => {
@@ -1376,6 +1727,14 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const isMustapha = isSuperAdminEmail(currentUser.email);
     if (!isMustapha) return false;
 
+    try {
+      await fetch('/api/users/unban', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ userId }),
+      });
+    } catch {}
+
     setUsers((prev) => {
       const updated = prev.map((u) => (u.id === userId ? { ...u, isBanned: false, banReason: undefined, bannedAt: undefined } : u));
       broadcastChange('SYNC_USERS', updated);
@@ -1394,6 +1753,10 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       alert('Cannot delete the Super Admin profile.');
       return false;
     }
+
+    try {
+      await fetch(`/api/users/${userId}`, { method: 'DELETE', headers: getAuthHeaders() });
+    } catch {}
 
     setUsers((prev) => {
       const updated = prev.filter((u) => u.id !== userId);
@@ -1420,11 +1783,20 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return true;
   };
 
+  // Global Admin Approval Action
   const approveUser = async (userId: string): Promise<boolean> => {
     const isMustapha = isSuperAdminEmail(currentUser.email) || currentUser.isAdmin;
     if (!isMustapha) return false;
 
     const target = users.find((u) => u.id === userId);
+
+    try {
+      await fetch('/api/users/approve', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ userId, adminName: currentUser.name || 'Mustapha Bouhbous (Admin)' }),
+      });
+    } catch {}
 
     setUsers((prev) => {
       const updated = prev.map((u) =>
@@ -1460,9 +1832,18 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return true;
   };
 
+  // Global Admin Reject Action
   const rejectUser = async (userId: string, reason: string = 'Registration declined by administrator'): Promise<boolean> => {
     const isMustapha = isSuperAdminEmail(currentUser.email) || currentUser.isAdmin;
     if (!isMustapha) return false;
+
+    try {
+      await fetch('/api/users/reject', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ userId, reason }),
+      });
+    } catch {}
 
     setUsers((prev) => {
       const updated = prev.map((u) =>
@@ -1482,11 +1863,20 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return true;
   };
 
+  // Global Admin Bulk Approve All Action
   const approveAllPendingUsers = async (): Promise<boolean> => {
     const isMustapha = isSuperAdminEmail(currentUser.email) || currentUser.isAdmin;
     if (!isMustapha) return false;
 
     const pending = users.filter((u) => u.status === 'pending');
+
+    try {
+      await fetch('/api/users/approve-all', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ adminName: currentUser.name || 'Mustapha Bouhbous (Admin)' }),
+      });
+    } catch {}
 
     setUsers((prev) => {
       const updated = prev.map((u) =>
@@ -1528,6 +1918,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       email,
       avatarUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(name)}`,
       isAdmin: isMustapha,
+      status: isMustapha ? 'approved' : 'pending',
       matchesPlayed: 0,
       createdAt: new Date().toISOString(),
     };
@@ -1552,6 +1943,14 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       type,
     };
 
+    try {
+      await fetch('/api/announcements', {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(newAnn),
+      });
+    } catch {}
+
     setAnnouncements((prev) => {
       const updated = [newAnn, ...prev];
       broadcastChange('SYNC_ANNOUNCEMENTS', updated);
@@ -1561,6 +1960,10 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const deleteAnnouncement = async (id: string): Promise<boolean> => {
+    try {
+      await fetch(`/api/announcements/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+    } catch {}
+
     setAnnouncements((prev) => {
       const updated = prev.filter((a) => a.id !== id);
       broadcastChange('SYNC_ANNOUNCEMENTS', updated);
@@ -1570,6 +1973,10 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const resetToDefaultData = () => {
+    try {
+      fetch('/api/reset-data', { method: 'POST' }).catch(() => {});
+    } catch {}
+
     setMatches(INITIAL_MATCHES);
     setUsers(INITIAL_USERS);
     setDirectMessages(INITIAL_DIRECT_MESSAGES);
@@ -1601,7 +2008,6 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         unreadNotificationsCount,
         isSupabaseLive,
         isLoading,
-        activeCall,
         loginWithCredentials,
         signupWithCredentials,
         resetPasswordWithEmail,
@@ -1616,6 +2022,9 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         toggleMatchLock,
         togglePlayerPaidStatus,
         updateMatchPitchCost,
+        autoBalanceTeams,
+        updateTacticalFormation,
+        markMatchAttendance,
         addComment,
         addVoiceComment,
         deleteComment,
@@ -1629,6 +2038,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         banUser,
         unbanUser,
         removeUserAccount,
+        deleteUserAccount,
         createAnnouncement,
         deleteAnnouncement,
         sendDirectMessage,
@@ -1638,10 +2048,6 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         markNotificationAsRead,
         clearAllNotifications,
         sendNotification,
-        initiateVoiceCall,
-        acceptVoiceCall,
-        rejectVoiceCall,
-        endVoiceCall,
         resetToDefaultData,
       }}
     >

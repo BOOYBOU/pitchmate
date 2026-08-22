@@ -661,7 +661,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, on
 
         {myMatches.length === 0 ? (
           <div className="p-8 text-center bg-[#0E1526] border border-[#1E293B] rounded-2xl text-xs text-slate-400">
-            You haven't joined any upcoming matches yet. Head over to the Matches tab and click "Join Match"!
+            You haven't joined any matches yet. Head over to the Matches tab and click "Join Match"!
           </div>
         ) : (
           <div className="space-y-2.5">
@@ -704,88 +704,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, on
             })}
           </div>
         )}
-      </div>
-
-      {/* Community Teammates & Direct Message Network */}
-      <div className="space-y-4 pt-6 border-t border-[#1E293B]">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-base font-bold font-display text-white flex items-center gap-2">
-              <Users className="w-4 h-4 text-blue-400" />
-              PitchMate Teammates ({users.length})
-            </h3>
-            <p className="text-xs text-slate-400">Connect with fellow footballers and start private chats</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {users.map((player) => {
-            const isMe = player.id === currentUser.id;
-            const isPlayerSuperAdmin = player.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
-
-            return (
-              <div
-                key={player.id}
-                className="p-3.5 bg-[#0E1526] border border-[#1E293B] hover:border-emerald-500/30 rounded-2xl flex items-center justify-between gap-3 transition-colors"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="relative shrink-0">
-                    <img
-                      src={player.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
-                      alt={player.name}
-                      className="w-10 h-10 rounded-full object-cover border border-slate-700"
-                      referrerPolicy="no-referrer"
-                    />
-                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#0E1526]" />
-                  </div>
-
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold text-white truncate">{player.name}</span>
-                      {isPlayerSuperAdmin && (
-                        <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
-                          Admin
-                        </span>
-                      )}
-                      {isMe && (
-                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-blue-500/20 text-blue-300 shrink-0">
-                          You
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-[11px] text-slate-400 block truncate">
-                      {player.matchesPlayed} Matches • Member
-                    </span>
-                  </div>
-                </div>
-
-                {!isMe && (
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => initiateVoiceCall(player.id)}
-                      className="p-2 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/25 border border-emerald-500/20 text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
-                      title={`Start Voice Call with ${player.name}`}
-                    >
-                      <Phone className="w-4 h-4" />
-                    </button>
-
-                    {onOpenDirectMessage && (
-                      <button
-                        type="button"
-                        onClick={() => onOpenDirectMessage(player.id)}
-                        className="p-2 rounded-xl bg-blue-600/10 hover:bg-blue-600/25 border border-blue-500/20 text-blue-400 hover:text-blue-300 transition-colors cursor-pointer"
-                        title={`Send Direct Message to ${player.name}`}
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
       </div>
     </div>
   );

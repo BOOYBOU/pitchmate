@@ -14,20 +14,14 @@ import {
   Shirt,
   Sparkles,
   Navigation,
-  Sun,
-  CloudSun,
-  CloudRain,
-  Wind,
-  Moon,
-  Cloud,
-  Sunrise,
-  Sunset,
-  Home,
-  CheckCircle2
+  CheckCircle2,
+  Trash2,
+  Share2,
 } from 'lucide-react';
-import { SoccerMatch, SUPER_ADMIN_EMAIL } from '../types';
+import { SoccerMatch, isSuperAdminEmail } from '../types';
 import { usePitchStore } from '../lib/usePitchStore';
-import { getMatchWeatherForecast, getMatchMapUrl } from '../lib/weatherService';
+import { getMatchMapUrl } from '../lib/mapUtils';
+import { MatchShareModal } from './MatchShareModal';
 
 interface MatchCardProps {
   match: SoccerMatch;
@@ -35,12 +29,15 @@ interface MatchCardProps {
 }
 
 export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) => {
-  const { currentUser, joinMatch, leaveMatch } = usePitchStore();
+  const { currentUser, joinMatch, leaveMatch, deleteMatch } = usePitchStore();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   const isUserInRoster = match.roster.some((p) => p.userId === currentUser.id);
   const isUserInWaitlist = match.waitlist.some((p) => p.userId === currentUser.id);
-  const isMustaphaSuperAdmin = currentUser.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase() || currentUser.isAdmin;
+  const isAdmin = Boolean(currentUser?.isAdmin || isSuperAdminEmail(currentUser?.email));
+  const isHost = match.creatorId === currentUser?.id;
+  const canDelete = isAdmin || isHost;
 
   const spotsLeft = Math.max(0, match.maxPlayers - match.roster.length);
   const percentFilled = Math.min(100, Math.round((match.roster.length / match.maxPlayers) * 100));
@@ -59,42 +56,10 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
   const greenCount = match.roster.filter((p) => p.team === 'green').length;
   const blueCount = match.roster.filter((p) => p.team === 'blue').length;
 
-  // Compute live pitch weather forecast
-  const weather = getMatchWeatherForecast(
-    match.dateTime,
-    match.location.venueName,
-    match.location.city,
-    match.location.latitude,
-    match.location.longitude
-  );
-
   // Compute payments count
   const paidCount = (match.paidPlayerIds || []).filter((id) =>
     match.roster.some((p) => p.userId === id)
   ).length;
-
-  const getWeatherIcon = () => {
-    switch (weather.icon) {
-      case 'sunrise':
-        return <Sunrise className="w-3.5 h-3.5 text-amber-400" />;
-      case 'sunset':
-        return <Sunset className="w-3.5 h-3.5 text-orange-400" />;
-      case 'sun':
-        return <Sun className="w-3.5 h-3.5 text-amber-400" />;
-      case 'cloud-sun':
-        return <CloudSun className="w-3.5 h-3.5 text-amber-300" />;
-      case 'cloud-rain':
-        return <CloudRain className="w-3.5 h-3.5 text-blue-400" />;
-      case 'wind':
-        return <Wind className="w-3.5 h-3.5 text-teal-400" />;
-      case 'moon':
-        return <Moon className="w-3.5 h-3.5 text-indigo-300" />;
-      case 'home':
-        return <Home className="w-3.5 h-3.5 text-emerald-400" />;
-      default:
-        return <Cloud className="w-3.5 h-3.5 text-slate-300" />;
-    }
-  };
 
   const handleOpenMaps = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -157,10 +122,10 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
           </div>
 
           {/* Admin badge tag */}
-          {match.creatorEmail.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase() && (
+          {isSuperAdminEmail(match.creatorEmail) && (
             <span
               className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950/60 text-emerald-300 border border-emerald-500/30 shrink-0"
-              title="Official match organized by Super Admin Mustapha"
+              title="Official match organized by Administrator Mustapha"
             >
               <Shield className="w-3 h-3 text-emerald-400" />
               Mustapha
@@ -193,28 +158,6 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
               <span>Maps</span>
               <ExternalLink className="w-2.5 h-2.5 text-blue-400/80" />
             </button>
-          </div>
-        </div>
-
-        {/* Live Weather Forecast Preview Badge */}
-        <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-[#090D16]/90 border border-[#1E293B] text-[11px]">
-          <div className="flex items-center gap-2 text-slate-300 min-w-0 flex-1">
-            {getWeatherIcon()}
-            <span className="font-bold text-white shrink-0">{weather.tempC}°C</span>
-            <span className="text-[10px] text-slate-400 hidden xs:inline shrink-0">({weather.tempF}°F)</span>
-            <span className="text-slate-400 truncate text-[11px]">{weather.condition}</span>
-          </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-[10px] text-teal-400 font-mono flex items-center gap-0.5">
-              <Wind className="w-2.5 h-2.5 inline" /> {weather.windSpeedKmh}k/h
-            </span>
-            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
-              weather.pitchSuitability.includes('Warning')
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20'
-            }`}>
-              {weather.pitchSuitability}
-            </span>
           </div>
         </div>
 
@@ -302,8 +245,38 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
             )}
           </div>
 
-          {/* Instant Action Button */}
-          <div>
+          {/* Actions Group */}
+          <div className="flex items-center gap-1.5">
+            <button
+              id={`card-share-btn-${match.id}`}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsShareModalOpen(true);
+              }}
+              className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-xl border border-transparent hover:border-emerald-500/30 transition-all cursor-pointer"
+              title="Share match to WhatsApp"
+            >
+              <Share2 className="w-4 h-4" />
+            </button>
+
+            {canDelete && (
+              <button
+                id={`card-delete-match-btn-${match.id}`}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (window.confirm(`Delete match "${match.title}"?`)) {
+                    deleteMatch(match.id);
+                  }
+                }}
+                className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl border border-transparent hover:border-rose-500/30 transition-all cursor-pointer"
+                title={isAdmin ? 'Administrator: Delete this match' : 'Host: Delete match'}
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+
             {isUserInRoster ? (
               <button
                 id={`leave-match-btn-${match.id}`}
@@ -347,6 +320,13 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
           </div>
         </div>
       </div>
+
+      {/* WhatsApp Share Modal */}
+      <MatchShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        match={match}
+      />
     </div>
   );
 };

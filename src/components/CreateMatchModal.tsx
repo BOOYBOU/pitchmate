@@ -35,6 +35,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
   const [matchDate, setMatchDate] = useState(defaultDate.toISOString().split('T')[0]);
   const [matchTime, setMatchTime] = useState('19:00');
   const [durationMinutes, setDurationMinutes] = useState(90);
+  const [format, setFormat] = useState('7v7');
   const [maxPlayers, setMaxPlayers] = useState(14);
   const [pricePerPlayer, setPricePerPlayer] = useState<number>(0);
   const [notes, setNotes] = useState('');
@@ -59,6 +60,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
         dateTime: combinedDateTime.toISOString(),
         durationMinutes: Number(durationMinutes) || 90,
         location,
+        format: format as any,
         maxPlayers: Number(maxPlayers) || 14,
         pricePerPlayer: Number(pricePerPlayer) || 0,
         notes: notes.trim(),
@@ -243,32 +245,65 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
               </div>
             </div>
 
-            {/* Player Capacity & Cost */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Format & Player Capacity & Cost */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
+                  Format
+                </label>
+                <select
+                  id="match-format-select"
+                  value={format}
+                  onChange={(e) => {
+                    const nextFormat = e.target.value;
+                    setFormat(nextFormat);
+                    // Automatically adjust default capacity
+                    const capacityMap: Record<string, number> = {
+                      '5v5': 10,
+                      '6v6': 12,
+                      '7v7': 14,
+                      '8v8': 16,
+                      '9v9': 18,
+                      '10v10': 20,
+                      '11v11': 22,
+                    };
+                    if (capacityMap[nextFormat]) {
+                      setMaxPlayers(capacityMap[nextFormat]);
+                    }
+                  }}
+                  className="w-full px-3 py-2 bg-[#090D16] border border-[#1E293B] rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500 font-bold"
+                >
+                  <option value="5v5">5v5 (10 Players)</option>
+                  <option value="6v6">6v6 (12 Players)</option>
+                  <option value="7v7">7v7 (14 Players)</option>
+                  <option value="8v8">8v8 (16 Players)</option>
+                  <option value="9v9">9v9 (18 Players)</option>
+                  <option value="10v10">10v10 (20 Players)</option>
+                  <option value="11v11">11v11 (22 Players)</option>
+                </select>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5 text-emerald-400" />
-                  Player Capacity (Max Players) *
+                  Capacity (Max) *
                 </label>
                 <input
                   id="match-max-players-input"
                   type="number"
                   min={2}
-                  max={40}
+                  max={44}
                   required
                   value={maxPlayers}
                   onChange={(e) => setMaxPlayers(Number(e.target.value))}
                   className="w-full px-3 py-2 bg-[#090D16] border border-[#1E293B] rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
                 />
-                <span className="text-[11px] text-slate-400 mt-1 block">
-                  Total slots available for roster (e.g. 10, 14, 16, 22)
-                </span>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center gap-1.5">
                   <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
-                  Price Per Player ($ / Free)
+                  Price / Player ($)
                 </label>
                 <input
                   id="match-price-input"
@@ -280,9 +315,6 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
                   placeholder="0 for free"
                   className="w-full px-3 py-2 bg-[#090D16] border border-[#1E293B] rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
                 />
-                <span className="text-[11px] text-slate-400 mt-1 block">
-                  {pricePerPlayer === 0 ? '💚 Free match for everyone' : `💰 $${pricePerPlayer} per player`}
-                </span>
               </div>
             </div>
 

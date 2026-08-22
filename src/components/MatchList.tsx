@@ -14,7 +14,7 @@ export const MatchList: React.FC<MatchListProps> = ({ onOpenCreate, onOpenDetail
 
   const [searchQuery, setSearchQuery] = useState('');
   const [onlyMyMatches, setOnlyMyMatches] = useState(false);
-  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'upcoming'>('all');
+  const [dateFilter, setDateFilter] = useState<'all' | 'today'>('all');
 
   const now = new Date();
 
@@ -40,12 +40,9 @@ export const MatchList: React.FC<MatchListProps> = ({ onOpenCreate, onOpenDetail
     }
 
     // Date filter
-    const matchTime = new Date(match.dateTime).getTime();
     if (dateFilter === 'today') {
       const isToday = new Date(match.dateTime).toDateString() === now.toDateString();
       if (!isToday) return false;
-    } else if (dateFilter === 'upcoming') {
-      if (matchTime < now.getTime()) return false;
     }
 
     return true;
@@ -193,18 +190,6 @@ export const MatchList: React.FC<MatchListProps> = ({ onOpenCreate, onOpenDetail
             >
               <Calendar className="w-3.5 h-3.5" />
               Today
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setDateFilter(dateFilter === 'upcoming' ? 'all' : 'upcoming')}
-              className={`px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 cursor-pointer ${
-                dateFilter === 'upcoming'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-[#090D16] border border-[#1E293B] text-slate-300 hover:text-white'
-              }`}
-            >
-              Upcoming
             </button>
           </div>
         </div>

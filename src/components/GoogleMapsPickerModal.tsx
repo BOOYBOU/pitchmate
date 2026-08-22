@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { MapPin, Search, ExternalLink, Compass, Check, X, Navigation } from 'lucide-react';
 import { MatchLocation } from '../types';
 import { POPULAR_PITCH_PRESETS } from '../lib/mockData';
-import { getMatchMapUrl } from '../lib/weatherService';
+import { getMatchMapUrl } from '../lib/mapUtils';
 
 interface GoogleMapsPickerModalProps {
   isOpen: boolean;

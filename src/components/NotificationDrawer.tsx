@@ -50,8 +50,8 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
         return <Sparkles className="w-4 h-4 text-amber-400" />;
       case 'cost_reminder':
         return <DollarSign className="w-4 h-4 text-emerald-400" />;
-      case 'call':
-        return <Phone className="w-4 h-4 text-purple-400" />;
+      case 'team_balance':
+        return <Users className="w-4 h-4 text-purple-400" />;
       default:
         return <Info className="w-4 h-4 text-blue-400" />;
     }

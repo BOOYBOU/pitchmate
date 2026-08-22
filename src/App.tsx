@@ -15,10 +15,9 @@ import { ChangeAvatarModal } from './components/ChangeAvatarModal';
 import { AuthModal } from './components/AuthModal';
 import { AuthView } from './components/AuthView';
 import { DirectMessagesModal } from './components/DirectMessagesModal';
-import { VoiceCallModal } from './components/VoiceCallModal';
 import { NotificationDrawer } from './components/NotificationDrawer';
 import { SoccerMatch, SUPER_ADMIN_EMAIL } from './types';
-import { Shield, Sparkles, MapPin, Database, Heart, Phone } from 'lucide-react';
+import { Shield, Sparkles, MapPin, Database, Heart } from 'lucide-react';
 
 function PitchMateApp() {
   const {
@@ -27,9 +26,6 @@ function PitchMateApp() {
     users,
     setCurrentUserById,
     isAuthenticated,
-    activeCall,
-    endVoiceCall,
-    acceptVoiceCall,
   } = usePitchStore();
 
   const [activeTab, setActiveTab] = useState<'matches' | 'profile' | 'admin'>('matches');
@@ -156,16 +152,6 @@ function PitchMateApp() {
         initialMode={authMode}
         onClose={() => setIsAuthModalOpen(false)}
       />
-
-      {/* Dedicated Voice Calling Modal / Overlay */}
-      {activeCall && (
-        <VoiceCallModal
-          call={activeCall}
-          currentUser={currentUser}
-          onAccept={acceptVoiceCall}
-          onEnd={endVoiceCall}
-        />
-      )}
 
       {/* Footer */}
       <footer className="mt-auto border-t border-[#1E293B] bg-[#090D16]/90 py-6 text-xs text-slate-400">

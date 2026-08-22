@@ -18,7 +18,6 @@ import {
   Maximize2,
   ExternalLink,
   Download,
-  Phone,
   Mic
 } from 'lucide-react';
 import { UserProfile, DirectMessage, SUPER_ADMIN_EMAIL } from '../types';
@@ -44,7 +43,6 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
     sendDirectVoiceMessage,
     markConversationAsRead,
     deleteDirectMessage,
-    initiateVoiceCall,
   } = usePitchStore();
 
   const [selectedUserId, setSelectedUserId] = useState<string | null>(initialSelectedUserId || null);
@@ -117,11 +115,6 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
   const handleSendVoiceNote = async (audioUrl: string, durationSeconds: number) => {
     if (!selectedUserId) return;
     await sendDirectVoiceMessage(selectedUserId, audioUrl, durationSeconds);
-  };
-
-  const handleStartCall = () => {
-    if (!selectedUserId) return;
-    initiateVoiceCall(selectedUserId);
   };
 
   const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -374,19 +367,8 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Header Actions: Live Voice Call + Close */}
+                  {/* Header Actions */}
                   <div className="flex items-center gap-2">
-                    <button
-                      id="start-voice-call-btn"
-                      type="button"
-                      onClick={handleStartCall}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-950 transition-all cursor-pointer"
-                      title={`Start Voice Call with ${selectedUser.name}`}
-                    >
-                      <Phone className="w-3.5 h-3.5 fill-current" />
-                      <span className="hidden sm:inline">Voice Call</span>
-                    </button>
-
                     <button
                       onClick={onClose}
                       className="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
