@@ -4,18 +4,14 @@ import {
   Users,
   MapPin,
   Shield,
-  Sparkles,
   ArrowRight,
   UserCheck,
   Flame,
-  CheckCircle2,
   Navigation,
-  ExternalLink,
-  Lock,
-  Globe
 } from 'lucide-react';
 import { SUPER_ADMIN_EMAIL, SoccerMatch } from '../types';
 import { usePitchStore } from '../lib/usePitchStore';
+import { formatMAD, formatMoroccoDate } from '../lib/moroccoUtils';
 
 interface LandingPageProps {
   onOpenSignIn: () => void;
@@ -30,7 +26,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onExploreMatches,
   onOpenMatchDetails,
 }) => {
-  const { matches, users, isSupabaseLive } = usePitchStore();
+  const { matches, isSupabaseLive } = usePitchStore();
 
   return (
     <div id="landing-page-container" className="space-y-12 py-4">
@@ -42,20 +38,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-lg shadow-emerald-950/40">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            Live Soccer Matchmaking & Roster Coordination
+            Morocco's Premier Pickup Soccer & Roster Platform
           </div>
 
           {/* Heading */}
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black font-display text-white tracking-tight leading-none">
             Find Your Game. <br />
             <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-blue-400 bg-clip-text text-transparent">
-              Own The Pitch.
+              Own The Moroccan Pitch.
             </span>
           </h1>
 
           {/* Subtext */}
           <p className="text-sm sm:text-base text-slate-300 max-w-xl mx-auto leading-relaxed">
-            The instant soccer match platform for organizers and players. Live rosters, balanced green vs blue bib splits, and integrated Google Maps pitch locations.
+            The instant soccer match platform for organizers and players across Casablanca, Rabat, Marrakech, Tangier, and Agadir. Live rosters, snake team balancing, live scoreboards, and MAD fee splitting.
           </p>
 
           {/* CTAs */}
@@ -91,7 +87,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <div className="grid grid-cols-3 gap-4 pt-8 border-t border-[#1E293B]/80 max-w-lg mx-auto">
             <div>
               <div className="text-2xl sm:text-3xl font-black font-display text-emerald-400">{matches.length}</div>
-              <div className="text-xs text-slate-400 font-medium">Matches Listed</div>
+              <div className="text-xs text-slate-400 font-medium">Morocco Fixtures</div>
             </div>
             <div>
               <div className="text-2xl sm:text-3xl font-black font-display text-blue-400">
@@ -101,9 +97,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
             <div>
               <div className="text-2xl sm:text-3xl font-black font-display text-slate-200">
-                {isSupabaseLive ? 'Live Sync' : 'Realtime'}
+                GMT+1
               </div>
-              <div className="text-xs text-slate-400 font-medium">Sync Status</div>
+              <div className="text-xs text-slate-400 font-medium">Casablanca Time</div>
             </div>
           </div>
         </div>
@@ -115,9 +111,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <div>
             <h2 className="text-xl font-bold font-display text-white flex items-center gap-2">
               <Calendar className="w-5 h-5 text-emerald-400" />
-              Upcoming Matches Near You
+              Upcoming Matches in Morocco
             </h2>
-            <p className="text-xs text-slate-400">Jump in and claim your roster slot before it fills up</p>
+            <p className="text-xs text-slate-400">Claim your roster slot before it fills up</p>
           </div>
 
           <button
@@ -131,7 +127,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {matches.slice(0, 3).map((match) => {
-            const mDate = new Date(match.dateTime);
             const spotsLeft = Math.max(0, match.maxPlayers - match.roster.length);
             return (
               <div
@@ -144,8 +139,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     <span className="px-2.5 py-0.5 rounded text-[10px] font-bold text-emerald-300 bg-emerald-950/60 border border-emerald-500/30">
                       {spotsLeft} Spots Available
                     </span>
-                    <span className="text-xs text-slate-400 font-semibold">
-                      {match.pricePerPlayer === 0 ? 'Free' : `$${match.pricePerPlayer}/player`}
+                    <span className="text-xs text-emerald-400 font-semibold">
+                      {formatMAD(match.pricePerPlayer, { showZeroAsFree: true })}
                     </span>
                   </div>
 
@@ -156,12 +151,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <div className="space-y-1 text-xs text-slate-400">
                     <div className="flex items-center gap-1.5 text-slate-300">
                       <Calendar className="w-3.5 h-3.5 text-emerald-400" />
-                      {mDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} at{' '}
-                      {mDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                      {formatMoroccoDate(match.dateTime, 'day_month_time')}
                     </div>
                     <div className="flex items-center gap-1.5 text-slate-400">
                       <MapPin className="w-3.5 h-3.5 text-blue-400" />
-                      <span className="truncate">{match.location.venueName}</span>
+                      <span className="truncate">{match.location.venueName} ({match.location.city || 'Casablanca'})</span>
                     </div>
                   </div>
                 </div>
@@ -213,7 +207,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
           <h3 className="text-base font-bold text-white font-display">Google Maps Directions</h3>
           <p className="text-xs text-slate-400 leading-relaxed">
-            Direct map links for every pitch so players never get lost or arrive late to kickoff.
+            Direct map links for every Moroccan pitch so players arrive on time to kickoff.
           </p>
         </div>
 
@@ -221,9 +215,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
             <Shield className="w-5 h-5" />
           </div>
-          <h3 className="text-base font-bold text-white font-display">Super Admin Control</h3>
+          <h3 className="text-base font-bold text-white font-display">Super Admin & Master Pass</h3>
           <p className="text-xs text-slate-400 leading-relaxed">
-            Strict admin security restricted to <strong>bouhbousmustapha@gmail.com</strong> with match moderation and roster overrides.
+            Strict admin security for Mustapha Bouhbous with match moderation, snake team balancing, and roster overrides.
           </p>
         </div>
       </section>
@@ -232,7 +226,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       <section className="bg-gradient-to-r from-[#0E1526] via-[#131C31] to-[#0E1526] border border-emerald-500/30 rounded-3xl p-8 text-center space-y-4">
         <h2 className="text-2xl font-bold font-display text-white">Ready for Kickoff?</h2>
         <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto">
-          Create your account now and connect with local soccer players in your community.
+          Create your account now and connect with local soccer players across Morocco.
         </p>
         <button
           onClick={onOpenSignUp}

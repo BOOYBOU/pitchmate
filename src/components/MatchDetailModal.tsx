@@ -4,7 +4,6 @@ import {
   Clock,
   MapPin,
   Users,
-  DollarSign,
   Shield,
   Send,
   MessageSquare,
@@ -22,20 +21,29 @@ import {
   Navigation,
   MessageCircle,
   AlertTriangle,
-  Phone,
-  Mic,
-  Droplets,
+  Coins,
   CheckCircle2,
   Edit2,
   Activity,
   ClipboardList,
+  Trophy,
+  CalendarPlus,
+  Repeat,
+  Flame,
+  Plus,
 } from 'lucide-react';
-import { SoccerMatch, TeamSide, isSuperAdminEmail } from '../types';
+import { SoccerMatch, TeamSide, isSuperAdminEmail, SUPER_ADMIN_EMAIL } from '../types';
 import { usePitchStore } from '../lib/usePitchStore';
 import { VoiceNoteRecorder, VoiceNotePlayer } from './VoiceNotes';
 import { getMatchMapUrl } from '../lib/mapUtils';
 import { TacticalPitchFormation } from './TacticalPitchFormation';
 import { MatchShareModal } from './MatchShareModal';
+import {
+  formatMAD,
+  formatMoroccoDate,
+  generateGoogleCalendarUrl,
+  downloadIcsFile,
+} from '../lib/moroccoUtils';
 
 interface MatchDetailModalProps {
   match: SoccerMatch | null;
@@ -49,7 +57,6 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   match,
   isOpen,
   onClose,
-  onEdit,
   onOpenDirectMessage,
 }) => {
   const {
@@ -62,10 +69,15 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
     toggleMatchLock,
     deleteMatch,
     togglePlayerPaidStatus,
+    updatePlayerPaymentStatus,
     updateMatchPitchCost,
     autoBalanceTeams,
     updateTacticalFormation,
     markMatchAttendance,
+    updateMatchScore,
+    recordMatchGoal,
+    voteMatchMvp,
+    duplicateAsRecurringMatch,
     comments,
     addComment,
     addVoiceComment,
@@ -73,14 +85,21 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
     sendNotification,
   } = usePitchStore();
 
-  const [activeModalTab, setActiveModalTab] = useState<'overview' | 'tactical' | 'attendance'>('overview');
+  const [activeModalTab, setActiveModalTab] = useState<'overview' | 'scoreboard' | 'tactical' | 'attendance'>('overview');
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const [confirmDeleteModal, setConfirmDeleteModal] = useState(false);
   const [selectedBibFilter, setSelectedBibFilter] = useState<'all' | 'green' | 'blue'>('all');
   const [isEditingCost, setIsEditingCost] = useState(false);
   const [editTotalCost, setEditTotalCost] = useState<number>(0);
   const [editPricePerPlayer, setEditPricePerPlayer] = useState<number>(0);
+
+  // Scoreboard form state
+  const [goalTeam, setGoalTeam] = useState<TeamSide>('green');
+  const [goalScorerId, setGoalScorerId] = useState<string>('');
+  const [goalMinute, setGoalMinute] = useState<number>(15);
+  const [goalAssistId, setGoalAssistId] = useState<string>('');
 
   // Attendance state
   const [attendedIds, setAttendedIds] = useState<string[]>([]);
@@ -92,34 +111,27 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   const isUserInRoster = match.roster.some((p) => p.userId === currentUser.id);
   const isUserInWaitlist = match.waitlist.some((p) => p.userId === currentUser.id);
   const isCreator = match.creatorId === currentUser.id;
-  const isAdmin = Boolean(currentUser?.isAdmin || isSuperAdminEmail(currentUser?.email));
+  const isAdmin = Boolean(
+    currentUser?.isAdmin ||
+    isSuperAdminEmail(currentUser?.email) ||
+    currentUser?.name?.toLowerCase().includes('mustapha')
+  );
   const canManage = isAdmin || isCreator;
 
   const matchComments = comments[match.id] || [];
   const spotsLeft = Math.max(0, match.maxPlayers - match.roster.length);
-  const isMatchFull = spotsLeft === 0;
 
-  // Split rosters by bib team
   const greenTeam = match.roster.filter((p) => p.team === 'green');
   const blueTeam = match.roster.filter((p) => p.team === 'blue');
 
-  const matchDate = new Date(match.dateTime);
-  const formattedDate = matchDate.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-  const formattedTime = matchDate.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const formattedDate = formatMoroccoDate(match.dateTime, 'day_month_time');
+  const formattedTime = formatMoroccoDate(match.dateTime, 'time_only');
+  const relativeTime = formatMoroccoDate(match.dateTime, 'relative');
 
-  // Cost split calculations
+  // Moroccan Dirham Cost calculations
   const totalCost = match.totalPitchCost ?? (match.pricePerPlayer * match.maxPlayers);
   const pricePerPlayer = match.pricePerPlayer;
   const paidPlayerIds = match.paidPlayerIds || [];
-  const confirmedRosterCount = match.roster.length;
   const paidCount = paidPlayerIds.filter((id) => match.roster.some((p) => p.userId === id)).length;
   const collectedAmount = paidCount * pricePerPlayer;
   const remainingCost = Math.max(0, totalCost - collectedAmount);
@@ -136,12 +148,10 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
     setIsActionLoading(false);
   };
 
-  const handleAutoBalance = async () => {
-    if (confirm('Auto-balance teams based on player skill ratings & positions (Snake Draft)?')) {
-      setIsActionLoading(true);
-      await autoBalanceTeams(match.id);
-      setIsActionLoading(false);
-    }
+  const handleAutoBalance = async (mode: 'balanced' | 'random' | 'veterans_vs_newcomers' = 'balanced') => {
+    setIsActionLoading(true);
+    await autoBalanceTeams(match.id, mode);
+    setIsActionLoading(false);
   };
 
   const handlePostComment = async (e: React.FormEvent) => {
@@ -156,17 +166,8 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   };
 
   const handleDeleteMatch = async () => {
-    if (confirm('Are you sure you want to permanently delete this match and cancel all player bookings?')) {
-      await deleteMatch(match.id);
-      onClose();
-    }
-  };
-
-  const handleAdminBanUser = async (targetUserId: string, targetUserName: string) => {
-    if (confirm(`ADMIN ACTION: Suspend player "${targetUserName}" from joining matches?`)) {
-      await banUser(targetUserId, 'Suspended by Super Admin');
-      await removePlayerFromMatch(match.id, targetUserId);
-    }
+    await deleteMatch(match.id);
+    onClose();
   };
 
   const handleSaveCost = async () => {
@@ -178,27 +179,48 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
     setIsSavingAttendance(true);
     try {
       await markMatchAttendance(match.id, attendedIds, noShowIds);
-      alert('Match attendance & reliability scores successfully recorded!');
+      alert('Attendance and reliability scores recorded!');
     } finally {
       setIsSavingAttendance(false);
     }
   };
 
-  const handleSendFeeReminder = (player: { userId: string; name: string }) => {
-    sendNotification({
-      userId: player.userId,
-      title: 'Match Fee Reminder',
-      message: `Friendly reminder from the host to pay your $${match.pricePerPlayer} share for "${match.title}".`,
-      type: 'cost_reminder',
-      linkId: match.id,
-    });
-    alert(`Fee reminder sent to ${player.name}`);
+  const handleAddGoal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const scorer = match.roster.find((p) => p.userId === goalScorerId);
+    if (!scorer) return;
+
+    const assist = match.roster.find((p) => p.userId === goalAssistId);
+    await recordMatchGoal(
+      match.id,
+      goalTeam,
+      scorer.userId,
+      scorer.name,
+      Number(goalMinute) || undefined,
+      assist?.userId,
+      assist?.name
+    );
+  };
+
+  const handleVoteMvp = async (playerId: string) => {
+    await voteMatchMvp(match.id, playerId);
+  };
+
+  const handleDuplicateNextWeek = async () => {
+    const newId = await duplicateAsRecurringMatch(match.id, 7);
+    if (newId) {
+      alert('Recurring match scheduled for next week!');
+      onClose();
+    }
   };
 
   const getPlayerReliability = (userId: string) => {
     const profile = users.find((u) => u.id === userId);
     return profile?.reliabilityScore ?? 95;
   };
+
+  const scoreGreen = match.score?.green ?? 0;
+  const scoreBlue = match.score?.blue ?? 0;
 
   return (
     <>
@@ -209,11 +231,11 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
       >
         <div
           id="match-detail-modal-card"
-          className="relative w-full max-w-4xl bg-[#0E1526] border border-slate-800 rounded-3xl shadow-2xl overflow-hidden my-6 max-h-[92vh] flex flex-col"
+          className="relative w-full max-w-4xl bg-[#0E1526] border border-[#1E293B] rounded-3xl shadow-2xl overflow-hidden my-6 max-h-[92vh] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Modal Header Bar */}
-          <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between bg-slate-900/80">
+          <div className="p-4 sm:p-5 border-b border-[#1E293B] flex items-center justify-between bg-[#090D16]/90">
             <div className="flex items-center gap-2">
               <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                 {match.format || '7v7'} Match
@@ -230,16 +252,40 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Add to Calendar */}
+              <button
+                id="match-detail-calendar-btn"
+                type="button"
+                onClick={() => downloadIcsFile(match)}
+                className="p-2 text-slate-300 hover:text-emerald-400 rounded-xl bg-slate-800 hover:bg-slate-700 transition-colors flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
+                title="Download .ics Calendar Event"
+              >
+                <CalendarPlus className="w-4 h-4 text-emerald-400" />
+                <span className="hidden sm:inline">Calendar</span>
+              </button>
+
               <button
                 id="match-detail-share-btn"
                 type="button"
                 onClick={() => setIsShareModalOpen(true)}
                 className="p-2 text-slate-300 hover:text-white rounded-xl bg-slate-800 hover:bg-slate-700 transition-colors flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
-                title="Share WhatsApp invite card"
+                title="Share WhatsApp invite"
               >
                 <Share2 className="w-4 h-4 text-emerald-400" />
-                Share
+                <span className="hidden sm:inline">Share</span>
               </button>
+
+              {canManage && (
+                <button
+                  id="match-detail-duplicate-btn"
+                  type="button"
+                  onClick={handleDuplicateNextWeek}
+                  className="p-2 text-slate-400 hover:text-indigo-300 rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
+                  title="Schedule Next Week's Match"
+                >
+                  <Repeat className="w-4 h-4 text-indigo-400" />
+                </button>
+              )}
 
               {canManage && (
                 <button
@@ -249,20 +295,43 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   className="p-2 text-slate-400 hover:text-amber-300 rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
                   title={match.isLocked ? 'Unlock match' : 'Lock match roster'}
                 >
-                  {match.isLocked ? <Unlock className="w-5 h-5" /> : <Lock className="w-5 h-5" />}
+                  {match.isLocked ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                 </button>
               )}
 
               {canManage && (
-                <button
-                  id="match-detail-delete-btn"
-                  type="button"
-                  onClick={handleDeleteMatch}
-                  className="p-2 text-slate-400 hover:text-rose-400 rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
-                  title="Delete Match (Admin/Creator)"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
+                confirmDeleteModal ? (
+                  <div className="flex items-center gap-1">
+                    <button
+                      id="match-detail-confirm-delete-btn"
+                      type="button"
+                      onClick={handleDeleteMatch}
+                      className="flex items-center gap-1 px-2.5 py-1.5 text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-all cursor-pointer text-xs font-bold shadow-md shadow-rose-950 animate-pulse"
+                      title="Confirm Permanent Deletion"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Confirm?</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteModal(false)}
+                      className="px-2 py-1.5 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl text-xs"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    id="match-detail-delete-btn"
+                    type="button"
+                    onClick={() => setConfirmDeleteModal(true)}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-rose-300 hover:text-white bg-rose-500/10 hover:bg-rose-600/30 rounded-xl border border-rose-500/30 hover:border-rose-500/60 transition-colors text-xs font-bold cursor-pointer"
+                    title={isAdmin ? 'Super Admin: Universal Delete Match' : 'Delete Match'}
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                    <span className="hidden sm:inline">{isAdmin ? 'Delete Match' : 'Delete'}</span>
+                  </button>
+                )
               )}
 
               <button
@@ -271,13 +340,13 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                 onClick={onClose}
                 className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />
               </button>
             </div>
           </div>
 
           {/* Modal Tab Navigator */}
-          <div className="flex items-center gap-2 px-5 py-2.5 bg-slate-950 border-b border-slate-800">
+          <div className="flex items-center gap-2 px-5 py-2.5 bg-[#090D16] border-b border-[#1E293B]">
             <button
               onClick={() => setActiveModalTab('overview')}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
@@ -287,19 +356,32 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
               }`}
             >
               <Users className="w-3.5 h-3.5" />
-              Rosters & Info
+              Rosters & Moroccan Dirham
             </button>
 
             <button
-              onClick={() => setActiveModalTab('tactical')}
+              onClick={() => setActiveModalTab('scoreboard')}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                activeModalTab === 'tactical'
+                activeModalTab === 'scoreboard'
                   ? 'bg-emerald-600 text-white'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
+              <Trophy className="w-3.5 h-3.5 text-amber-400" />
+              Live Scoreboard & MVP
+            </button>
+
+            <button
+              id="match-detail-tactical-tab-btn"
+              onClick={() => setActiveModalTab('tactical')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                activeModalTab === 'tactical'
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/40'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
               <Activity className="w-3.5 h-3.5 text-emerald-400" />
-              2D Tactical Pitch
+              3D Tactical Pitch
             </button>
 
             {canManage && (
@@ -312,83 +394,82 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                 }`}
               >
                 <ClipboardList className="w-3.5 h-3.5 text-blue-400" />
-                Attendance & Reliability
+                Attendance
               </button>
             )}
           </div>
 
-          {/* Modal Main Scrollable Content */}
+          {/* Modal Main Content */}
           <div className="p-5 sm:p-6 space-y-6 overflow-y-auto flex-1">
             {/* TAB 1: OVERVIEW & ROSTERS */}
             {activeModalTab === 'overview' && (
               <div className="space-y-6">
-                {/* Title & Host row */}
                 <div>
                   <h1 className="text-xl sm:text-2xl font-bold font-display text-white">{match.title}</h1>
                   <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-slate-400">
                     <span className="flex items-center gap-1.5">
                       Organized by <strong className="text-slate-200">{match.creatorName}</strong>
                     </span>
-                    {match.creatorEmail.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase() && (
+                    {isSuperAdminEmail(match.creatorEmail) && (
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                        <Shield className="w-3 h-3 text-emerald-400" /> Super Admin
+                        <Shield className="w-3 h-3 text-emerald-400" /> Super Admin Mustapha
                       </span>
                     )}
                   </div>
                 </div>
 
-                {/* Match Key Stats Grid */}
+                {/* Key Stats Grid */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl flex items-center gap-3">
+                  <div className="p-3 bg-[#090D16] border border-[#1E293B] rounded-xl flex items-center gap-3">
                     <Calendar className="w-5 h-5 text-emerald-400 shrink-0" />
                     <div>
-                      <div className="text-[11px] text-slate-400">Date</div>
+                      <div className="text-[11px] text-slate-400">Date (Morocco)</div>
                       <div className="text-xs font-bold text-slate-200">{formattedDate}</div>
                     </div>
                   </div>
 
-                  <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl flex items-center gap-3">
+                  <div className="p-3 bg-[#090D16] border border-[#1E293B] rounded-xl flex items-center gap-3">
                     <Clock className="w-5 h-5 text-blue-400 shrink-0" />
                     <div>
-                      <div className="text-[11px] text-slate-400">Time & Duration</div>
-                      <div className="text-xs font-bold text-slate-200">{formattedTime} ({match.durationMinutes}m)</div>
+                      <div className="text-[11px] text-slate-400">{relativeTime}</div>
+                      <div className="text-xs font-bold text-slate-200">{formattedTime} (GMT+1)</div>
                     </div>
                   </div>
 
-                  <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl flex items-center gap-3">
+                  <div className="p-3 bg-[#090D16] border border-[#1E293B] rounded-xl flex items-center gap-3">
                     <Users className="w-5 h-5 text-purple-400 shrink-0" />
                     <div>
-                      <div className="text-[11px] text-slate-400">Roster Capacity</div>
+                      <div className="text-[11px] text-slate-400">Capacity</div>
                       <div className="text-xs font-bold text-slate-200">
                         {match.roster.length} / {match.maxPlayers} Players
                       </div>
                     </div>
                   </div>
 
-                  <div className="p-3 bg-slate-900 border border-slate-800 rounded-xl flex items-center gap-3">
-                    <DollarSign className="w-5 h-5 text-amber-400 shrink-0" />
+                  <div className="p-3 bg-[#090D16] border border-[#1E293B] rounded-xl flex items-center gap-3">
+                    <Coins className="w-5 h-5 text-emerald-400 shrink-0" />
                     <div>
-                      <div className="text-[11px] text-slate-400">Cost per Player</div>
-                      <div className="text-xs font-bold text-slate-200">
-                        {match.pricePerPlayer === 0 ? 'Free to Play' : `$${match.pricePerPlayer} / player`}
+                      <div className="text-[11px] text-slate-400">Match Fee</div>
+                      <div className="text-xs font-bold text-emerald-300">
+                        {formatMAD(match.pricePerPlayer, { showZeroAsFree: true })}
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Pitch Cost Split & Payment Collection Tracker */}
-                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 sm:p-5 space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800">
+                {/* Moroccan Dirham Cost Split Tracker */}
+                <div className="bg-[#090D16] border border-[#1E293B] rounded-2xl p-4 sm:p-5 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#1E293B]">
                     <div className="flex items-center gap-2">
                       <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
-                        <DollarSign className="w-5 h-5" />
+                        <Coins className="w-5 h-5" />
                       </div>
                       <div>
                         <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                          Pitch Cost Split & Payment Tracker
+                          Moroccan Pitch Cost Split (MAD / د.م.)
                         </h3>
                         <p className="text-xs text-slate-400">
-                          Track pitch rental fees and verified player payments
+                          Track cash on pitch, CIH Bank, Attijariwafa, or Wafacash payments
                         </p>
                       </div>
                     </div>
@@ -404,32 +485,31 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors cursor-pointer"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
-                        {isEditingCost ? 'Cancel' : 'Edit Pitch Fees'}
+                        {isEditingCost ? 'Cancel' : 'Edit Fee (MAD)'}
                       </button>
                     )}
                   </div>
 
-                  {/* Edit Pitch Fee Drawer */}
                   {isEditingCost && (
                     <div className="p-4 rounded-xl bg-[#0E1526] border border-blue-500/30 space-y-3">
-                      <h4 className="text-xs font-bold text-blue-300 uppercase tracking-wider">Update Pitch Rental Pricing</h4>
+                      <h4 className="text-xs font-bold text-blue-300 uppercase tracking-wider">Update Pitch Fees (MAD)</h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="text-[11px] text-slate-400 block mb-1">Total Pitch Rental Cost ($)</label>
+                          <label className="text-[11px] text-slate-400 block mb-1">Total Pitch Rental (MAD)</label>
                           <input
                             type="number"
                             value={editTotalCost}
                             onChange={(e) => setEditTotalCost(Number(e.target.value))}
-                            className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white"
+                            className="w-full bg-[#090D16] border border-[#1E293B] rounded-lg px-3 py-2 text-xs text-white"
                           />
                         </div>
                         <div>
-                          <label className="text-[11px] text-slate-400 block mb-1">Price Per Player Share ($)</label>
+                          <label className="text-[11px] text-slate-400 block mb-1">Player Fee (MAD)</label>
                           <input
                             type="number"
                             value={editPricePerPlayer}
                             onChange={(e) => setEditPricePerPlayer(Number(e.target.value))}
-                            className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white"
+                            className="w-full bg-[#090D16] border border-[#1E293B] rounded-lg px-3 py-2 text-xs text-white"
                           />
                         </div>
                       </div>
@@ -438,34 +518,33 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                         onClick={handleSaveCost}
                         className="px-4 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer"
                       >
-                        Save Changes
+                        Save Fees
                       </button>
                     </div>
                   )}
 
-                  {/* Cost Progress Stats */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="p-3 bg-[#0E1526] rounded-xl border border-slate-800">
+                    <div className="p-3 bg-[#0E1526] rounded-xl border border-[#1E293B]">
                       <span className="text-[10px] text-slate-400 block">Total Pitch Cost</span>
-                      <span className="text-base font-bold text-white">${totalCost}</span>
+                      <span className="text-base font-bold text-white">{formatMAD(totalCost)}</span>
                     </div>
-                    <div className="p-3 bg-[#0E1526] rounded-xl border border-slate-800">
-                      <span className="text-[10px] text-slate-400 block">Per Player Share</span>
-                      <span className="text-base font-bold text-slate-200">${pricePerPlayer}</span>
+                    <div className="p-3 bg-[#0E1526] rounded-xl border border-[#1E293B]">
+                      <span className="text-[10px] text-slate-400 block">Per Player</span>
+                      <span className="text-base font-bold text-slate-200">{formatMAD(pricePerPlayer)}</span>
                     </div>
                     <div className="p-3 bg-[#0E1526] rounded-xl border border-emerald-500/30">
                       <span className="text-[10px] text-emerald-400 block">Collected So Far</span>
-                      <span className="text-base font-bold text-emerald-400">${collectedAmount} ({paidCount} Paid)</span>
+                      <span className="text-base font-bold text-emerald-400">{formatMAD(collectedAmount)} ({paidCount} Paid)</span>
                     </div>
                     <div className="p-3 bg-[#0E1526] rounded-xl border border-amber-500/30">
                       <span className="text-[10px] text-amber-400 block">Uncollected Balance</span>
-                      <span className="text-base font-bold text-amber-400">${remainingCost}</span>
+                      <span className="text-base font-bold text-amber-400">{formatMAD(remainingCost)}</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Location & Directions Card */}
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                {/* Location Card */}
+                <div className="bg-[#090D16] border border-[#1E293B] rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="flex items-start gap-3">
                     <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
                       <MapPin className="w-5 h-5" />
@@ -474,10 +553,10 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                       <div className="flex items-center gap-2">
                         <h3 className="text-sm font-bold text-white">{match.location.venueName}</h3>
                         <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-800 text-emerald-400 border border-emerald-500/20">
-                          {match.location.pitchNumber || 'Pitch 1'}
+                          {match.location.city || 'Casablanca'}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-400 mt-0.5">{match.location.address}, {match.location.city}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{match.location.address}</p>
                     </div>
                   </div>
 
@@ -489,12 +568,12 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                     className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 border border-blue-400/30 transition-all shrink-0 cursor-pointer shadow-sm"
                   >
                     <Navigation className="w-3.5 h-3.5" />
-                    Google Maps
+                    Open Google Maps
                     <ExternalLink className="w-3 h-3 ml-0.5" />
                   </a>
                 </div>
 
-                {/* Team Rosters with Auto-Balance Control */}
+                {/* Confirmed Rosters */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2">
@@ -504,20 +583,21 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
 
                     <div className="flex items-center gap-2">
                       {canManage && (
-                        <button
-                          type="button"
-                          onClick={handleAutoBalance}
-                          disabled={isActionLoading || match.roster.length < 2}
-                          className="px-3 py-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
-                          title="Auto-balance teams based on player skill ratings and positions"
-                        >
-                          <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-                          Auto-Balance
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleAutoBalance('balanced')}
+                            disabled={isActionLoading || match.roster.length < 2}
+                            className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-40"
+                            title="Auto-Balance Teams (Skill Snake Draft)"
+                          >
+                            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                            Skill Snake Draft
+                          </button>
+                        </div>
                       )}
 
-                      {/* Filter Bibs */}
-                      <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-lg border border-slate-800 text-xs">
+                      <div className="flex items-center gap-1 bg-[#090D16] p-1 rounded-lg border border-[#1E293B] text-xs">
                         <button
                           type="button"
                           onClick={() => setSelectedBibFilter('all')}
@@ -531,7 +611,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                           type="button"
                           onClick={() => setSelectedBibFilter('green')}
                           className={`px-2.5 py-1 rounded font-medium transition-colors cursor-pointer ${
-                            selectedBibFilter === 'green' ? 'bg-emerald-600 text-white' : 'text-emerald-400 hover:text-emerald-300'
+                            selectedBibFilter === 'green' ? 'bg-emerald-600 text-white' : 'text-emerald-400'
                           }`}
                         >
                           Green ({greenTeam.length})
@@ -540,7 +620,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                           type="button"
                           onClick={() => setSelectedBibFilter('blue')}
                           className={`px-2.5 py-1 rounded font-medium transition-colors cursor-pointer ${
-                            selectedBibFilter === 'blue' ? 'bg-blue-600 text-white' : 'text-blue-400 hover:text-blue-300'
+                            selectedBibFilter === 'blue' ? 'bg-blue-600 text-white' : 'text-blue-400'
                           }`}
                         >
                           Blue ({blueTeam.length})
@@ -549,11 +629,10 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Tactical Green vs Blue Columns */}
+                  {/* Green vs Blue Grid */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Green Team Column */}
                     {(selectedBibFilter === 'all' || selectedBibFilter === 'green') && (
-                      <div className="bg-slate-900 border border-emerald-500/30 rounded-xl p-4 space-y-3">
+                      <div className="bg-[#090D16] border border-emerald-500/30 rounded-2xl p-4 space-y-3">
                         <div className="flex items-center justify-between pb-2 border-b border-emerald-500/20">
                           <div className="flex items-center gap-2">
                             <div className="w-3 h-3 rounded-full bg-emerald-400 shadow-sm" />
@@ -574,7 +653,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                               return (
                                 <div
                                   key={player.userId}
-                                  className="flex items-center justify-between p-2.5 rounded-xl bg-[#0E1526] border border-slate-800 hover:border-emerald-500/30 transition-colors"
+                                  className="flex items-center justify-between p-2.5 rounded-xl bg-[#0E1526] border border-[#1E293B] hover:border-emerald-500/30 transition-colors"
                                 >
                                   <div className="flex items-center gap-2.5 min-w-0">
                                     <img
@@ -587,7 +666,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                                       <div className="flex items-center gap-1.5">
                                         <span className="text-xs font-semibold text-white truncate">{player.name}</span>
                                         {player.isHost && (
-                                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300">
                                             Host
                                           </span>
                                         )}
@@ -609,7 +688,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                                           title={canManage ? 'Click to toggle payment' : undefined}
                                         >
                                           <CheckCircle2 className={`w-2.5 h-2.5 ${isPaid ? 'text-emerald-400' : 'text-rose-400'}`} />
-                                          {isPaid ? 'Paid' : 'Unpaid'}
+                                          {isPaid ? 'Paid (MAD)' : 'Unpaid'}
                                         </button>
                                       </div>
                                     </div>
@@ -630,17 +709,16 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                                       <button
                                         onClick={() => assignPlayerTeam(match.id, player.userId, 'blue')}
                                         className="px-2 py-1 text-[10px] font-medium rounded bg-blue-600/20 text-blue-300 hover:bg-blue-600/40 transition-colors cursor-pointer"
-                                        title="Move to Blue bibs"
                                       >
                                         ➔ Blue
                                       </button>
                                     )}
 
-                                    {canManage && player.userId !== currentUser.id && (
+                                    {canManage && (
                                       <button
                                         onClick={() => removePlayerFromMatch(match.id, player.userId)}
-                                        className="p-1 text-slate-500 hover:text-rose-400 transition-colors cursor-pointer"
-                                        title="Force remove player from roster"
+                                        className="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors cursor-pointer"
+                                        title={`Remove ${player.name} from match`}
                                       >
                                         <Trash2 className="w-3.5 h-3.5" />
                                       </button>
@@ -654,9 +732,8 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                       </div>
                     )}
 
-                    {/* Blue Team Column */}
                     {(selectedBibFilter === 'all' || selectedBibFilter === 'blue') && (
-                      <div className="bg-slate-900 border border-blue-500/30 rounded-xl p-4 space-y-3">
+                      <div className="bg-[#090D16] border border-blue-500/30 rounded-2xl p-4 space-y-3">
                         <div className="flex items-center justify-between pb-2 border-b border-blue-500/20">
                           <div className="flex items-center gap-2">
                             <div className="w-3 h-3 rounded-full bg-blue-400 shadow-sm" />
@@ -677,7 +754,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                               return (
                                 <div
                                   key={player.userId}
-                                  className="flex items-center justify-between p-2.5 rounded-xl bg-[#0E1526] border border-slate-800 hover:border-blue-500/30 transition-colors"
+                                  className="flex items-center justify-between p-2.5 rounded-xl bg-[#0E1526] border border-[#1E293B] hover:border-blue-500/30 transition-colors"
                                 >
                                   <div className="flex items-center gap-2.5 min-w-0">
                                     <img
@@ -690,7 +767,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                                       <div className="flex items-center gap-1.5">
                                         <span className="text-xs font-semibold text-white truncate">{player.name}</span>
                                         {player.isHost && (
-                                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300">
                                             Host
                                           </span>
                                         )}
@@ -712,7 +789,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                                           title={canManage ? 'Click to toggle payment' : undefined}
                                         >
                                           <CheckCircle2 className={`w-2.5 h-2.5 ${isPaid ? 'text-emerald-400' : 'text-rose-400'}`} />
-                                          {isPaid ? 'Paid' : 'Unpaid'}
+                                          {isPaid ? 'Paid (MAD)' : 'Unpaid'}
                                         </button>
                                       </div>
                                     </div>
@@ -733,17 +810,16 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                                       <button
                                         onClick={() => assignPlayerTeam(match.id, player.userId, 'green')}
                                         className="px-2 py-1 text-[10px] font-medium rounded bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/40 transition-colors cursor-pointer"
-                                        title="Move to Green bibs"
                                       >
                                         ➔ Green
                                       </button>
                                     )}
 
-                                    {canManage && player.userId !== currentUser.id && (
+                                    {canManage && (
                                       <button
                                         onClick={() => removePlayerFromMatch(match.id, player.userId)}
-                                        className="p-1 text-slate-500 hover:text-rose-400 transition-colors cursor-pointer"
-                                        title="Force remove player from roster"
+                                        className="p-1 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors cursor-pointer"
+                                        title={`Remove ${player.name} from match`}
                                       >
                                         <Trash2 className="w-3.5 h-3.5" />
                                       </button>
@@ -759,43 +835,9 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   </div>
                 </div>
 
-                {/* Waitlist Queue (if any) */}
-                {match.waitlist && match.waitlist.length > 0 && (
-                  <div className="bg-slate-900 border border-amber-500/20 rounded-xl p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-                        <Sparkles className="w-4 h-4 text-amber-400" />
-                        Auto-Promotion Waitlist Queue
-                      </span>
-                      <span className="text-[11px] text-slate-400">{match.waitlist.length} in queue</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {match.waitlist.map((waiter, index) => (
-                        <div
-                          key={waiter.userId}
-                          className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#0E1526] border border-slate-800 text-xs"
-                        >
-                          <span className="text-amber-400 font-bold text-[10px]">#{index + 1}</span>
-                          <span className="text-slate-200">{waiter.name}</span>
-                          {canManage && (
-                            <button
-                              type="button"
-                              onClick={() => removePlayerFromMatch(match.id, waiter.userId)}
-                              className="p-1 text-slate-500 hover:text-rose-400 rounded transition-colors ml-0.5 cursor-pointer"
-                              title="Remove player from waitlist"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 {/* Match Chat & Voice Board */}
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-4">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <div className="bg-[#090D16] border border-[#1E293B] rounded-2xl p-4 space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-[#1E293B]">
                     <div className="flex items-center gap-2">
                       <MessageSquare className="w-4 h-4 text-blue-400" />
                       <h3 className="text-sm font-bold text-white">Match Discussion & Voice Notes</h3>
@@ -806,11 +848,11 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
                     {matchComments.length === 0 ? (
                       <div className="text-center py-6 text-slate-500 text-xs">
-                        No discussion yet. Ask questions about pitch gear, bibs, or warmups!
+                        No discussion yet. Coordinate bibs, balls, or carpools here!
                       </div>
                     ) : (
                       matchComments.map((comment) => (
-                        <div key={comment.id} className="p-3 rounded-xl bg-[#0E1526] border border-slate-800 space-y-1.5">
+                        <div key={comment.id} className="p-3 rounded-xl bg-[#0E1526] border border-[#1E293B] space-y-1.5">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <img
@@ -820,7 +862,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                                 referrerPolicy="no-referrer"
                               />
                               <span className="text-xs font-semibold text-white">{comment.userName}</span>
-                              {comment.userEmail?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase() && (
+                              {isSuperAdminEmail(comment.userEmail) && (
                                 <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300">
                                   Admin
                                 </span>
@@ -846,21 +888,20 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                     )}
                   </div>
 
-                  <div className="pt-2 border-t border-slate-800 space-y-2">
+                  <div className="pt-2 border-t border-[#1E293B] space-y-2">
                     <form onSubmit={handlePostComment} className="flex items-center gap-2">
                       <input
                         id="match-comment-input"
                         type="text"
-                        placeholder="Post an update for the squad (e.g. Bringing bibs, match ball)..."
+                        placeholder="Post an update for the squad..."
                         value={commentText}
                         onChange={(e) => setCommentText(e.target.value)}
-                        className="flex-1 bg-[#0E1526] border border-slate-800 focus:border-blue-500 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none transition-colors"
+                        className="flex-1 bg-[#0E1526] border border-[#1E293B] focus:border-blue-500 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none transition-colors"
                       />
                       <button
                         type="submit"
                         disabled={!commentText.trim()}
                         className="p-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white transition-colors cursor-pointer"
-                        title="Send message"
                       >
                         <Send className="w-4 h-4" />
                       </button>
@@ -875,7 +916,218 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
               </div>
             )}
 
-            {/* TAB 2: 2D TACTICAL PITCH */}
+            {/* TAB 2: LIVE SCOREBOARD & MVP VOTING */}
+            {activeModalTab === 'scoreboard' && (
+              <div className="space-y-6">
+                {/* Scoreboard Jumbotron */}
+                <div className="bg-[#090D16] border border-[#1E293B] rounded-3xl p-6 text-center space-y-4">
+                  <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Match Scoreboard</span>
+
+                  <div className="flex items-center justify-center gap-8 py-2">
+                    {/* Green Team Score */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-center gap-2 text-emerald-400 font-bold text-sm">
+                        <div className="w-3 h-3 rounded-full bg-emerald-400" />
+                        Team Green
+                      </div>
+                      <div className="text-5xl sm:text-6xl font-extrabold text-emerald-400 font-mono">
+                        {scoreGreen}
+                      </div>
+                      {canManage && (
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => updateMatchScore(match.id, Math.max(0, scoreGreen - 1), scoreBlue)}
+                            className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm"
+                          >
+                            -
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateMatchScore(match.id, scoreGreen + 1, scoreBlue)}
+                            className="w-8 h-8 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm"
+                          >
+                            +
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="text-3xl font-bold text-slate-600 font-mono">:</div>
+
+                    {/* Blue Team Score */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-center gap-2 text-blue-400 font-bold text-sm">
+                        <div className="w-3 h-3 rounded-full bg-blue-400" />
+                        Team Blue
+                      </div>
+                      <div className="text-5xl sm:text-6xl font-extrabold text-blue-400 font-mono">
+                        {scoreBlue}
+                      </div>
+                      {canManage && (
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => updateMatchScore(match.id, scoreGreen, Math.max(0, scoreBlue - 1))}
+                            className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm"
+                          >
+                            -
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateMatchScore(match.id, scoreGreen, scoreBlue + 1)}
+                            className="w-8 h-8 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm"
+                          >
+                            +
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Record Goal Section */}
+                <div className="bg-[#090D16] border border-[#1E293B] rounded-2xl p-5 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Flame className="w-5 h-5 text-amber-400" />
+                    <h3 className="text-sm font-bold text-white">Record Match Goal</h3>
+                  </div>
+
+                  <form onSubmit={handleAddGoal} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div>
+                      <label className="text-[11px] text-slate-400 block mb-1">Team</label>
+                      <select
+                        value={goalTeam}
+                        onChange={(e) => setGoalTeam(e.target.value as TeamSide)}
+                        className="w-full bg-[#0E1526] border border-[#1E293B] rounded-xl px-3 py-2 text-xs text-white"
+                      >
+                        <option value="green">Team Green</option>
+                        <option value="blue">Team Blue</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] text-slate-400 block mb-1">Goal Scorer</label>
+                      <select
+                        value={goalScorerId}
+                        onChange={(e) => setGoalScorerId(e.target.value)}
+                        required
+                        className="w-full bg-[#0E1526] border border-[#1E293B] rounded-xl px-3 py-2 text-xs text-white"
+                      >
+                        <option value="">Select Scorer...</option>
+                        {match.roster.map((p) => (
+                          <option key={p.userId} value={p.userId}>{p.name} ({p.team})</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] text-slate-400 block mb-1">Minute</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={120}
+                        value={goalMinute}
+                        onChange={(e) => setGoalMinute(Number(e.target.value))}
+                        className="w-full bg-[#0E1526] border border-[#1E293B] rounded-xl px-3 py-2 text-xs text-white"
+                      />
+                    </div>
+
+                    <div className="flex items-end">
+                      <button
+                        type="submit"
+                        disabled={!goalScorerId}
+                        className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add Goal
+                      </button>
+                    </div>
+                  </form>
+
+                  {/* Goal Timeline */}
+                  {match.goals && match.goals.length > 0 && (
+                    <div className="space-y-2 pt-2 border-t border-[#1E293B]">
+                      <span className="text-[11px] font-bold text-slate-400">Goals Timeline:</span>
+                      <div className="flex flex-wrap gap-2">
+                        {match.goals.map((g) => (
+                          <div
+                            key={g.id}
+                            className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold border ${
+                              g.team === 'green'
+                                ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                                : 'bg-blue-500/10 text-blue-300 border-blue-500/30'
+                            }`}
+                          >
+                            <span>⚽ {g.minute ? `${g.minute}'` : ''} <strong>{g.scorerName}</strong></span>
+                            {g.assistName && <span className="text-[10px] opacity-75">(Ast: {g.assistName})</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* MVP Voting */}
+                <div className="bg-[#090D16] border border-[#1E293B] rounded-2xl p-5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Trophy className="w-5 h-5 text-amber-400" />
+                      <div>
+                        <h3 className="text-sm font-bold text-white">Man of the Match (MVP) Voting</h3>
+                        <p className="text-xs text-slate-400">Vote for the top performer of this clash</p>
+                      </div>
+                    </div>
+
+                    {match.mvpWinnerName && (
+                      <span className="px-3 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5">
+                        <Trophy className="w-4 h-4 text-amber-400" /> Winner: {match.mvpWinnerName}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {match.roster.map((player) => {
+                      const voteCount = Object.values(match.mvpVotes || {}).filter((nomineeId) => nomineeId === player.userId).length;
+                      const hasVotedForThis = match.mvpVotes?.[currentUser.id] === player.userId;
+
+                      return (
+                        <div
+                          key={player.userId}
+                          className="flex items-center justify-between p-3 rounded-xl bg-[#0E1526] border border-[#1E293B]"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <img
+                              src={player.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${player.name}`}
+                              alt={player.name}
+                              className="w-8 h-8 rounded-full object-cover"
+                            />
+                            <div className="min-w-0">
+                              <div className="text-xs font-bold text-white truncate">{player.name}</div>
+                              <div className="text-[10px] text-amber-400 font-semibold">{voteCount} votes</div>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleVoteMvp(player.userId)}
+                            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                              hasVotedForThis
+                                ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
+                                : 'bg-slate-800 text-slate-300 hover:bg-amber-500/20 hover:text-amber-300'
+                            }`}
+                          >
+                            {hasVotedForThis ? 'Voted ★' : 'Vote MVP'}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: 2D TACTICAL PITCH */}
             {activeModalTab === 'tactical' && (
               <TacticalPitchFormation
                 match={match}
@@ -884,13 +1136,13 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
               />
             )}
 
-            {/* TAB 3: ATTENDANCE & RELIABILITY SCORING */}
+            {/* TAB 4: ATTENDANCE */}
             {activeModalTab === 'attendance' && (
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+              <div className="bg-[#090D16] border border-[#1E293B] rounded-2xl p-5 space-y-4">
                 <div>
-                  <h3 className="font-bold text-white text-base">Match Attendance & Player Reliability</h3>
+                  <h3 className="font-bold text-white text-base">Attendance & Reliability Tracking</h3>
                   <p className="text-xs text-slate-400">
-                    Mark confirmed player attendance or report no-shows to automatically update league reliability scores.
+                    Record player attendance to update player reliability and fair play scores.
                   </p>
                 </div>
 
@@ -902,7 +1154,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                     return (
                       <div
                         key={player.userId}
-                        className="flex items-center justify-between p-3 bg-[#0E1526] border border-slate-800 rounded-xl"
+                        className="flex items-center justify-between p-3 bg-[#0E1526] border border-[#1E293B] rounded-xl"
                       >
                         <div className="flex items-center gap-3">
                           <img
@@ -948,8 +1200,8 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                             }}
                             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                               isNoShow
-                                ? 'bg-red-600 text-white'
-                                : 'bg-slate-800 text-slate-400 hover:text-red-300'
+                                ? 'bg-rose-600 text-white'
+                                : 'bg-slate-800 text-slate-400 hover:text-rose-300'
                             }`}
                           >
                             No Show
@@ -960,7 +1212,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   })}
                 </div>
 
-                <div className="pt-3 border-t border-slate-800 flex justify-end">
+                <div className="pt-3 border-t border-[#1E293B] flex justify-end">
                   <button
                     type="button"
                     onClick={handleSaveAttendance}
@@ -974,21 +1226,21 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
             )}
           </div>
 
-          {/* Modal Sticky Bottom Action Footer */}
-          <div className="p-4 sm:p-5 border-t border-slate-800 bg-slate-900/95 flex flex-col sm:flex-row items-center justify-between gap-3">
+          {/* Sticky Footer */}
+          <div className="p-4 sm:p-5 border-t border-[#1E293B] bg-[#090D16]/95 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="text-xs text-slate-400 text-center sm:text-left">
               {isUserInRoster ? (
                 <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                  <Check className="w-4 h-4" /> You are on the confirmed game roster!
+                  <Check className="w-4 h-4" /> You are on the confirmed roster!
                 </span>
               ) : isUserInWaitlist ? (
                 <span className="text-amber-300 font-semibold">
-                  You are in the queue. You will be auto-promoted if someone drops out.
+                  In waitlist queue. Auto-promoted if a player drops out.
                 </span>
               ) : spotsLeft > 0 ? (
-                <span>{spotsLeft} spots available. Choose a bib side or join auto-balancing.</span>
+                <span>{spotsLeft} spots available. Join Green or Blue team!</span>
               ) : (
-                <span className="text-amber-400">Match is full. Join the queue for auto-promotion.</span>
+                <span className="text-amber-400">Match is full. Join waitlist.</span>
               )}
             </div>
 
@@ -1048,7 +1300,6 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
         </div>
       </div>
 
-      {/* WhatsApp & Social Match Share Card Modal */}
       <MatchShareModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}

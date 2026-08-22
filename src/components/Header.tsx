@@ -18,7 +18,7 @@ import {
   Bell
 } from 'lucide-react';
 import { usePitchStore } from '../lib/usePitchStore';
-import { SUPER_ADMIN_EMAIL } from '../types';
+import { SUPER_ADMIN_EMAIL, isSuperAdminEmail } from '../types';
 import { PitchMateLogo } from './PitchMateLogo';
 
 interface HeaderProps {
@@ -53,7 +53,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const isMustapha = currentUser.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+  const isMustapha = isSuperAdminEmail(currentUser.email);
 
 
   return (
@@ -280,7 +280,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <div className="space-y-1 max-h-44 overflow-y-auto">
                     {users.map((u) => {
                       const isSelected = u.id === currentUser.id;
-                      const isUserSuperAdmin = u.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+                      const isUserSuperAdmin = isSuperAdminEmail(u.email);
                       return (
                         <button
                           key={u.id}

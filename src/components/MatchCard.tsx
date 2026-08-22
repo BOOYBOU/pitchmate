@@ -4,24 +4,24 @@ import {
   Clock,
   MapPin,
   Users,
-  DollarSign,
   UserCheck,
   UserX,
   ExternalLink,
-  ChevronRight,
   Shield,
   Lock,
   Shirt,
-  Sparkles,
   Navigation,
-  CheckCircle2,
   Trash2,
   Share2,
+  CalendarPlus,
+  Trophy,
+  Award,
 } from 'lucide-react';
 import { SoccerMatch, isSuperAdminEmail } from '../types';
 import { usePitchStore } from '../lib/usePitchStore';
 import { getMatchMapUrl } from '../lib/mapUtils';
 import { MatchShareModal } from './MatchShareModal';
+import { formatMAD, formatMoroccoDate, generateGoogleCalendarUrl, downloadIcsFile } from '../lib/moroccoUtils';
 
 interface MatchCardProps {
   match: SoccerMatch;
@@ -32,31 +32,30 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
   const { currentUser, joinMatch, leaveMatch, deleteMatch } = usePitchStore();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [showCalendarMenu, setShowCalendarMenu] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const isUserInRoster = match.roster.some((p) => p.userId === currentUser.id);
   const isUserInWaitlist = match.waitlist.some((p) => p.userId === currentUser.id);
-  const isAdmin = Boolean(currentUser?.isAdmin || isSuperAdminEmail(currentUser?.email));
+  const isAdmin = Boolean(
+    currentUser?.isAdmin ||
+    isSuperAdminEmail(currentUser?.email) ||
+    currentUser?.name?.toLowerCase().includes('mustapha')
+  );
   const isHost = match.creatorId === currentUser?.id;
+  // Super Admin (Mustapha Bouhbous) has universal permission to delete ANY match
   const canDelete = isAdmin || isHost;
 
   const spotsLeft = Math.max(0, match.maxPlayers - match.roster.length);
   const percentFilled = Math.min(100, Math.round((match.roster.length / match.maxPlayers) * 100));
 
-  const matchDate = new Date(match.dateTime);
-  const formattedDate = matchDate.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
-  const formattedTime = matchDate.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const formattedDate = formatMoroccoDate(match.dateTime, 'date_only');
+  const formattedTime = formatMoroccoDate(match.dateTime, 'time_only');
+  const relativeTime = formatMoroccoDate(match.dateTime, 'relative');
 
   const greenCount = match.roster.filter((p) => p.team === 'green').length;
   const blueCount = match.roster.filter((p) => p.team === 'blue').length;
 
-  // Compute payments count
   const paidCount = (match.paidPlayerIds || []).filter((id) =>
     match.roster.some((p) => p.userId === id)
   ).length;
@@ -81,6 +80,21 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
     setIsProcessing(false);
   };
 
+  const handleGoogleCalendar = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowCalendarMenu(false);
+    const url = generateGoogleCalendarUrl(match);
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleDownloadIcs = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowCalendarMenu(false);
+    downloadIcsFile(match);
+  };
+
+  const hasScore = match.score && (match.score.green > 0 || match.score.blue > 0 || match.status === 'completed');
+
   return (
     <div
       id={`match-card-${match.id}`}
@@ -102,21 +116,24 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
             <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-800/80 text-slate-300 border border-slate-700">
               {match.maxPlayers} Max Players
             </span>
-            {match.pricePerPlayer === 0 ? (
-              <span className="px-2 py-0.5 rounded text-[11px] font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/20">
-                Free
-              </span>
-            ) : (
-              <span className="px-2 py-0.5 rounded text-[11px] font-semibold text-slate-300 bg-slate-800 border border-slate-700 flex items-center gap-1">
-                <span>${match.pricePerPlayer}/p</span>
-                {match.roster.length > 0 && (
-                  <span className="text-[10px] text-emerald-400 font-mono">({paidCount}/{match.roster.length} Paid)</span>
-                )}
-              </span>
-            )}
+
+            {/* Price in MAD */}
+            <span className="px-2 py-0.5 rounded text-[11px] font-bold text-emerald-300 bg-emerald-950/50 border border-emerald-500/30 flex items-center gap-1">
+              <span>{formatMAD(match.pricePerPlayer, { showZeroAsFree: true })}</span>
+              {match.roster.length > 0 && match.pricePerPlayer > 0 && (
+                <span className="text-[10px] text-emerald-400/80 font-mono">({paidCount}/{match.roster.length} Paid)</span>
+              )}
+            </span>
+
             {match.isLocked && (
               <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
                 <Lock className="w-2.5 h-2.5" /> Locked
+              </span>
+            )}
+
+            {match.recurrence?.isRecurring && (
+              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                Weekly Match
               </span>
             )}
           </div>
@@ -133,26 +150,36 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
           )}
         </div>
 
-        {/* Title */}
+        {/* Title & Live Score Banner */}
         <div>
-          <h3 className="text-base sm:text-lg font-bold font-display text-white group-hover:text-emerald-300 transition-colors line-clamp-1">
-            {match.title}
-          </h3>
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-base sm:text-lg font-bold font-display text-white group-hover:text-emerald-300 transition-colors line-clamp-1">
+              {match.title}
+            </h3>
+
+            {hasScore && (
+              <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-slate-900 rounded-lg border border-slate-700 shrink-0">
+                <span className="text-xs font-bold text-emerald-400 font-mono">{match.score?.green ?? 0}</span>
+                <span className="text-[10px] text-slate-500">-</span>
+                <span className="text-xs font-bold text-blue-400 font-mono">{match.score?.blue ?? 0}</span>
+              </div>
+            )}
+          </div>
+
           <div className="flex items-center justify-between gap-2 mt-1.5">
             <p className="text-xs text-slate-400 flex items-center gap-1.5 line-clamp-1 min-w-0 flex-1">
               <MapPin className="w-3.5 h-3.5 text-blue-400 shrink-0" />
               <span className="truncate">{match.location.venueName}</span>
               <span className="text-slate-600">•</span>
-              <span className="text-slate-300 font-medium shrink-0">{match.location.pitchNumber || 'Pitch 1'}</span>
+              <span className="text-slate-300 font-medium shrink-0">{match.location.city || 'Casablanca'}</span>
             </p>
 
-            {/* Dedicated Accurate Maps Button */}
             <button
               id={`match-card-maps-btn-${match.id}`}
               type="button"
               onClick={handleOpenMaps}
               className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-blue-300 bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 hover:border-blue-400/50 transition-all cursor-pointer shrink-0 shadow-sm"
-              title={`Open ${match.location.venueName} GPS coordinates (${match.location.latitude ?? 37.77}, ${match.location.longitude ?? -122.41}) on Google Maps`}
+              title={`Open ${match.location.venueName} on Google Maps`}
             >
               <Navigation className="w-3 h-3 text-blue-400" />
               <span>Maps</span>
@@ -161,12 +188,12 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
           </div>
         </div>
 
-        {/* Match Time & Team Balance Preview */}
+        {/* Match Time (Morocco GMT+1) */}
         <div className="grid grid-cols-2 gap-2 pt-1">
           <div className="flex items-center gap-2 p-2 rounded-xl bg-[#090D16] border border-[#1E293B]/70 text-xs">
             <Calendar className="w-4 h-4 text-emerald-400 shrink-0" />
             <div className="truncate">
-              <div className="text-[10px] text-slate-400">Kickoff Date</div>
+              <div className="text-[10px] text-slate-400">Date (Morocco)</div>
               <div className="font-semibold text-slate-200">{formattedDate}</div>
             </div>
           </div>
@@ -174,21 +201,30 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
           <div className="flex items-center gap-2 p-2 rounded-xl bg-[#090D16] border border-[#1E293B]/70 text-xs">
             <Clock className="w-4 h-4 text-blue-400 shrink-0" />
             <div className="truncate">
-              <div className="text-[10px] text-slate-400">Match Time</div>
-              <div className="font-semibold text-slate-200">{formattedTime} ({match.durationMinutes}m)</div>
+              <div className="text-[10px] text-slate-400">{relativeTime}</div>
+              <div className="font-semibold text-slate-200">{formattedTime} (GMT+1)</div>
             </div>
           </div>
         </div>
+
+        {/* MVP Winner Banner if Present */}
+        {match.mvpWinnerName && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs">
+            <Trophy className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <span className="truncate">
+              <strong>Match MVP:</strong> {match.mvpWinnerName}
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* Card Footer: Roster Stats & Action */}
+      {/* Card Footer */}
       <div className="mt-4 pt-3 border-t border-[#1E293B] space-y-3">
-        {/* Roster filled meter */}
         <div>
           <div className="flex items-center justify-between text-xs mb-1.5">
             <span className="text-slate-400 flex items-center gap-1.5">
               <Users className="w-3.5 h-3.5 text-slate-400" />
-              Confirmed Players:
+              Roster:
               <strong className="text-slate-200">{match.roster.length} / {match.maxPlayers}</strong>
             </span>
             <div className="flex items-center gap-2 text-[11px]">
@@ -201,7 +237,6 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
             </div>
           </div>
 
-          {/* Progress bar */}
           <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
             <div
               className={`h-full transition-all duration-300 ${
@@ -216,9 +251,8 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
           </div>
         </div>
 
-        {/* Avatars Preview & Instant Action Button */}
+        {/* Avatars & Action Buttons */}
         <div className="flex items-center justify-between gap-3 pt-1">
-          {/* Avatar stack */}
           <div className="flex items-center -space-x-2 overflow-hidden">
             {match.roster.slice(0, 5).map((player) => (
               <img
@@ -245,8 +279,46 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
             )}
           </div>
 
-          {/* Actions Group */}
-          <div className="flex items-center gap-1.5">
+          {/* Action Buttons */}
+          <div className="flex items-center gap-1.5 relative">
+            {/* Add to Calendar Button */}
+            <div className="relative">
+              <button
+                id={`card-calendar-btn-${match.id}`}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowCalendarMenu(!showCalendarMenu);
+                }}
+                className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-xl border border-transparent hover:border-emerald-500/30 transition-all cursor-pointer"
+                title="Add to Calendar (Google / Apple / Outlook)"
+              >
+                <CalendarPlus className="w-4 h-4" />
+              </button>
+
+              {showCalendarMenu && (
+                <div
+                  className="absolute right-0 bottom-full mb-2 w-44 bg-[#111A30] border border-[#1E293B] rounded-xl shadow-2xl p-1 z-50 text-xs space-y-1"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    onClick={handleGoogleCalendar}
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg text-slate-200 hover:bg-emerald-500/20 hover:text-emerald-300 transition-colors flex items-center gap-1.5"
+                  >
+                    <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Google Calendar</span>
+                  </button>
+                  <button
+                    onClick={handleDownloadIcs}
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg text-slate-200 hover:bg-blue-500/20 hover:text-blue-300 transition-colors flex items-center gap-1.5"
+                  >
+                    <CalendarPlus className="w-3.5 h-3.5 text-blue-400" />
+                    <span>Download .ics file</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
             <button
               id={`card-share-btn-${match.id}`}
               type="button"
@@ -255,26 +327,53 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
                 setIsShareModalOpen(true);
               }}
               className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-xl border border-transparent hover:border-emerald-500/30 transition-all cursor-pointer"
-              title="Share match to WhatsApp"
+              title="Share match details to WhatsApp"
             >
               <Share2 className="w-4 h-4" />
             </button>
 
             {canDelete && (
-              <button
-                id={`card-delete-match-btn-${match.id}`}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (window.confirm(`Delete match "${match.title}"?`)) {
-                    deleteMatch(match.id);
-                  }
-                }}
-                className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl border border-transparent hover:border-rose-500/30 transition-all cursor-pointer"
-                title={isAdmin ? 'Administrator: Delete this match' : 'Host: Delete match'}
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              confirmDelete ? (
+                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    id={`card-confirm-delete-btn-${match.id}`}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteMatch(match.id);
+                    }}
+                    className="flex items-center gap-1 px-2.5 py-1.5 text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-all cursor-pointer text-xs font-bold shadow-md shadow-rose-950 animate-pulse"
+                    title="Confirm Permanent Deletion"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Confirm?</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setConfirmDelete(false);
+                    }}
+                    className="px-2 py-1.5 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl text-xs"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  id={`card-delete-match-btn-${match.id}`}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setConfirmDelete(true);
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-rose-300 hover:text-white bg-rose-500/10 hover:bg-rose-600/30 rounded-xl border border-rose-500/30 hover:border-rose-500/60 transition-all cursor-pointer text-xs font-bold shadow-sm"
+                  title={isAdmin ? 'Super Admin: Universal Delete Permission' : 'Host: Delete match'}
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                  <span className="inline">{isAdmin ? 'Delete Match' : 'Delete'}</span>
+                </button>
+              )
             )}
 
             {isUserInRoster ? (
@@ -284,7 +383,6 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
                 onClick={handleLeaveClick}
                 disabled={isProcessing}
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 transition-all cursor-pointer"
-                title="Leave this match"
               >
                 <UserX className="w-3.5 h-3.5" />
                 Leave Match
@@ -296,7 +394,6 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
                 onClick={handleLeaveClick}
                 disabled={isProcessing}
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 transition-all cursor-pointer"
-                title="In waitlist queue"
               >
                 <UserX className="w-3.5 h-3.5" />
                 Waitlist (Joined)
@@ -311,7 +408,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
                 type="button"
                 onClick={handleJoinClick}
                 disabled={isProcessing}
-                className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 shadow-md shadow-blue-900/30 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md shadow-emerald-900/30 transition-all cursor-pointer"
               >
                 <UserCheck className="w-3.5 h-3.5" />
                 {spotsLeft === 0 ? 'Join Waitlist' : 'Join Match'}
@@ -321,7 +418,6 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
         </div>
       </div>
 
-      {/* WhatsApp Share Modal */}
       <MatchShareModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
@@ -330,4 +426,3 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
     </div>
   );
 };
-

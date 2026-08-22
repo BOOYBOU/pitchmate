@@ -50,13 +50,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onOpenMatchDetails, onOp
   const pendingUsersCount = users.filter((u) => u.status === 'pending').length;
 
   const handleResetData = async () => {
-    if (confirm('Reset league database to default fixtures and players? All local changes will reset.')) {
-      setIsResetting(true);
-      try {
-        await resetToDefaultData();
-      } finally {
-        setIsResetting(false);
-      }
+    setIsResetting(true);
+    try {
+      await resetToDefaultData();
+    } finally {
+      setIsResetting(false);
     }
   };
 

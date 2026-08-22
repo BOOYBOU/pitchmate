@@ -1,29 +1,30 @@
 import React, { useState, useRef } from 'react';
 import {
-  User,
   Shield,
   Edit3,
   Calendar,
   CheckCircle,
-  Clock,
   Phone,
   Mail,
   Award,
   Sparkles,
   RefreshCw,
   Plus,
-  Users,
-  Check,
   ChevronRight,
   Camera,
   Upload,
   Link,
-  Image as ImageIcon,
-  X
+  X,
+  Lock,
+  Trophy,
+  Flame,
+  Star,
+  MapPin,
+  Coins,
 } from 'lucide-react';
-import { UserProfile, SUPER_ADMIN_EMAIL, SUPER_ADMIN_PASSWORD, isSuperAdminEmail, verifySuperAdminMasterPassword, SoccerMatch } from '../types';
+import { SUPER_ADMIN_EMAIL, isSuperAdminEmail, SoccerMatch } from '../types';
 import { usePitchStore } from '../lib/usePitchStore';
-import { MessageCircle, Lock } from 'lucide-react';
+import { formatMoroccoDate, MOROCCAN_CITIES } from '../lib/moroccoUtils';
 
 const PRESET_AVATARS = [
   { name: 'Captain Striker', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80' },
@@ -39,7 +40,7 @@ interface ProfileViewProps {
   onOpenDirectMessage?: (userId: string) => void;
 }
 
-export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, onOpenDirectMessage }) => {
+export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) => {
   const {
     currentUser,
     users,
@@ -48,15 +49,17 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, on
     authenticateSuperAdmin,
     updateUserProfile,
     createNewUserAccount,
-    initiateVoiceCall,
   } = usePitchStore();
 
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(currentUser.name);
   const [editPhone, setEditPhone] = useState(currentUser.phone || '');
   const [editAvatar, setEditAvatar] = useState(currentUser.avatarUrl);
+  const [editCity, setEditCity] = useState(currentUser.preferredCity || 'Casablanca');
+  const [editPosition, setEditPosition] = useState(currentUser.preferredPosition || 'Midfielder');
+  const [editSkillLevel, setEditSkillLevel] = useState<number>(currentUser.skillRating || 3);
 
-  // Avatar Upload / URL Modal state
+  // Avatar Upload Modal state
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [avatarUrlInput, setAvatarUrlInput] = useState(currentUser.avatarUrl);
   const [avatarPreview, setAvatarPreview] = useState(currentUser.avatarUrl);
@@ -75,9 +78,39 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, on
   const [newUserError, setNewUserError] = useState('');
 
   const isMustapha = isSuperAdminEmail(currentUser.email);
-
-  // Find all matches joined by current user
   const myMatches = matches.filter((m) => m.roster.some((p) => p.userId === currentUser.id));
+
+  // Dynamic Moroccan Badges
+  const badges = [
+    {
+      id: 'reliable',
+      title: '100% Fair Play & Reliable',
+      desc: 'Consistent attendance on Moroccan pitches',
+      icon: <Award className="w-5 h-5 text-emerald-400" />,
+      active: (currentUser.reliabilityScore ?? 95) >= 90,
+    },
+    {
+      id: 'veteran',
+      title: 'Moroccan League Veteran',
+      desc: 'Participated in 5+ pickup matches',
+      icon: <Trophy className="w-5 h-5 text-amber-400" />,
+      active: (currentUser.matchesPlayed + myMatches.length) >= 3,
+    },
+    {
+      id: 'mvp',
+      title: 'Man of the Match',
+      desc: 'Voted top player by squad members',
+      icon: <Star className="w-5 h-5 text-yellow-400" />,
+      active: matches.some((m) => m.mvpWinnerName?.toLowerCase().includes(currentUser.name.toLowerCase().split(' ')[0])),
+    },
+    {
+      id: 'organizer',
+      title: 'Match Host & Captain',
+      desc: 'Organized community soccer games',
+      icon: <Flame className="w-5 h-5 text-rose-400" />,
+      active: matches.some((m) => m.creatorId === currentUser.id || isMustapha),
+    },
+  ];
 
   const handleOpenAvatarModal = () => {
     setAvatarUrlInput(currentUser.avatarUrl);
@@ -126,6 +159,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, on
       name: editName.trim(),
       phone: editPhone.trim(),
       avatarUrl: editAvatar,
+      preferredCity: editCity,
+      preferredPosition: editPosition,
+      skillRating: editSkillLevel,
     });
     setIsEditing(false);
   };
@@ -137,7 +173,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, on
 
     const emailClean = newUserEmail.trim().toLowerCase();
     if (isSuperAdminEmail(emailClean)) {
-      setNewUserError('The Super Admin account already exists and cannot be duplicated.');
+      setNewUserError('The Super Admin account already exists.');
       return;
     }
 
@@ -162,19 +198,19 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, on
       setShowAdminPassModal(false);
       setAdminPassInput('');
     } else {
-      setAdminPassError('Incorrect Master Password. Access restricted to Super Admin.');
+      setAdminPassError('Incorrect Master Password.');
     }
   };
 
   return (
     <div id="profile-view-container" className="space-y-6 max-w-4xl mx-auto">
-      {/* Account Switcher Bar for fast role testing */}
+      {/* Account Switcher Bar */}
       <div className="bg-[#0E1526] border border-[#1E293B] rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <RefreshCw className="w-4 h-4 text-emerald-400" />
           <div>
             <span className="text-xs font-bold text-white block">Switch Active User Account</span>
-            <span className="text-[11px] text-slate-400">Test different player perspectives or login as Super Admin</span>
+            <span className="text-[11px] text-slate-400">Test different player roles or login as Mustapha (Super Admin)</span>
           </div>
         </div>
 
@@ -197,6 +233,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, on
                   setEditName(u.name);
                   setEditPhone(u.phone || '');
                   setEditAvatar(u.avatarUrl);
+                  setEditCity(u.preferredCity || 'Casablanca');
+                  setEditPosition(u.preferredPosition || 'Midfielder');
                   setIsEditing(false);
                 }}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
@@ -214,7 +252,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, on
                 <span>{u.name.split(' ')[0]}</span>
                 {isUserAdmin && (
                   <span className="px-1 py-0.2 rounded text-[9px] bg-emerald-500/30 text-emerald-300 font-bold">
-                    Super Admin
+                    Admin
                   </span>
                 )}
               </button>
@@ -233,7 +271,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, on
         </div>
       </div>
 
-      {/* Super Admin Master Password Challenge Modal */}
+      {/* Super Admin Password Modal */}
       {showAdminPassModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div className="w-full max-w-sm bg-[#0E1526] border border-[#1E293B] rounded-2xl p-5 space-y-4 shadow-2xl">
@@ -251,7 +289,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, on
             </div>
 
             <p className="text-xs text-slate-400">
-              Access to <span className="text-emerald-400 font-mono font-semibold">{SUPER_ADMIN_EMAIL}</span> requires the designated Master Password.
+              Access to <span className="text-emerald-400 font-mono font-semibold">{SUPER_ADMIN_EMAIL}</span> requires the Master Password.
             </p>
 
             <form onSubmit={handleAdminAuthSubmit} className="space-y-3 text-xs">
@@ -294,7 +332,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, on
         </div>
       )}
 
-      {/* New User Account Modal */}
+      {/* New User Modal */}
       {isAddingUser && (
         <div className="p-4 bg-[#090D16] border border-blue-500/30 rounded-2xl space-y-3 animate-in fade-in">
           <div className="flex items-center justify-between">
@@ -316,7 +354,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, on
             <input
               type="text"
               required
-              placeholder="Full Name (e.g. Leo Messi)"
+              placeholder="Full Name (e.g. Hakim Ziyech)"
               value={newUserName}
               onChange={(e) => setNewUserName(e.target.value)}
               className="px-3 py-2 bg-[#0E1526] border border-[#1E293B] rounded-lg text-white placeholder-slate-500"
@@ -343,12 +381,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, on
 
       {/* Main Profile Card */}
       <div className="bg-[#0E1526] border border-[#1E293B] rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl relative overflow-hidden">
-        {/* Subtle Pitch Aesthetic Lines */}
-        <div className="pitch-grid-pattern absolute inset-0 opacity-15 pointer-events-none" />
-
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-left">
-            {/* Avatar with interactive photo edit overlay */}
             <div className="relative group">
               <img
                 src={currentUser.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'}
@@ -395,15 +429,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, on
                 )}
               </div>
 
-              <div className="pt-1">
-                <button
-                  type="button"
-                  onClick={handleOpenAvatarModal}
-                  className="inline-flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 font-semibold cursor-pointer"
-                >
-                  <Camera className="w-3.5 h-3.5" />
-                  Upload Photo or Set Image URL
-                </button>
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+                <span className="px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-[#090D16] border border-[#1E293B] text-emerald-300 flex items-center gap-1">
+                  <MapPin className="w-3 h-3 text-emerald-400" />
+                  {currentUser.preferredCity || 'Casablanca, Morocco'}
+                </span>
+                <span className="px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-[#090D16] border border-[#1E293B] text-blue-300">
+                  {currentUser.preferredPosition || 'Midfielder'}
+                </span>
               </div>
             </div>
           </div>
@@ -419,33 +452,46 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, on
           </button>
         </div>
 
-        {/* Player Stats Grid */}
-        <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-3 pt-6 border-t border-[#1E293B]">
+        {/* Stats Grid */}
+        <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-3 pt-6 border-t border-[#1E293B]">
           <div className="p-3.5 bg-[#090D16] border border-[#1E293B] rounded-2xl space-y-1">
-            <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Matches Played</span>
+            <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Matches</span>
             <div className="text-base font-bold text-emerald-300 font-display">
               {currentUser.matchesPlayed + myMatches.length} Games
             </div>
           </div>
 
           <div className="p-3.5 bg-[#090D16] border border-[#1E293B] rounded-2xl space-y-1">
-            <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Account Status</span>
-            <div className="text-base font-bold text-emerald-400 font-display flex items-center gap-1.5">
-              <CheckCircle className="w-4 h-4 text-emerald-400" />
-              Active Member
+            <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Reliability</span>
+            <div className="text-base font-bold text-emerald-400 font-display">
+              {currentUser.reliabilityScore ?? 95}% Fair Play
+            </div>
+          </div>
+
+          <div className="p-3.5 bg-[#090D16] border border-[#1E293B] rounded-2xl space-y-1">
+            <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Skill Level</span>
+            <div className="text-base font-bold text-amber-300 font-display">
+              {'★'.repeat(currentUser.skillRating || 3)} ({currentUser.skillRating || 3}/5)
+            </div>
+          </div>
+
+          <div className="p-3.5 bg-[#090D16] border border-[#1E293B] rounded-2xl space-y-1">
+            <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Status</span>
+            <div className="text-base font-bold text-emerald-400 font-display flex items-center gap-1">
+              <CheckCircle className="w-4 h-4" /> Active
             </div>
           </div>
         </div>
 
-        {/* Edit Profile Form */}
+        {/* Edit Form */}
         {isEditing && (
           <form
             onSubmit={handleSaveProfile}
             className="relative z-10 p-5 bg-[#090D16] border border-emerald-500/30 rounded-2xl space-y-4 animate-in fade-in"
           >
-            <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400">Update Player Profile</h3>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400">Update Profile Details</h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
               <div>
                 <label className="block text-slate-400 mb-1">Full Name</label>
                 <input
@@ -458,34 +504,67 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, on
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">Phone Number</label>
+                <label className="block text-slate-400 mb-1">Phone Number (Morocco +212)</label>
                 <input
                   type="text"
                   value={editPhone}
                   onChange={(e) => setEditPhone(e.target.value)}
-                  placeholder="+1 (555) 000-0000"
+                  placeholder="+212 600-000000"
                   className="w-full px-3 py-2 bg-[#0E1526] border border-[#1E293B] rounded-lg text-white focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">Avatar Image URL / Upload</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={editAvatar}
-                    onChange={(e) => setEditAvatar(e.target.value)}
-                    placeholder="https://images.unsplash.com/..."
-                    className="w-full px-3 py-2 bg-[#0E1526] border border-[#1E293B] rounded-lg text-white focus:outline-none focus:border-emerald-500 text-xs"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleOpenAvatarModal}
-                    className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold shrink-0 cursor-pointer"
-                  >
-                    Change...
-                  </button>
-                </div>
+                <label className="block text-slate-400 mb-1">Home City (Morocco)</label>
+                <select
+                  value={editCity}
+                  onChange={(e) => setEditCity(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#0E1526] border border-[#1E293B] rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                >
+                  {MOROCCAN_CITIES.map((c) => (
+                    <option key={c.name} value={c.name}>{c.name} ({c.nameAr})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-400 mb-1">Fav Position</label>
+                <select
+                  value={editPosition}
+                  onChange={(e) => setEditPosition(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#0E1526] border border-[#1E293B] rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="Forward">Striker / Forward</option>
+                  <option value="Winger">Winger</option>
+                  <option value="Midfielder">Midfielder</option>
+                  <option value="Defender">Defender</option>
+                  <option value="Goalkeeper">Goalkeeper</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-400 mb-1">Skill Rating (1-5)</label>
+                <select
+                  value={editSkillLevel}
+                  onChange={(e) => setEditSkillLevel(Number(e.target.value))}
+                  className="w-full px-3 py-2 bg-[#0E1526] border border-[#1E293B] rounded-lg text-white focus:outline-none focus:border-emerald-500"
+                >
+                  <option value={1}>1 - Casual / Beginner</option>
+                  <option value={2}>2 - Recreational</option>
+                  <option value={3}>3 - Intermediate</option>
+                  <option value={4}>4 - Advanced / Competitive</option>
+                  <option value={5}>5 - Pro / Semi-Pro</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-400 mb-1">Avatar Image URL</label>
+                <input
+                  type="text"
+                  value={editAvatar}
+                  onChange={(e) => setEditAvatar(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#0E1526] border border-[#1E293B] rounded-lg text-white focus:outline-none focus:border-emerald-500 text-xs"
+                />
               </div>
             </div>
 
@@ -500,7 +579,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, on
               <button
                 id="save-profile-btn"
                 type="submit"
-                className="px-5 py-1.5 rounded-lg text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 shadow-md transition-colors cursor-pointer"
+                className="px-5 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md transition-colors cursor-pointer"
               >
                 Save Changes
               </button>
@@ -509,7 +588,43 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, on
         )}
       </div>
 
-      {/* Avatar Upload / URL Modal Dialog */}
+      {/* Moroccan Gamification Badges */}
+      <div className="bg-[#0E1526] border border-[#1E293B] rounded-3xl p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <Award className="w-5 h-5 text-amber-400" />
+          <h3 className="text-base font-bold font-display text-white">Player Achievements & Badges</h3>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+          {badges.map((b) => (
+            <div
+              key={b.id}
+              className={`p-4 rounded-2xl border transition-all ${
+                b.active
+                  ? 'bg-[#090D16] border-amber-500/40 shadow-sm'
+                  : 'bg-[#090D16]/50 border-[#1E293B] opacity-50'
+              }`}
+            >
+              <div className="flex items-center justify-between pb-2">
+                <div className="p-2 rounded-xl bg-slate-800/80">{b.icon}</div>
+                {b.active ? (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300">
+                    Unlocked
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-500">
+                    Locked
+                  </span>
+                )}
+              </div>
+              <h4 className="text-xs font-bold text-white mt-1">{b.title}</h4>
+              <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">{b.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Avatar Modal */}
       {isAvatarModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div className="w-full max-w-lg bg-[#0E1526] border border-[#1E293B] rounded-3xl p-6 shadow-2xl space-y-5 text-white">
@@ -532,15 +647,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, on
               </button>
             </div>
 
-            {/* Live Preview */}
             <div className="flex flex-col sm:flex-row items-center gap-5 p-4 bg-[#090D16] border border-[#1E293B] rounded-2xl">
               <img
                 src={avatarPreview || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'}
                 alt="Avatar Preview"
                 className="w-20 h-20 rounded-2xl object-cover border-2 border-emerald-500 shadow-lg shrink-0"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200';
-                }}
                 referrerPolicy="no-referrer"
               />
               <div className="space-y-1 text-center sm:text-left">
@@ -551,7 +662,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, on
               </div>
             </div>
 
-            {/* Upload from Device */}
             <div className="space-y-2">
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
                 Option 1: Upload from Device
@@ -574,29 +684,25 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, on
               {uploadError && <p className="text-xs text-rose-400">{uploadError}</p>}
             </div>
 
-            {/* Paste Image URL */}
             <div className="space-y-2">
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
                 Option 2: Provide Image URL
               </label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="url"
-                    placeholder="https://example.com/my-photo.jpg"
-                    value={avatarUrlInput}
-                    onChange={(e) => {
-                      setAvatarUrlInput(e.target.value);
-                      setAvatarPreview(e.target.value);
-                    }}
-                    className="w-full pl-9 pr-3 py-2 bg-[#090D16] border border-[#1E293B] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
+              <div className="relative">
+                <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="url"
+                  placeholder="https://example.com/my-photo.jpg"
+                  value={avatarUrlInput}
+                  onChange={(e) => {
+                    setAvatarUrlInput(e.target.value);
+                    setAvatarPreview(e.target.value);
+                  }}
+                  className="w-full pl-9 pr-3 py-2 bg-[#090D16] border border-[#1E293B] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                />
               </div>
             </div>
 
-            {/* Preset Avatars */}
             <div className="space-y-2">
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">
                 Or Pick a Soccer Pro Avatar:
@@ -628,7 +734,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, on
               </div>
             </div>
 
-            {/* Actions */}
             <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#1E293B]">
               <button
                 type="button"
@@ -641,7 +746,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, on
                 id="apply-avatar-btn"
                 type="button"
                 onClick={handleSaveAvatar}
-                className="px-6 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 shadow-md shadow-blue-900/30 transition-colors cursor-pointer"
+                className="px-6 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md transition-colors cursor-pointer"
               >
                 Save Profile Picture
               </button>
@@ -650,7 +755,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, on
         </div>
       )}
 
-      {/* My Active Joined Matches Section */}
+      {/* Confirmed Matches */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-base font-bold font-display text-white flex items-center gap-2">
@@ -667,7 +772,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, on
           <div className="space-y-2.5">
             {myMatches.map((m) => {
               const myRosterEntry = m.roster.find((p) => p.userId === currentUser.id);
-              const mDate = new Date(m.dateTime);
               return (
                 <div
                   key={m.id}
@@ -688,8 +792,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails, on
                       </span>
                     </div>
                     <p className="text-xs text-slate-400">
-                      {m.location.venueName} • {mDate.toLocaleDateString()} at{' '}
-                      {mDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {m.location.venueName} ({m.location.city || 'Casablanca'}) • {formatMoroccoDate(m.dateTime, 'day_month_time')}
                     </p>
                   </div>
 

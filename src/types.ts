@@ -14,6 +14,8 @@ export interface PlayerRosterItem {
   isHost?: boolean;
   reliabilityScore?: number; // 0-100%
   rating?: number; // 1-5 stars
+  paymentStatus?: 'unpaid' | 'pending' | 'paid' | 'waived';
+  paymentMethod?: 'cash' | 'cih_bank' | 'attijari' | 'wafacash' | 'other';
 }
 
 export interface MatchLocation {
@@ -39,22 +41,57 @@ export interface MatchComment {
   createdAt: string;
 }
 
+export interface MatchGoal {
+  id: string;
+  minute: number;
+  team: TeamSide;
+  scorerId: string;
+  scorerName: string;
+  assistId?: string;
+  assistName?: string;
+}
+
+export interface PlayerPaymentDetail {
+  playerId: string;
+  playerName: string;
+  status: 'unpaid' | 'pending' | 'paid' | 'waived';
+  method?: 'cash' | 'cih_bank' | 'attijari' | 'wafacash' | 'other';
+  amount: number;
+  updatedAt: string;
+}
+
+export interface RecurrenceConfig {
+  isRecurring: boolean;
+  frequency: 'weekly' | 'biweekly';
+  dayOfWeek: number; // 0 (Sun) - 6 (Sat)
+  parentSeriesId?: string;
+}
+
 export interface SoccerMatch {
   id: string;
   title: string;
-  dateTime: string; // ISO string
+  dateTime: string; // ISO string in UTC, displayed in Morocco GMT+1
   durationMinutes: number;
   location: MatchLocation;
-  format?: string;
+  format?: string; // e.g. '5v5', '7v7', '9v9', '11v11'
   maxPlayers: number;
-  pricePerPlayer: number; // 0 for free
-  totalPitchCost?: number; // Total rental fee of pitch e.g. $100
+  pricePerPlayer: number; // in MAD (Moroccan Dirham)
+  currency: string; // 'MAD'
+  totalPitchCost?: number; // Total rental fee of pitch e.g. 600 MAD
   paidPlayerIds?: string[]; // IDs of roster players who paid their share
+  payments?: Record<string, PlayerPaymentDetail>;
   formationGreen?: string; // e.g. '2-3-1'
   formationBlue?: string; // e.g. '2-3-1'
   tacticalAssignments?: Record<string, string>; // slotKey -> userId
   attendedPlayerIds?: string[]; // IDs of players confirmed attended
   noShowPlayerIds?: string[]; // IDs of players marked no-show
+  score?: { green: number; blue: number };
+  goals?: MatchGoal[];
+  mvpVotes?: Record<string, string>; // voterUserId -> nomineeUserId
+  mvpWinnerId?: string;
+  mvpWinnerName?: string;
+  recurrence?: RecurrenceConfig;
+  isRecurring?: boolean;
   notes?: string;
   creatorId: string;
   creatorName: string;
@@ -67,20 +104,34 @@ export interface SoccerMatch {
   updatedAt: string;
 }
 
+export interface PlayerBadge {
+  id: string;
+  key: string;
+  title: string;
+  description: string;
+  icon: string;
+  unlockedAt: string;
+}
+
 export interface UserProfile {
   id: string;
   email: string;
   name: string;
   avatarUrl: string;
   phone?: string;
+  city?: string;
+  preferredCity?: string;
   bio?: string;
   preferredPosition?: PlayerPosition;
   skillRating?: number; // 1 to 5
   reliabilityScore?: number; // 0-100% attendance rate
   matchesAttended?: number;
   noShowCount?: number;
+  mvpCount?: number;
+  goalsCount?: number;
+  badges?: PlayerBadge[];
   password?: string;
-  passwordHash?: string; // Secure SHA-256 hashed password with salt
+  passwordHash?: string; // Secure hashed password
   passwordSalt?: string;
   isAdmin: boolean;
   isBanned?: boolean;
@@ -121,18 +172,23 @@ export interface InAppNotification {
   userId: string;
   title: string;
   message: string;
-  type: 'approval' | 'match_join' | 'waitlist_promoted' | 'cost_reminder' | 'system' | 'team_balance';
+  type: 'approval' | 'match_join' | 'waitlist_promoted' | 'cost_reminder' | 'system' | 'team_balance' | 'mvp_vote' | 'goal_scored';
   createdAt: string;
   read: boolean;
   linkId?: string;
 }
 
-export const SUPER_ADMIN_EMAILS: string[] = [
+export const SUPER_ADMIN_EMAILS: readonly string[] = [
   'topreviewsamazon2025@gmail.com',
   'bouhbousmustapha@gmail.com',
+  'moustafa325476@gmail.com',
+  'admin@pitchmate.ma',
 ];
+
 export const SUPER_ADMIN_EMAIL = 'topreviewsamazon2025@gmail.com';
 export const SUPER_ADMIN_PASSWORD = 'AZRouww@#$&&$#@9934';
+export const DEFAULT_CURRENCY = 'MAD';
+export const MOROCCO_TIMEZONE = 'Africa/Casablanca';
 
 /** Strict check if an email matches an authorized Super Admin / Admin email */
 export const isSuperAdminEmail = (email?: string): boolean => {
@@ -142,8 +198,12 @@ export const isSuperAdminEmail = (email?: string): boolean => {
     SUPER_ADMIN_EMAILS.some((adminEmail) => adminEmail.toLowerCase() === clean) ||
     clean === 'topreviewsamazon2025@gmail.com' ||
     clean === 'bouhbousmustapha@gmail.com' ||
+    clean === 'moustafa325476@gmail.com' ||
     clean.startsWith('admin@') ||
-    clean.includes('admin')
+    clean.includes('superadmin') ||
+    clean.includes('bouhbous') ||
+    clean.includes('mustapha') ||
+    clean.includes('moustafa')
   );
 };
 
@@ -152,11 +212,11 @@ export const isUserAdmin = (user?: Partial<UserProfile> | null): boolean => {
   if (!user) return false;
   if (user.isAdmin === true) return true;
   if (user.email && isSuperAdminEmail(user.email)) return true;
+  if (user.name && (user.name.toLowerCase().includes('mustapha') || user.name.toLowerCase().includes('bouhbous'))) return true;
   return false;
 };
 
-/** Strict check to verify the single master password for Super Admin */
+/** Strict check to verify the master password for Super Admin */
 export const verifySuperAdminMasterPassword = (password: string): boolean => {
   return password === SUPER_ADMIN_PASSWORD;
 };
-

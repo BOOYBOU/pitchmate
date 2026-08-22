@@ -276,11 +276,7 @@ export function AdminUsersTable({
 
                         {!isSuper && (
                           <button
-                            onClick={() => {
-                              if (confirm(`Permanently delete account for ${user.name}?`)) {
-                                onDeleteUser(user.id);
-                              }
-                            }}
+                            onClick={() => onDeleteUser(user.id)}
                             className="p-1.5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded transition-colors cursor-pointer"
                             title="Delete Account"
                           >

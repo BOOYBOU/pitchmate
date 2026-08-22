@@ -43,3 +43,46 @@
   background-size: 40px 40px;
 }
 
+/* 3D Stadium & Pitch Engine */
+.pitch-3d-stage {
+  perspective: 1200px;
+  perspective-origin: 50% 60%;
+}
+
+.pitch-3d-turf {
+  transform-style: preserve-3d;
+  transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 
+    0 25px 60px -15px rgba(0, 0, 0, 0.8),
+    0 0 40px rgba(16, 185, 129, 0.15),
+    inset 0 0 60px rgba(0, 0, 0, 0.5);
+}
+
+.pitch-turf-stripes {
+  background: repeating-linear-gradient(
+    0deg,
+    #14532d 0px,
+    #14532d 48px,
+    #15803d 48px,
+    #15803d 96px
+  );
+}
+
+.token-3d-pedestal {
+  transform-style: preserve-3d;
+  transform: translateZ(18px);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.token-3d-pedestal:hover {
+  transform: translateZ(28px) scale(1.08);
+}
+
+.token-3d-shadow {
+  box-shadow: 0 12px 24px -4px rgba(0, 0, 0, 0.85);
+}
+
+.stadium-light-glow {
+  background: radial-gradient(circle at 50% 0%, rgba(52, 211, 153, 0.25) 0%, rgba(14, 165, 233, 0.1) 40%, transparent 70%);
+}
+
