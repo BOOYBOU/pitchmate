@@ -4,8 +4,8 @@ import { Bell, Plus, Trash2, Info, AlertTriangle, Trophy, Wrench, Megaphone } fr
 
 interface AdminAnnouncementsProps {
   announcements: AdminAnnouncement[];
-  onAddAnnouncement: (announcement: Omit<AdminAnnouncement, 'id' | 'createdAt'>) => Promise<void>;
-  onDeleteAnnouncement: (id: string) => Promise<void>;
+  onAddAnnouncement: (announcement: Omit<AdminAnnouncement, 'id' | 'createdAt'>) => Promise<any> | any;
+  onDeleteAnnouncement: (id: string) => Promise<any> | any;
   adminName: string;
 }
 

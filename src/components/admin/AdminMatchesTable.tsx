@@ -16,10 +16,10 @@ import { formatMAD, formatMoroccoDate } from '../../lib/moroccoUtils';
 interface AdminMatchesTableProps {
   matches: SoccerMatch[];
   onOpenMatchDetails: (match: SoccerMatch) => void;
-  onToggleLock: (matchId: string) => Promise<void>;
-  onDeleteMatch: (matchId: string) => Promise<void>;
-  onRemovePlayer: (matchId: string, userId: string) => Promise<void>;
-  onAutoBalanceTeams: (matchId: string) => Promise<void>;
+  onToggleLock: (matchId: string) => Promise<any> | any;
+  onDeleteMatch: (matchId: string) => Promise<any> | any;
+  onRemovePlayer: (matchId: string, userId: string) => Promise<any> | any;
+  onAutoBalanceTeams: (matchId: string) => Promise<any> | any;
 }
 
 export function AdminMatchesTable({

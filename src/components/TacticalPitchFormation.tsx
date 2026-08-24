@@ -294,15 +294,22 @@ export const FORMATIONS: Record<string, FormationConfig> = {
   },
 };
 
-// Helper to normalize formation keys
-const getNormalizedFormationKey = (key?: string, format?: string): string => {
+// Helper to normalize formation keys with robust fallbacks
+export const getNormalizedFormationKey = (key?: string, format?: string): string => {
   if (key && FORMATIONS[key]) return key;
+  // If key is a legacy shorthand like '2-3-1' or '4-3-3', find matching full key
+  if (key) {
+    const matched = Object.keys(FORMATIONS).find((k) => k.endsWith(`-${key}`) || k.includes(key));
+    if (matched) return matched;
+  }
   if (format === '5v5') return '5v5-1-2-1';
   if (format === '6v6') return '6v6-2-2-1';
   if (format === '7v7') return '7v7-2-3-1';
   if (format === '8v8') return '8v8-3-3-1';
+  if (format === '9v9') return '9v9-3-3-2';
+  if (format === '10v10') return '10v10-4-3-2';
   if (format === '11v11') return '11v11-4-3-3';
-  return '6v6-2-2-1';
+  return '7v7-2-3-1';
 };
 
 export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({

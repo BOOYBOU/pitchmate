@@ -5,6 +5,10 @@ import { MatchLocation } from '../types';
  * or venue address as fallback.
  */
 export function getMatchMapUrl(location: MatchLocation): string {
+  if (location.googleMapsUrl && (location.googleMapsUrl.startsWith('http://') || location.googleMapsUrl.startsWith('https://'))) {
+    return location.googleMapsUrl;
+  }
+
   if (
     location.latitude != null &&
     location.longitude != null &&
@@ -13,10 +17,6 @@ export function getMatchMapUrl(location: MatchLocation): string {
   ) {
     // Generates exact pinpointed Google Maps search link with coordinates
     return `https://www.google.com/maps/search/?api=1&query=${location.latitude},${location.longitude}`;
-  }
-
-  if (location.googleMapsUrl && location.googleMapsUrl.startsWith('http')) {
-    return location.googleMapsUrl;
   }
 
   const queryParts = [location.venueName, location.address, location.city].filter(Boolean).join(', ');

@@ -6,7 +6,6 @@ import {
   CheckCircle,
   Phone,
   Mail,
-  Award,
   Sparkles,
   RefreshCw,
   Plus,
@@ -16,13 +15,11 @@ import {
   Link,
   X,
   Lock,
-  Trophy,
-  Flame,
   Star,
   MapPin,
   Coins,
 } from 'lucide-react';
-import { SUPER_ADMIN_EMAIL, isSuperAdminEmail, SoccerMatch } from '../types';
+import { SUPER_ADMIN_EMAIL, isSuperAdminEmail, SoccerMatch, PlayerPosition } from '../types';
 import { usePitchStore } from '../lib/usePitchStore';
 import { formatMoroccoDate, MOROCCAN_CITIES } from '../lib/moroccoUtils';
 
@@ -56,7 +53,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
   const [editPhone, setEditPhone] = useState(currentUser.phone || '');
   const [editAvatar, setEditAvatar] = useState(currentUser.avatarUrl);
   const [editCity, setEditCity] = useState(currentUser.preferredCity || 'Casablanca');
-  const [editPosition, setEditPosition] = useState(currentUser.preferredPosition || 'Midfielder');
+  const [editPosition, setEditPosition] = useState<PlayerPosition>(currentUser.preferredPosition || 'MID');
   const [editSkillLevel, setEditSkillLevel] = useState<number>(currentUser.skillRating || 3);
 
   // Avatar Upload Modal state
@@ -79,38 +76,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
 
   const isMustapha = isSuperAdminEmail(currentUser.email);
   const myMatches = matches.filter((m) => m.roster.some((p) => p.userId === currentUser.id));
-
-  // Dynamic Moroccan Badges
-  const badges = [
-    {
-      id: 'reliable',
-      title: '100% Fair Play & Reliable',
-      desc: 'Consistent attendance on Moroccan pitches',
-      icon: <Award className="w-5 h-5 text-emerald-400" />,
-      active: (currentUser.reliabilityScore ?? 95) >= 90,
-    },
-    {
-      id: 'veteran',
-      title: 'Moroccan League Veteran',
-      desc: 'Participated in 5+ pickup matches',
-      icon: <Trophy className="w-5 h-5 text-amber-400" />,
-      active: (currentUser.matchesPlayed + myMatches.length) >= 3,
-    },
-    {
-      id: 'mvp',
-      title: 'Man of the Match',
-      desc: 'Voted top player by squad members',
-      icon: <Star className="w-5 h-5 text-yellow-400" />,
-      active: matches.some((m) => m.mvpWinnerName?.toLowerCase().includes(currentUser.name.toLowerCase().split(' ')[0])),
-    },
-    {
-      id: 'organizer',
-      title: 'Match Host & Captain',
-      desc: 'Organized community soccer games',
-      icon: <Flame className="w-5 h-5 text-rose-400" />,
-      active: matches.some((m) => m.creatorId === currentUser.id || isMustapha),
-    },
-  ];
 
   const handleOpenAvatarModal = () => {
     setAvatarUrlInput(currentUser.avatarUrl);
@@ -234,7 +199,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
                   setEditPhone(u.phone || '');
                   setEditAvatar(u.avatarUrl);
                   setEditCity(u.preferredCity || 'Casablanca');
-                  setEditPosition(u.preferredPosition || 'Midfielder');
+                  setEditPosition(u.preferredPosition || 'MID');
                   setIsEditing(false);
                 }}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
@@ -531,14 +496,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
                 <label className="block text-slate-400 mb-1">Fav Position</label>
                 <select
                   value={editPosition}
-                  onChange={(e) => setEditPosition(e.target.value)}
+                  onChange={(e) => setEditPosition(e.target.value as PlayerPosition)}
                   className="w-full px-3 py-2 bg-[#0E1526] border border-[#1E293B] rounded-lg text-white focus:outline-none focus:border-emerald-500"
                 >
-                  <option value="Forward">Striker / Forward</option>
-                  <option value="Winger">Winger</option>
-                  <option value="Midfielder">Midfielder</option>
-                  <option value="Defender">Defender</option>
-                  <option value="Goalkeeper">Goalkeeper</option>
+                  <option value="FWD">Striker / Forward (FWD)</option>
+                  <option value="MID">Midfielder (MID)</option>
+                  <option value="DEF">Defender (DEF)</option>
+                  <option value="GK">Goalkeeper (GK)</option>
+                  <option value="ANY">Any / Flexible (ANY)</option>
                 </select>
               </div>
 
@@ -586,42 +551,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
             </div>
           </form>
         )}
-      </div>
-
-      {/* Moroccan Gamification Badges */}
-      <div className="bg-[#0E1526] border border-[#1E293B] rounded-3xl p-6 space-y-4">
-        <div className="flex items-center gap-2">
-          <Award className="w-5 h-5 text-amber-400" />
-          <h3 className="text-base font-bold font-display text-white">Player Achievements & Badges</h3>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-          {badges.map((b) => (
-            <div
-              key={b.id}
-              className={`p-4 rounded-2xl border transition-all ${
-                b.active
-                  ? 'bg-[#090D16] border-amber-500/40 shadow-sm'
-                  : 'bg-[#090D16]/50 border-[#1E293B] opacity-50'
-              }`}
-            >
-              <div className="flex items-center justify-between pb-2">
-                <div className="p-2 rounded-xl bg-slate-800/80">{b.icon}</div>
-                {b.active ? (
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300">
-                    Unlocked
-                  </span>
-                ) : (
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-500">
-                    Locked
-                  </span>
-                )}
-              </div>
-              <h4 className="text-xs font-bold text-white mt-1">{b.title}</h4>
-              <p className="text-[11px] text-slate-400 mt-0.5 leading-relaxed">{b.desc}</p>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* Avatar Modal */}

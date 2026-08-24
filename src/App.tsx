@@ -16,6 +16,7 @@ import { AuthModal } from './components/AuthModal';
 import { AuthView } from './components/AuthView';
 import { DirectMessagesModal } from './components/DirectMessagesModal';
 import { NotificationDrawer } from './components/NotificationDrawer';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { SoccerMatch, SUPER_ADMIN_EMAIL } from './types';
 import { Shield, Sparkles, MapPin, Database, Heart } from 'lucide-react';
 
@@ -209,8 +210,10 @@ function PitchMateApp() {
 
 export default function App() {
   return (
-    <PitchStoreProvider>
-      <PitchMateApp />
-    </PitchStoreProvider>
+    <ErrorBoundary>
+      <PitchStoreProvider>
+        <PitchMateApp />
+      </PitchStoreProvider>
+    </ErrorBoundary>
   );
 }

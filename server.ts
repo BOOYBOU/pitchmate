@@ -180,14 +180,27 @@ try {
   db = getInitialData();
 }
 
-// Ensure all super admin accounts exist with full administrative privileges
+// Ensure unique users list and ensure all super admin accounts exist with full administrative privileges
+const seenEmails = new Set<string>();
+const sanitizedUsers: UserProfile[] = [];
+
+for (const u of db.users) {
+  const emailNorm = (u.email || '').toLowerCase().trim();
+  if (emailNorm && !seenEmails.has(emailNorm)) {
+    seenEmails.add(emailNorm);
+    sanitizedUsers.push({
+      ...u,
+      isAdmin: isSuperAdminEmail(u.email) || u.isAdmin === true,
+      status: (isSuperAdminEmail(u.email) || u.isAdmin === true) ? ('approved' as const) : (u.status || 'approved'),
+    });
+  }
+}
+
 for (const sEmail of SUPER_ADMIN_EMAILS) {
-  const existing = db.users.find((u) => u.email.toLowerCase() === sEmail.toLowerCase());
-  if (existing) {
-    existing.isAdmin = true;
-    existing.status = 'approved';
-  } else {
-    db.users.unshift({
+  const emailNorm = sEmail.toLowerCase().trim();
+  if (!seenEmails.has(emailNorm)) {
+    seenEmails.add(emailNorm);
+    sanitizedUsers.unshift({
       id: `user_admin_${sEmail.replace(/[^a-zA-Z0-9]/g, '_')}`,
       email: sEmail,
       name: 'Mustapha Bouhbous',
@@ -200,12 +213,7 @@ for (const sEmail of SUPER_ADMIN_EMAILS) {
   }
 }
 
-// Sync flags across all users
-db.users = db.users.map((u) => ({
-  ...u,
-  isAdmin: isSuperAdminEmail(u.email) || u.isAdmin === true,
-  status: (isSuperAdminEmail(u.email) || u.isAdmin === true) ? ('approved' as const) : (u.status || 'approved'),
-}));
+db.users = sanitizedUsers;
 saveDatabaseDebounced();
 
 // Server-Sent Events (SSE) Client Connections
@@ -222,8 +230,7 @@ function broadcastSSE(type: string, payload: any) {
 
   sseClients = sseClients.filter((client) => {
     try {
-      client.res.write(message);
-      return true;
+      return client.res.write(message);
     } catch {
       return false;
     }
@@ -240,14 +247,18 @@ async function withMatchLock<T>(matchId: string, fn: () => Promise<T> | T): Prom
     resolver = resolve;
   });
 
-  matchOperationLocks.set(matchId, existingLock.then(() => currentLock));
+  const chainedPromise = existingLock
+    .catch(() => {})
+    .then(() => currentLock);
+
+  matchOperationLocks.set(matchId, chainedPromise);
 
   try {
-    await existingLock;
+    await existingLock.catch(() => {});
     return await fn();
   } finally {
     resolver!();
-    if (matchOperationLocks.get(matchId) === currentLock) {
+    if (matchOperationLocks.get(matchId) === chainedPromise) {
       matchOperationLocks.delete(matchId);
     }
   }
@@ -426,21 +437,36 @@ async function startServer() {
     const client: SSEClient = { id: clientId, res };
     sseClients.push(client);
 
-    res.write(`event: connected\ndata: ${JSON.stringify({ clientId, version: db.version })}\n\n`);
+    try {
+      res.write(`event: connected\ndata: ${JSON.stringify({ clientId, version: db.version })}\n\n`);
+    } catch {
+      sseClients = sseClients.filter((c) => c.id !== clientId);
+      return;
+    }
+
+    let isCleanedUp = false;
+    const cleanup = () => {
+      if (isCleanedUp) return;
+      isCleanedUp = true;
+      clearInterval(pingInterval);
+      sseClients = sseClients.filter((c) => c.id !== clientId);
+    };
 
     const pingInterval = setInterval(() => {
       try {
-        res.write(': ping\n\n');
+        const canWrite = res.write(': ping\n\n');
+        if (!canWrite) {
+          cleanup();
+        }
       } catch {
-        clearInterval(pingInterval);
-        sseClients = sseClients.filter((c) => c.id !== clientId);
+        cleanup();
       }
     }, 15000);
 
-    req.on('close', () => {
-      clearInterval(pingInterval);
-      sseClients = sseClients.filter((c) => c.id !== clientId);
-    });
+    req.on('close', cleanup);
+    req.on('end', cleanup);
+    res.on('error', cleanup);
+    res.on('finish', cleanup);
   });
 
   // ---------------------------------------------------------
@@ -628,6 +654,53 @@ async function startServer() {
     res.json({ success: true, approvedCount: pending.length });
   });
 
+  // Reject User Registration
+  app.post('/api/users/reject', requireAdmin, (req: AuthenticatedRequest, res) => {
+    const { userId, reason } = req.body;
+    const user = db.users.find((u) => u.id === userId);
+    if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+
+    if (isSuperAdminEmail(user.email)) {
+      return res.status(403).json({ success: false, error: 'Cannot reject Super Admin account' });
+    }
+
+    user.status = 'rejected';
+    user.rejectionReason = reason || 'Declined by administrator';
+    user.rejectedAt = new Date().toISOString();
+
+    db.matches = db.matches.map((m) => {
+      const updatedAssignments = { ...(m.tacticalAssignments || {}) };
+      Object.keys(updatedAssignments).forEach((k) => {
+        if (updatedAssignments[k] === userId) delete updatedAssignments[k];
+      });
+      return {
+        ...m,
+        roster: m.roster.filter((p) => p.userId !== userId),
+        waitlist: m.waitlist.filter((p) => p.userId !== userId),
+        paidPlayerIds: (m.paidPlayerIds || []).filter((id) => id !== userId),
+        tacticalAssignments: updatedAssignments,
+      };
+    });
+
+    db.notifications.unshift({
+      id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      userId: user.id,
+      title: 'Registration Declined',
+      message: `Your PitchMate account registration was declined: ${reason || 'Contact administrator for details.'}`,
+      type: 'system',
+      createdAt: new Date().toISOString(),
+      read: false,
+    });
+
+    broadcastSSE('SYNC_ALL', {
+      users: db.users,
+      matches: db.matches,
+      notifications: db.notifications,
+    });
+
+    res.json({ success: true, user });
+  });
+
   // Ban User
   app.post('/api/users/ban', requireAdmin, (req: AuthenticatedRequest, res) => {
     const { userId, reason } = req.body;
@@ -642,12 +715,19 @@ async function startServer() {
     user.banReason = reason || 'Violation of league conduct rules';
     user.bannedAt = new Date().toISOString();
 
-    db.matches = db.matches.map((m) => ({
-      ...m,
-      roster: m.roster.filter((p) => p.userId !== userId),
-      waitlist: m.waitlist.filter((p) => p.userId !== userId),
-      paidPlayerIds: (m.paidPlayerIds || []).filter((id) => id !== userId),
-    }));
+    db.matches = db.matches.map((m) => {
+      const updatedAssignments = { ...(m.tacticalAssignments || {}) };
+      Object.keys(updatedAssignments).forEach((k) => {
+        if (updatedAssignments[k] === userId) delete updatedAssignments[k];
+      });
+      return {
+        ...m,
+        roster: m.roster.filter((p) => p.userId !== userId),
+        waitlist: m.waitlist.filter((p) => p.userId !== userId),
+        paidPlayerIds: (m.paidPlayerIds || []).filter((id) => id !== userId),
+        tacticalAssignments: updatedAssignments,
+      };
+    });
 
     broadcastSSE('SYNC_ALL', {
       users: db.users,
@@ -682,12 +762,19 @@ async function startServer() {
     }
 
     db.users = db.users.filter((u) => u.id !== userId);
-    db.matches = db.matches.map((m) => ({
-      ...m,
-      roster: m.roster.filter((p) => p.userId !== userId),
-      waitlist: m.waitlist.filter((p) => p.userId !== userId),
-      paidPlayerIds: (m.paidPlayerIds || []).filter((id) => id !== userId),
-    }));
+    db.matches = db.matches.map((m) => {
+      const updatedAssignments = { ...(m.tacticalAssignments || {}) };
+      Object.keys(updatedAssignments).forEach((k) => {
+        if (updatedAssignments[k] === userId) delete updatedAssignments[k];
+      });
+      return {
+        ...m,
+        roster: m.roster.filter((p) => p.userId !== userId),
+        waitlist: m.waitlist.filter((p) => p.userId !== userId),
+        paidPlayerIds: (m.paidPlayerIds || []).filter((id) => id !== userId),
+        tacticalAssignments: updatedAssignments,
+      };
+    });
     db.directMessages = db.directMessages.filter((m) => m.senderId !== userId && m.receiverId !== userId);
 
     broadcastSSE('SYNC_ALL', {
@@ -711,10 +798,20 @@ async function startServer() {
       return res.status(403).json({ success: false, error: 'Cannot edit other user profiles' });
     }
 
-    const updatedUser = {
-      ...db.users[userIndex],
+    const existingUser = db.users[userIndex];
+    const isTargetSuper = isSuperAdminEmail(existingUser.email);
+
+    // Compute updated admin status preserving existing admin privileges
+    let newAdminStatus = isTargetSuper || existingUser.isAdmin === true;
+    if (isSuper && typeof updates.isAdmin === 'boolean') {
+      newAdminStatus = isTargetSuper || updates.isAdmin;
+    }
+
+    const updatedUser: UserProfile = {
+      ...existingUser,
       ...updates,
-      isAdmin: isSuperAdminEmail(db.users[userIndex].email),
+      isAdmin: newAdminStatus,
+      status: isTargetSuper ? 'approved' : (updates.status || existingUser.status || 'approved'),
     };
     db.users[userIndex] = updatedUser;
 
@@ -927,6 +1024,12 @@ async function startServer() {
       match.roster = updatedRoster;
       match.waitlist = updatedWaitlist;
       match.paidPlayerIds = (match.paidPlayerIds || []).filter((id) => id !== userId);
+
+      const updatedAssignments = { ...(match.tacticalAssignments || {}) };
+      Object.keys(updatedAssignments).forEach((key) => {
+        if (updatedAssignments[key] === userId) delete updatedAssignments[key];
+      });
+      match.tacticalAssignments = updatedAssignments;
       match.updatedAt = new Date().toISOString();
 
       broadcastSSE('SYNC_ALL', {
@@ -978,6 +1081,12 @@ async function startServer() {
       match.roster = updatedRoster;
       match.waitlist = updatedWaitlist;
       match.paidPlayerIds = (match.paidPlayerIds || []).filter((id) => id !== userId);
+
+      const updatedAssignments = { ...(match.tacticalAssignments || {}) };
+      Object.keys(updatedAssignments).forEach((key) => {
+        if (updatedAssignments[key] === userId) delete updatedAssignments[key];
+      });
+      match.tacticalAssignments = updatedAssignments;
       match.updatedAt = new Date().toISOString();
 
       db.notifications.unshift({
@@ -1156,9 +1265,11 @@ async function startServer() {
   // ---------------------------------------------------------
   app.post('/api/matches/:id/payment-status', requireAuth, (req: AuthenticatedRequest, res) => {
     const matchId = req.params.id;
-    const { playerId, status, method } = req.body; // status: 'paid' | 'pending' | 'unpaid', method: 'cash' | 'cih_bank' | ...
+    const { playerId, status, method } = req.body; // status: 'paid' | 'pending' | 'unpaid' | 'waived', method: 'cash' | 'cih_bank' | ...
     const match = db.matches.find((m) => m.id === matchId);
     if (!match) return res.status(404).json({ success: false, error: 'Match not found' });
+
+    const player = match.roster.find((p) => p.userId === playerId) || match.waitlist.find((p) => p.userId === playerId);
 
     // Update roster item payment status
     match.roster = match.roster.map((p) => {
@@ -1177,6 +1288,18 @@ async function startServer() {
       if (!currentPaid.includes(playerId)) match.paidPlayerIds = [...currentPaid, playerId];
     } else {
       match.paidPlayerIds = currentPaid.filter((id) => id !== playerId);
+    }
+
+    if (!match.payments) match.payments = {};
+    if (player) {
+      match.payments[playerId] = {
+        playerId,
+        playerName: player.name,
+        status: status || 'unpaid',
+        method: method || player.paymentMethod,
+        amount: match.pricePerPlayer || 50,
+        updatedAt: new Date().toISOString(),
+      };
     }
 
     match.updatedAt = new Date().toISOString();
@@ -1256,9 +1379,24 @@ async function startServer() {
 
     const currentPaid = match.paidPlayerIds || [];
     const isPaid = currentPaid.includes(playerId);
-    match.paidPlayerIds = isPaid ? currentPaid.filter((id) => id !== playerId) : [...currentPaid, playerId];
+    const newPaidStatus = !isPaid;
+    match.paidPlayerIds = newPaidStatus ? [...currentPaid, playerId] : currentPaid.filter((id) => id !== playerId);
 
-    match.roster = match.roster.map((p) => (p.userId === playerId ? { ...p, paymentStatus: isPaid ? 'unpaid' : 'paid' } : p));
+    match.roster = match.roster.map((p) => (p.userId === playerId ? { ...p, paymentStatus: newPaidStatus ? 'paid' : 'unpaid' } : p));
+    
+    if (!match.payments) match.payments = {};
+    const player = match.roster.find((p) => p.userId === playerId) || match.waitlist.find((p) => p.userId === playerId);
+    if (player) {
+      match.payments[playerId] = {
+        playerId,
+        playerName: player.name,
+        status: newPaidStatus ? 'paid' : 'unpaid',
+        method: player.paymentMethod || 'cash',
+        amount: match.pricePerPlayer || 50,
+        updatedAt: new Date().toISOString(),
+      };
+    }
+
     match.updatedAt = new Date().toISOString();
 
     broadcastSSE('SYNC_MATCHES', db.matches);
@@ -1307,16 +1445,27 @@ async function startServer() {
 
   app.delete('/api/comments/:matchId/:commentId', requireAuth, (req: AuthenticatedRequest, res) => {
     const { matchId, commentId } = req.params;
-    if (db.comments[matchId]) {
-      const isSuper = req.user && (isSuperAdminEmail(req.user.email) || req.user.isAdmin);
-      db.comments[matchId] = db.comments[matchId].filter((c) => {
-        if (c.id === commentId) {
-          return c.userId !== req.user?.id && !isSuper;
-        }
-        return true;
-      });
-      broadcastSSE('SYNC_COMMENTS', db.comments);
+    const commentList = db.comments[matchId];
+    if (!commentList) {
+      return res.status(404).json({ success: false, error: 'Match comments not found' });
     }
+
+    const targetComment = commentList.find((c) => c.id === commentId);
+    if (!targetComment) {
+      return res.status(404).json({ success: false, error: 'Comment not found' });
+    }
+
+    const targetMatch = db.matches.find((m) => m.id === matchId);
+    const isHost = req.user && targetMatch && targetMatch.creatorId === req.user.id;
+    const isSuper = req.user && (isSuperAdminEmail(req.user.email) || req.user.isAdmin);
+    const isAuthor = req.user && targetComment.userId === req.user.id;
+
+    if (!isAuthor && !isSuper && !isHost) {
+      return res.status(403).json({ success: false, error: 'Permission denied: Cannot delete other users comments' });
+    }
+
+    db.comments[matchId] = commentList.filter((c) => c.id !== commentId);
+    broadcastSSE('SYNC_COMMENTS', db.comments);
     res.json({ success: true });
   });
 
@@ -1360,13 +1509,19 @@ async function startServer() {
 
   app.delete('/api/messages/:id', requireAuth, (req: AuthenticatedRequest, res) => {
     const id = req.params.id;
+    const targetMsg = db.directMessages.find((m) => m.id === id);
+    if (!targetMsg) {
+      return res.status(404).json({ success: false, error: 'Message not found' });
+    }
+
     const isSuper = req.user && (isSuperAdminEmail(req.user.email) || req.user.isAdmin);
-    db.directMessages = db.directMessages.filter((m) => {
-      if (m.id === id) {
-        return m.senderId !== req.user?.id && !isSuper;
-      }
-      return true;
-    });
+    const isParty = req.user && (targetMsg.senderId === req.user.id || targetMsg.receiverId === req.user.id);
+
+    if (!isParty && !isSuper) {
+      return res.status(403).json({ success: false, error: 'Permission denied: Cannot delete messages outside your conversations' });
+    }
+
+    db.directMessages = db.directMessages.filter((m) => m.id !== id);
     broadcastSSE('SYNC_DIRECT_MESSAGES', db.directMessages);
     res.json({ success: true });
   });

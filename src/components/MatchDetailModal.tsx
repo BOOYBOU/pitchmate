@@ -37,6 +37,7 @@ import { usePitchStore } from '../lib/usePitchStore';
 import { VoiceNoteRecorder, VoiceNotePlayer } from './VoiceNotes';
 import { getMatchMapUrl } from '../lib/mapUtils';
 import { TacticalPitchFormation } from './TacticalPitchFormation';
+import { ErrorBoundary } from './ErrorBoundary';
 import { MatchShareModal } from './MatchShareModal';
 import {
   formatMAD,
@@ -1127,13 +1128,15 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
               </div>
             )}
 
-            {/* TAB 3: 2D TACTICAL PITCH */}
+            {/* TAB 3: 2D/3D TACTICAL PITCH */}
             {activeModalTab === 'tactical' && (
-              <TacticalPitchFormation
-                match={match}
-                isHostOrAdmin={canManage}
-                onUpdateTactical={(fg, fb, ta) => updateTacticalFormation(match.id, fg, fb, ta)}
-              />
+              <ErrorBoundary fallbackTitle="Tactical Pitch Unavailable">
+                <TacticalPitchFormation
+                  match={match}
+                  isHostOrAdmin={canManage}
+                  onUpdateTactical={(fg, fb, ta) => updateTacticalFormation(match.id, fg, fb, ta)}
+                />
+              </ErrorBoundary>
             )}
 
             {/* TAB 4: ATTENDANCE */}

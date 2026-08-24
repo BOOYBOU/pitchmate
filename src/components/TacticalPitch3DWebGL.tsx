@@ -1,7 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { SoccerMatch, PlayerPosition } from '../types';
-import { SlotDefinition, FormationConfig } from './TacticalPitchFormation';
+import {
+  SlotDefinition,
+  FormationConfig,
+  FORMATIONS,
+  getNormalizedFormationKey,
+} from './TacticalPitchFormation';
 import { usePitchStore } from '../lib/usePitchStore';
 import {
   Rotate3d,
@@ -14,27 +19,29 @@ import {
   Sparkles,
   Info,
   Lock,
+  AlertCircle,
+  Users,
 } from 'lucide-react';
 
-interface TacticalPitch3DWebGLProps {
+export interface TacticalPitch3DWebGLProps {
   match: SoccerMatch;
-  formation: FormationConfig;
-  assignments: Record<string, string>;
-  selectedSlotKey: string | null;
-  viewMode: 'full' | 'green' | 'blue';
-  onSelectSlot: (slotKey: string) => void;
-  onSelfClaimSlot: (slot: SlotDefinition) => void;
+  formation?: FormationConfig;
+  assignments?: Record<string, string>;
+  selectedSlotKey?: string | null;
+  viewMode?: 'full' | 'green' | 'blue';
+  onSelectSlot?: (slotKey: string) => void;
+  onSelfClaimSlot?: (slot: SlotDefinition) => void;
+  selectedPlayerId?: string | null;
+  onSelectPlayer?: (player: any) => void;
 }
 
 // Convert 0-100 percentage coordinates to 3D Pitch coordinates
-// Pitch dimensions: Width X = 46, Length Z = 68 (standard 105x68 proportion scaled)
+// Pitch dimensions: Width X = 44, Length Z = 64 (standard 105x68 proportion scaled)
 const PITCH_WIDTH = 44;
 const PITCH_LENGTH = 64;
 
 function slotTo3DPos(leftPct: number, topPct: number): THREE.Vector3 {
-  // leftPct: 0 (left) to 100 (right) -> X from -PITCH_WIDTH/2 to +PITCH_WIDTH/2
   const x = ((leftPct - 50) / 100) * (PITCH_WIDTH * 0.88);
-  // topPct: 0 (north/blue goal) to 100 (south/green goal) -> Z from -PITCH_LENGTH/2 to +PITCH_LENGTH/2
   const z = ((topPct - 50) / 100) * (PITCH_LENGTH * 0.88);
   return new THREE.Vector3(x, 0.45, z);
 }
@@ -43,13 +50,30 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
   match,
   formation,
   assignments,
-  selectedSlotKey,
-  viewMode,
+  selectedSlotKey = null,
+  viewMode = 'full',
   onSelectSlot,
   onSelfClaimSlot,
+  selectedPlayerId,
+  onSelectPlayer,
 }) => {
   const { currentUser } = usePitchStore();
   const mountRef = useRef<HTMLDivElement>(null);
+  const [webGlError, setWebGlError] = useState(false);
+
+  // Safely resolve the active formation and assignments
+  const normalizedKey = getNormalizedFormationKey(match?.formationGreen, match?.format);
+  const activeFormation: FormationConfig =
+    formation ||
+    FORMATIONS[normalizedKey] ||
+    FORMATIONS['7v7-2-3-1'] ||
+    FORMATIONS['6v6-2-2-1'] ||
+    Object.values(FORMATIONS)[0];
+
+  const activeAssignments: Record<string, string> =
+    assignments || match?.tacticalAssignments || {};
+
+  const activeViewMode = viewMode || 'full';
 
   // Camera presets
   const [cameraMode, setCameraMode] = useState<'stadium' | 'top' | 'green_end' | 'blue_end'>('stadium');
@@ -100,6 +124,19 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
     const container = mountRef.current;
     if (!container) return;
 
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: true,
+        powerPreference: 'default',
+      });
+    } catch (err) {
+      console.warn('WebGL initialization failed, falling back to 2D tactical view', err);
+      setWebGlError(true);
+      return;
+    }
+
     // 1. Create Scene
     const scene = new THREE.Scene();
     sceneRef.current = scene;
@@ -107,20 +144,15 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
     scene.fog = new THREE.FogExp2(0x060913, 0.008);
 
     // 2. Create Camera
-    const width = container.clientWidth || 800;
-    const height = container.clientHeight || 560;
+    const width = Math.max(container.clientWidth || 0, 400);
+    const height = Math.max(container.clientHeight || 0, 300);
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.5, 500);
     camera.position.set(0, 45, 50);
     cameraRef.current = camera;
 
-    // 3. Create Renderer
-    const renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      alpha: true,
-      powerPreference: 'high-performance',
-    });
+    // 3. Configure Renderer
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     rendererRef.current = renderer;
@@ -135,8 +167,8 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
     const dirLight = new THREE.DirectionalLight(0xe0f2fe, 1.4);
     dirLight.position.set(25, 55, 30);
     dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 2048;
-    dirLight.shadow.mapSize.height = 2048;
+    dirLight.shadow.mapSize.width = 1024;
+    dirLight.shadow.mapSize.height = 1024;
     dirLight.shadow.camera.near = 10;
     dirLight.shadow.camera.far = 150;
     const d = 45;
@@ -161,14 +193,12 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
     ];
 
     floodlightPositions.forEach(([fx, fy, fz]) => {
-      // Light post pole
       const poleGeo = new THREE.CylinderGeometry(0.35, 0.5, fy, 8);
       const poleMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8, roughness: 0.3 });
       const poleMesh = new THREE.Mesh(poleGeo, poleMat);
       poleMesh.position.set(fx, fy / 2, fz);
       scene.add(poleMesh);
 
-      // Light Head Fixture
       const headGeo = new THREE.BoxGeometry(3, 1.8, 1.5);
       const headMat = new THREE.MeshStandardMaterial({
         color: 0x0f172a,
@@ -180,7 +210,6 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
       headMesh.lookAt(0, 0, 0);
       scene.add(headMesh);
 
-      // Spot Light
       const spot = new THREE.SpotLight(0xffffff, 1.2, 120, Math.PI / 5, 0.4, 1);
       spot.position.set(fx, fy, fz);
       spot.target.position.set(0, 0, 0);
@@ -228,17 +257,14 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
       const fieldW = cw - padX * 2;
       const fieldH = ch - padY * 2;
 
-      // Outer Boundary
       ctx.strokeRect(padX, padY, fieldW, fieldH);
 
-      // Halfway Line
       const midY = ch / 2;
       ctx.beginPath();
       ctx.moveTo(padX, midY);
       ctx.lineTo(padX + fieldW, midY);
       ctx.stroke();
 
-      // Center Circle & Spot
       const centerRadius = fieldW * 0.16;
       ctx.beginPath();
       ctx.arc(cw / 2, midY, centerRadius, 0, Math.PI * 2);
@@ -252,14 +278,11 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
       // North Penalty Box (Blue End)
       const penBoxW = fieldW * 0.56;
       const penBoxH = fieldH * 0.2;
-      ctx.strokeRect((cw - penBoxW) / 2, padY, penBoxW, penBoxH);
-
-      // North 6-Yard Box
       const sixBoxW = fieldW * 0.28;
       const sixBoxH = fieldH * 0.08;
+      ctx.strokeRect((cw - penBoxW) / 2, padY, penBoxW, penBoxH);
       ctx.strokeRect((cw - sixBoxW) / 2, padY, sixBoxW, sixBoxH);
 
-      // North Penalty Spot & Arc
       ctx.beginPath();
       ctx.arc(cw / 2, padY + penBoxH * 0.65, 14, 0, Math.PI * 2);
       ctx.fill();
@@ -269,11 +292,8 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
 
       // South Penalty Box (Green End)
       ctx.strokeRect((cw - penBoxW) / 2, padY + fieldH - penBoxH, penBoxW, penBoxH);
-
-      // South 6-Yard Box
       ctx.strokeRect((cw - sixBoxW) / 2, padY + fieldH - sixBoxH, sixBoxW, sixBoxH);
 
-      // South Penalty Spot & Arc
       ctx.beginPath();
       ctx.arc(cw / 2, padY + fieldH - penBoxH * 0.65, 14, 0, Math.PI * 2);
       ctx.fill();
@@ -298,9 +318,9 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
     }
 
     const pitchTexture = new THREE.CanvasTexture(canvas);
-    pitchTexture.anisotropy = 8;
+    pitchTexture.anisotropy = 4;
 
-    // 6. Pitch Mesh Plane with Beveled Base Board
+    // 6. Pitch Mesh Plane
     const pitchMat = new THREE.MeshStandardMaterial({
       map: pitchTexture,
       roughness: 0.75,
@@ -312,7 +332,7 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
     pitchMesh.receiveShadow = true;
     scene.add(pitchMesh);
 
-    // Stadium Outer Apron / Ground
+    // Stadium Outer Apron
     const groundGeo = new THREE.PlaneGeometry(160, 160);
     const groundMat = new THREE.MeshStandardMaterial({
       color: 0x0a0f1d,
@@ -341,7 +361,6 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
         roughness: 0.2,
       });
 
-      // Left & Right Vertical Posts
       const postGeo = new THREE.CylinderGeometry(postRadius, postRadius, postHeight, 16);
       const leftPost = new THREE.Mesh(postGeo, postMat);
       leftPost.position.set(-goalWidth / 2, postHeight / 2, 0);
@@ -353,7 +372,6 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
       rightPost.castShadow = true;
       goalGroup.add(rightPost);
 
-      // Horizontal Crossbar
       const crossGeo = new THREE.CylinderGeometry(postRadius, postRadius, goalWidth + postRadius * 2, 16);
       const crossbar = new THREE.Mesh(crossGeo, postMat);
       crossbar.rotation.z = Math.PI / 2;
@@ -361,7 +379,6 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
       crossbar.castShadow = true;
       goalGroup.add(crossbar);
 
-      // Back Support Net Tubes
       const netSupportMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.6, roughness: 0.4 });
       const supGeo = new THREE.CylinderGeometry(0.12, 0.12, goalDepth * 1.3, 8);
 
@@ -375,7 +392,6 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
       rightTopSup.position.set(goalWidth / 2, postHeight * 0.6, -goalDir * (goalDepth / 2));
       goalGroup.add(rightTopSup);
 
-      // Goal Net Canvas Mesh
       const netCanvas = document.createElement('canvas');
       netCanvas.width = 128;
       netCanvas.height = 128;
@@ -409,13 +425,11 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
         roughness: 0.9,
       });
 
-      // Back Net Wall
       const backNetGeo = new THREE.PlaneGeometry(goalWidth, postHeight);
       const backNet = new THREE.Mesh(backNetGeo, netMat);
       backNet.position.set(0, postHeight / 2, -goalDir * goalDepth);
       goalGroup.add(backNet);
 
-      // Top Sloped Net
       const topNetGeo = new THREE.PlaneGeometry(goalWidth, goalDepth * 1.1);
       const topNet = new THREE.Mesh(topNetGeo, netMat);
       topNet.rotation.x = isNorth ? Math.PI / 2.2 : -Math.PI / 2.2;
@@ -426,8 +440,8 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
       return goalGroup;
     };
 
-    scene.add(create3DGoal(true)); // North (Blue)
-    scene.add(create3DGoal(false)); // South (Green)
+    scene.add(create3DGoal(true));
+    scene.add(create3DGoal(false));
 
     // 8. 3D Stadium Advertising LED Boards
     const createAdBanner = (text: string, w: number, x: number, z: number, rotY: number) => {
@@ -461,15 +475,23 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
     scene.add(tokenGroup);
     tokenGroupRef.current = tokenGroup;
 
-    // Resize Handler
+    // Resize Handler using ResizeObserver for smooth responsiveness
     const handleResize = () => {
       if (!container || !rendererRef.current || !cameraRef.current) return;
-      const w = container.clientWidth;
-      const h = container.clientHeight;
+      const w = Math.max(container.clientWidth || 0, 320);
+      const h = Math.max(container.clientHeight || 0, 260);
       cameraRef.current.aspect = w / h;
       cameraRef.current.updateProjectionMatrix();
       rendererRef.current.setSize(w, h);
     };
+
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => {
+        handleResize();
+      });
+      resizeObserver.observe(container);
+    }
     window.addEventListener('resize', handleResize);
 
     // Animation Render Loop
@@ -478,7 +500,6 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
       animationFrameId = requestAnimationFrame(animate);
 
       if (cameraRef.current) {
-        // Calculate camera position from spherical orbit angles
         const { theta, phi, radius } = orbitAngles.current;
         const cx = radius * Math.sin(phi) * Math.sin(theta);
         const cy = radius * Math.cos(phi);
@@ -486,7 +507,6 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
 
         targetCamPos.current.set(cx, Math.max(cy, 5), cz);
 
-        // Smooth camera lerp
         cameraRef.current.position.lerp(targetCamPos.current, 0.08);
         cameraRef.current.lookAt(targetCamLook.current);
       }
@@ -495,22 +515,27 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
       if (tokenGroupRef.current && cameraRef.current) {
         tokenGroupRef.current.children.forEach((tokenMesh) => {
           const nameplate = tokenMesh.getObjectByName('nameplate');
-          if (nameplate) {
+          if (nameplate && cameraRef.current) {
             nameplate.quaternion.copy(cameraRef.current.quaternion);
           }
         });
       }
 
-      renderer.render(scene, camera);
+      if (rendererRef.current && sceneRef.current && cameraRef.current) {
+        rendererRef.current.render(sceneRef.current, cameraRef.current);
+      }
     };
     animate();
 
     // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize);
+      if (resizeObserver) resizeObserver.disconnect();
       cancelAnimationFrame(animationFrameId);
-      renderer.dispose();
-      if (container.contains(renderer.domElement)) {
+      if (rendererRef.current) {
+        rendererRef.current.dispose();
+      }
+      if (container && renderer && container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
       }
     };
@@ -528,17 +553,22 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
     }
     interactablesRef.current = [];
 
+    const greenSlots = activeFormation?.slots?.green || [];
+    const blueSlots = activeFormation?.slots?.blue || [];
+
     const slotsToRender = [
-      ...(viewMode === 'full' || viewMode === 'green' ? formation.slots.green : []),
-      ...(viewMode === 'full' || viewMode === 'blue' ? formation.slots.blue : []),
+      ...(activeViewMode === 'full' || activeViewMode === 'green' ? greenSlots : []),
+      ...(activeViewMode === 'full' || activeViewMode === 'blue' ? blueSlots : []),
     ];
+
+    const roster = match?.roster || [];
 
     slotsToRender.forEach((slot) => {
       const pos3D = slotTo3DPos(slot.left, slot.top);
       const isGreen = slot.team === 'green';
-      const assignedUserId = assignments[slot.key];
-      const assignedPlayer = match.roster.find((p) => p.userId === assignedUserId);
-      const isSelected = selectedSlotKey === slot.key;
+      const assignedUserId = activeAssignments[slot.key];
+      const assignedPlayer = roster.find((p) => p.userId === assignedUserId);
+      const isSelected = selectedSlotKey === slot.key || selectedPlayerId === assignedUserId;
       const isCurrentUser = assignedPlayer?.userId === currentUser.id;
 
       const tokenRoot = new THREE.Group();
@@ -625,7 +655,7 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
           capCtx.font = 'bold 80px sans-serif';
           capCtx.textAlign = 'center';
           capCtx.textBaseline = 'middle';
-          const initials = assignedPlayer.name
+          const initials = (assignedPlayer.name || 'P')
             .split(' ')
             .map((n) => n[0])
             .join('')
@@ -665,7 +695,6 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
       nameCanvas.height = 96;
       const nameCtx = nameCanvas.getContext('2d');
       if (nameCtx) {
-        // Pill Background
         nameCtx.fillStyle = assignedPlayer
           ? isCurrentUser
             ? 'rgba(245, 158, 11, 0.95)'
@@ -674,7 +703,6 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
           ? 'rgba(6, 78, 59, 0.85)'
           : 'rgba(30, 58, 138, 0.85)';
 
-        // Rounded rect
         const rx = 10,
           ry = 10,
           rw = 360,
@@ -705,7 +733,6 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
           : '#3b82f6';
         nameCtx.stroke();
 
-        // Player Name text
         nameCtx.fillStyle = assignedPlayer && isCurrentUser ? '#0f172a' : '#ffffff';
         nameCtx.font = 'bold 32px sans-serif';
         nameCtx.textAlign = 'center';
@@ -729,7 +756,25 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
       tokenGroup.add(tokenRoot);
       interactablesRef.current.push(tokenMesh);
     });
-  }, [match.roster, assignments, formation, selectedSlotKey, viewMode, currentUser.id]);
+  }, [match?.roster, activeAssignments, activeFormation, selectedSlotKey, selectedPlayerId, activeViewMode, currentUser?.id]);
+
+  const handleSelectSlotSafe = (key: string) => {
+    if (onSelectSlot) {
+      onSelectSlot(key);
+    }
+    const allSlots = [
+      ...(activeFormation?.slots?.green || []),
+      ...(activeFormation?.slots?.blue || []),
+    ];
+    const targetSlot = allSlots.find((s) => s.key === key);
+    if (targetSlot && onSelectPlayer) {
+      const assignedUserId = activeAssignments[key];
+      const player = (match?.roster || []).find((p) => p.userId === assignedUserId);
+      if (player) {
+        onSelectPlayer(player);
+      }
+    }
+  };
 
   // Pointer & Raycasting Interactions
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -745,10 +790,8 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
       prevMousePos.current = { x: e.clientX, y: e.clientY };
 
       orbitAngles.current.theta -= deltaX * 0.007;
-      // Clamp vertical phi between top view (0.1) and stadium ground horizon (Math.PI/2.2)
       orbitAngles.current.phi = Math.max(0.1, Math.min(Math.PI / 2.2, orbitAngles.current.phi + deltaY * 0.007));
     } else {
-      // Hover Raycasting
       if (!mountRef.current || !cameraRef.current || !sceneRef.current) return;
       const rect = mountRef.current.getBoundingClientRect();
       const mouse = new THREE.Vector2(
@@ -778,7 +821,6 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
     isDragging.current = false;
     setIsOrbiting(false);
 
-    // If it was a clean click without significant drag, do slot selection
     if (!wasDragging && mountRef.current && cameraRef.current && sceneRef.current) {
       const rect = mountRef.current.getBoundingClientRect();
       const mouse = new THREE.Vector2(
@@ -793,13 +835,12 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
       if (intersects.length > 0) {
         const parentToken = intersects[0].object.parent;
         if (parentToken) {
-          onSelectSlot(parentToken.name);
+          handleSelectSlotSafe(parentToken.name);
         }
       }
     }
   };
 
-  // Zoom with Wheel
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     orbitAngles.current.radius = Math.max(25, Math.min(95, orbitAngles.current.radius + e.deltaY * 0.04));
@@ -808,6 +849,74 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
   const handleZoom = (delta: number) => {
     orbitAngles.current.radius = Math.max(25, Math.min(95, orbitAngles.current.radius + delta));
   };
+
+  // Fallback 2D Tactical Pitch in case WebGL context is not supported
+  if (webGlError) {
+    const greenSlots = activeFormation?.slots?.green || [];
+    const blueSlots = activeFormation?.slots?.blue || [];
+    const slotsToRender = [
+      ...(activeViewMode === 'full' || activeViewMode === 'green' ? greenSlots : []),
+      ...(activeViewMode === 'full' || activeViewMode === 'blue' ? blueSlots : []),
+    ];
+
+    return (
+      <div className="relative w-full rounded-3xl overflow-hidden border border-slate-800 bg-[#07130c] p-4 sm:p-6 shadow-2xl min-h-[460px] flex flex-col items-center justify-center">
+        <div className="w-full max-w-2xl bg-emerald-950/60 border-2 border-emerald-500/50 rounded-2xl relative aspect-[3/4] sm:aspect-[4/3] shadow-inner overflow-hidden flex flex-col justify-between p-4">
+          {/* Halfway line & center circle */}
+          <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-white/40 -translate-y-1/2" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-28 h-28 rounded-full border border-white/40" />
+
+          {/* Goal areas */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-16 border-b-2 border-l-2 border-r-2 border-white/40 rounded-b-lg" />
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-40 h-16 border-t-2 border-l-2 border-r-2 border-white/40 rounded-t-lg" />
+
+          {/* Slots */}
+          {slotsToRender.map((slot) => {
+            const assignedUserId = activeAssignments[slot.key];
+            const player = (match?.roster || []).find((p) => p.userId === assignedUserId);
+            const isGreen = slot.team === 'green';
+            const isSelected = selectedSlotKey === slot.key;
+
+            return (
+              <button
+                key={slot.key}
+                type="button"
+                onClick={() => handleSelectSlotSafe(slot.key)}
+                style={{ top: `${slot.top}%`, left: `${slot.left}%` }}
+                className={`absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 cursor-pointer transition-all hover:scale-110 ${
+                  isSelected ? 'z-20 scale-110' : 'z-10'
+                }`}
+              >
+                <div
+                  className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shadow-lg border-2 ${
+                    isSelected
+                      ? 'bg-amber-400 text-slate-950 border-white ring-4 ring-amber-300/50'
+                      : player
+                      ? isGreen
+                        ? 'bg-emerald-600 text-white border-emerald-300'
+                        : 'bg-blue-600 text-white border-blue-300'
+                      : isGreen
+                      ? 'bg-emerald-950 text-emerald-300 border-emerald-600/60'
+                      : 'bg-blue-950 text-blue-300 border-blue-600/60'
+                  }`}
+                >
+                  {player ? (player.name ? player.name[0] : 'P') : slot.label}
+                </div>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-950/80 text-white border border-slate-700 whitespace-nowrap shadow-sm">
+                  {player ? player.name.split(' ')[0] : slot.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-4 flex items-center gap-2 text-xs text-slate-400 bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-800">
+          <AlertCircle className="w-4 h-4 text-amber-400" />
+          <span>Interactive 2D tactical view (Hardware acceleration fallback)</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

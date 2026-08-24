@@ -123,6 +123,7 @@ export interface UserProfile {
   preferredCity?: string;
   bio?: string;
   preferredPosition?: PlayerPosition;
+  jerseyNumber?: number;
   skillRating?: number; // 1 to 5
   reliabilityScore?: number; // 0-100% attendance rate
   matchesAttended?: number;
@@ -140,6 +141,8 @@ export interface UserProfile {
   status?: 'approved' | 'pending' | 'rejected';
   approvedAt?: string;
   approvedBy?: string;
+  rejectionReason?: string;
+  rejectedAt?: string;
   matchesPlayed: number;
   createdAt: string;
 }

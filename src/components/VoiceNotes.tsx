@@ -14,13 +14,15 @@ import {
 import { SoundEffects } from '../lib/audioService';
 
 interface VoiceNoteRecorderProps {
-  onSendVoiceNote: (audioUrl: string, durationSeconds: number) => void;
+  onSendVoiceNote?: (audioUrl: string, durationSeconds: number) => void;
+  onSendAudio?: (audioUrl: string, durationSeconds: number) => void;
   disabled?: boolean;
   compact?: boolean;
 }
 
 export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
   onSendVoiceNote,
+  onSendAudio,
   disabled = false,
   compact = false,
 }) => {
@@ -164,7 +166,11 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
         const base64Audio = reader.result as string;
         if (base64Audio) {
           SoundEffects.playSentSound();
-          onSendVoiceNote(base64Audio, finalDuration);
+          if (onSendVoiceNote) {
+            onSendVoiceNote(base64Audio, finalDuration);
+          } else if (onSendAudio) {
+            onSendAudio(base64Audio, finalDuration);
+          }
         }
       };
       reader.readAsDataURL(audioBlob);

@@ -15,12 +15,12 @@ import {
 
 interface AdminUsersTableProps {
   users: UserProfile[];
-  onApproveUser: (userId: string) => Promise<void>;
-  onApproveAllUsers: () => Promise<void>;
-  onRejectUser: (userId: string, reason?: string) => Promise<void>;
-  onBanUser: (userId: string, reason?: string) => Promise<void>;
-  onUnbanUser: (userId: string) => Promise<void>;
-  onDeleteUser: (userId: string) => Promise<void>;
+  onApproveUser: (userId: string) => Promise<any> | any;
+  onApproveAllUsers: () => Promise<any> | any;
+  onRejectUser: (userId: string, reason?: string) => Promise<any> | any;
+  onBanUser: (userId: string, reason?: string) => Promise<any> | any;
+  onUnbanUser: (userId: string) => Promise<any> | any;
+  onDeleteUser: (userId: string) => Promise<any> | any;
 }
 
 export function AdminUsersTable({
