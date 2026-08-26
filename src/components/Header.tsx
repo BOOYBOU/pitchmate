@@ -49,28 +49,28 @@ export const Header: React.FC<HeaderProps> = ({
 
 
   return (
-    <header className="sticky top-0 z-40 bg-[#090D16]/95 backdrop-blur-md border-b border-[#1E293B]">
+    <header className="sticky top-0 z-40 bg-[#040813]/90 backdrop-blur-xl border-b border-white/[0.08] shadow-2xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20">
           {/* Brand Logo */}
           <div
             id="header-brand-logo"
-            className="cursor-pointer transition-transform hover:scale-[1.01]"
+            className="cursor-pointer transition-transform hover:scale-[1.02]"
             onClick={() => setActiveTab('matches')}
           >
             <PitchMateLogo size="md" />
           </div>
 
           {/* Desktop Navigation Tabs */}
-          <nav className="hidden md:flex items-center gap-1 bg-[#0E1526] p-1.5 rounded-2xl border border-[#1E293B]">
+          <nav className="hidden md:flex items-center gap-1.5 bg-[#0A1020]/90 p-1.5 rounded-2xl border border-white/[0.08] shadow-inner">
             <button
               id="nav-tab-matches"
               type="button"
               onClick={() => setActiveTab('matches')}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 activeTab === 'matches'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-900/30'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow-lg shadow-emerald-500/25 font-black'
+                  : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'
               }`}
             >
               <Calendar className="w-4 h-4" />
@@ -83,8 +83,8 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => setActiveTab('leaderboard')}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 activeTab === 'leaderboard'
-                  ? 'bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 shadow-md shadow-amber-950 font-black'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+                  ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 shadow-lg shadow-amber-500/25 font-black'
+                  : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'
               }`}
             >
               <Trophy className={`w-4 h-4 ${activeTab === 'leaderboard' ? 'fill-slate-950 text-slate-950' : 'text-amber-400'}`} />
@@ -97,8 +97,8 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => setActiveTab('profile')}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 activeTab === 'profile'
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-900/30'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow-lg shadow-emerald-500/25 font-black'
+                  : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'
               }`}
             >
               <User className="w-4 h-4" />
@@ -113,8 +113,8 @@ export const Header: React.FC<HeaderProps> = ({
                 onClick={() => setActiveTab('admin')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   activeTab === 'admin'
-                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-950'
-                    : 'text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/30'
+                    ? 'bg-gradient-to-r from-teal-500 to-emerald-600 text-slate-950 font-black shadow-lg shadow-emerald-500/25'
+                    : 'text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/40'
                 }`}
               >
                 <Shield className="w-4 h-4 text-emerald-400" />
@@ -128,7 +128,7 @@ export const Header: React.FC<HeaderProps> = ({
                 onClick={() => setActiveTab('admin')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                   activeTab === 'admin'
-                    ? 'bg-slate-700 text-slate-300'
+                    ? 'bg-slate-700 text-slate-200'
                     : 'text-slate-500 hover:text-slate-400 hover:bg-slate-800/40'
                 }`}
                 title="Super Admin restricted to Mustapha (bouhbousmustapha@gmail.com)"

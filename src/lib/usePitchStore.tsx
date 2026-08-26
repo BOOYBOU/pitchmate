@@ -16,6 +16,7 @@ import {
   SUPER_ADMIN_PASSWORD,
   isSuperAdminEmail,
   verifySuperAdminMasterPassword,
+  getDefaultFormationForMatch,
 } from '../types';
 import { INITIAL_MATCHES, INITIAL_USERS, INITIAL_DIRECT_MESSAGES, INITIAL_NOTIFICATIONS, INITIAL_ANNOUNCEMENTS } from './mockData';
 import { SoundEffects } from './audioService';
@@ -678,6 +679,9 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return false;
     }
 
+    // Audio chime
+    SoundEffects.playJoin();
+
     const playerItem: PlayerRosterItem = {
       userId: currentUser.id,
       name: currentUser.name,
@@ -751,12 +755,16 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       ? Number(matchData.totalPitchCost)
       : numPrice * (matchData.maxPlayers || 14);
 
+    const defaultFormation = getDefaultFormationForMatch(matchData.format, matchData.maxPlayers);
+
     const newMatch: SoccerMatch = {
       ...matchData,
       id: newId,
       currency: DEFAULT_CURRENCY,
       pricePerPlayer: numPrice,
       totalPitchCost: numTotal,
+      formationGreen: matchData.formationGreen || defaultFormation,
+      formationBlue: matchData.formationBlue || defaultFormation,
       creatorId: currentUser.id,
       creatorName: currentUser.name,
       creatorEmail: currentUser.email,
@@ -904,6 +912,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const togglePlayerPaidStatus = async (matchId: string, playerId: string): Promise<boolean> => {
+    SoundEffects.playCashRegister();
     try {
       await fetch(`/api/matches/${matchId}/toggle-paid`, {
         method: 'POST',
@@ -937,6 +946,9 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     status: 'paid' | 'pending' | 'unpaid' | 'waived',
     method?: 'cash' | 'cih_bank' | 'attijari' | 'wafacash' | 'other'
   ): Promise<boolean> => {
+    if (status === 'paid') {
+      SoundEffects.playCashRegister();
+    }
     try {
       const res = await fetch(`/api/matches/${matchId}/payment-status`, {
         method: 'POST',
@@ -978,6 +990,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     matchId: string,
     mode: 'balanced' | 'random' | 'veterans_vs_newcomers' = 'balanced'
   ): Promise<boolean> => {
+    SoundEffects.playAutoBalance();
     try {
       const res = await fetch(`/api/matches/${matchId}/auto-balance`, {
         method: 'POST',
@@ -999,6 +1012,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     formationBlue: string,
     tacticalAssignments: Record<string, string>
   ): Promise<boolean> => {
+    SoundEffects.playTacticalSub();
     return updateMatch(matchId, { formationGreen, formationBlue, tacticalAssignments });
   };
 
@@ -1008,6 +1022,9 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     userId: string,
     rolePosition?: PlayerPosition
   ): Promise<boolean> => {
+    if (userId) {
+      SoundEffects.playJoin();
+    }
     const match = matches.find((m) => m.id === matchId);
     if (!match) return false;
 
@@ -1103,6 +1120,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     assistId?: string,
     assistName?: string
   ): Promise<boolean> => {
+    SoundEffects.playGoal();
     try {
       const res = await fetch(`/api/matches/${matchId}/goal`, {
         method: 'POST',
@@ -1126,6 +1144,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const voteManOfTheMatch = async (matchId: string, nomineeId: string): Promise<boolean> => {
+    SoundEffects.playVictory();
     try {
       const res = await fetch(`/api/matches/${matchId}/vote-mvp`, {
         method: 'POST',
@@ -1197,6 +1216,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     playerInName: string,
     minute: number
   ): Promise<boolean> => {
+    SoundEffects.playTacticalSub();
     const subObj = {
       id: `sub_${Date.now()}`,
       minute,
@@ -1233,6 +1253,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     reason?: string,
     minute?: number
   ): Promise<boolean> => {
+    SoundEffects.playCardWarning(type);
     const cardObj = {
       id: `card_${Date.now()}`,
       minute: minute || 45,

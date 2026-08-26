@@ -6,6 +6,7 @@ import {
   FormationConfig,
   FORMATIONS,
   getNormalizedFormationKey,
+  getDefaultFormationForFormat,
 } from './TacticalPitchFormation';
 import { usePitchStore } from '../lib/usePitchStore';
 import {
@@ -86,12 +87,13 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
   const [webGlError, setWebGlError] = useState(false);
 
   // Safely resolve the active formation and assignments
-  const normalizedKey = getNormalizedFormationKey(match?.formationGreen, match?.format);
+  const normalizedKey = getNormalizedFormationKey(match?.formationGreen, match?.format, match?.maxPlayers);
   const activeFormation: FormationConfig =
     formation ||
     FORMATIONS[normalizedKey] ||
-    FORMATIONS['7v7-2-3-1'] ||
+    FORMATIONS[getDefaultFormationForFormat(match?.format, match?.maxPlayers)] ||
     FORMATIONS['6v6-2-2-1'] ||
+    FORMATIONS['7v7-2-3-1'] ||
     Object.values(FORMATIONS)[0];
 
   const activeAssignments: Record<string, string> =

@@ -18,6 +18,7 @@ import {
   derivePlayerPriceFromTotal,
   deriveTotalFromPlayerPrice,
 } from '../lib/matchPricing';
+import { getDefaultFormationForFormat } from './TacticalPitchFormation';
 
 interface CreateMatchModalProps {
   isOpen: boolean;
@@ -113,6 +114,8 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
         ? parsePrice(totalPitchCost, finalPrice * (Number(maxPlayers) || 14))
         : finalPrice * (Number(maxPlayers) || 14);
 
+      const defaultFormation = getDefaultFormationForFormat(format, Number(maxPlayers));
+
       const newMatchId = await createMatch({
         title: title.trim(),
         dateTime: combinedDateTime.toISOString(),
@@ -123,6 +126,8 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
         pricePerPlayer: finalPrice,
         currency: 'MAD',
         totalPitchCost: finalTotalCost,
+        formationGreen: defaultFormation,
+        formationBlue: defaultFormation,
       });
 
       if (onSuccess) {

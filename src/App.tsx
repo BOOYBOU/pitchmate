@@ -56,7 +56,7 @@ function PitchMateApp() {
   };
 
   return (
-    <div className="min-h-screen bg-[#090D16] text-slate-100 flex flex-col selection:bg-emerald-500/30 selection:text-emerald-300">
+    <div className="min-h-screen stadium-ambient-bg text-slate-100 flex flex-col selection:bg-emerald-500/30 selection:text-emerald-300">
       {/* App Header & Navigation */}
       <Header
         activeTab={activeTab}

@@ -19,6 +19,7 @@ import {
   DEFAULT_CURRENCY,
   isSuperAdminEmail,
   verifySuperAdminMasterPassword,
+  getDefaultFormationForMatch,
   MatchGoal,
 } from './src/types';
 import {
@@ -70,8 +71,8 @@ function getInitialData(): DatabaseSchema {
       currency: m.currency || DEFAULT_CURRENCY,
       totalPitchCost: m.totalPitchCost ?? m.pricePerPlayer * (m.roster?.length || 10),
       paidPlayerIds: m.paidPlayerIds ?? (m.roster?.slice(0, 2).map((p) => p.userId) || [m.creatorId]),
-      formationGreen: m.formationGreen || '2-3-1',
-      formationBlue: m.formationBlue || '2-3-1',
+      formationGreen: m.formationGreen || getDefaultFormationForMatch(m.format, m.maxPlayers),
+      formationBlue: m.formationBlue || getDefaultFormationForMatch(m.format, m.maxPlayers),
       tacticalAssignments: m.tacticalAssignments || {},
       attendedPlayerIds: m.attendedPlayerIds || [],
       noShowPlayerIds: m.noShowPlayerIds || [],
@@ -169,6 +170,13 @@ try {
   if (fs.existsSync(DB_FILE)) {
     const raw = fs.readFileSync(DB_FILE, 'utf-8');
     db = JSON.parse(raw);
+    if (db.matches && Array.isArray(db.matches)) {
+      db.matches = db.matches.map((m) => ({
+        ...m,
+        formationGreen: m.formationGreen || getDefaultFormationForMatch(m.format, m.maxPlayers),
+        formationBlue: m.formationBlue || getDefaultFormationForMatch(m.format, m.maxPlayers),
+      }));
+    }
     console.log('[PitchMate DB] Loaded database from disk.');
   } else {
     db = getInitialData();
@@ -873,8 +881,8 @@ async function startServer() {
       creatorId: req.user?.id || matchData.creatorId,
       creatorName: req.user?.name || matchData.creatorName,
       creatorEmail: req.user?.email || matchData.creatorEmail,
-      formationGreen: matchData.formationGreen || '2-3-1',
-      formationBlue: matchData.formationBlue || '2-3-1',
+      formationGreen: matchData.formationGreen || getDefaultFormationForMatch(matchData.format, matchData.maxPlayers),
+      formationBlue: matchData.formationBlue || getDefaultFormationForMatch(matchData.format, matchData.maxPlayers),
       tacticalAssignments: matchData.tacticalAssignments || {},
       attendedPlayerIds: [],
       noShowPlayerIds: [],

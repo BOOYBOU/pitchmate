@@ -270,3 +270,36 @@ export const isUserAdmin = (user?: Partial<UserProfile> | null): boolean => {
 export const verifySuperAdminMasterPassword = (password: string): boolean => {
   return password === SUPER_ADMIN_PASSWORD;
 };
+
+/** Get default tactical formation key for a match format and player count */
+export const getDefaultFormationForMatch = (format?: string, maxPlayers?: number): string => {
+  let resolvedFormat = format?.trim();
+  if (!resolvedFormat && maxPlayers) {
+    if (maxPlayers <= 10) resolvedFormat = '5v5';
+    else if (maxPlayers <= 12) resolvedFormat = '6v6';
+    else if (maxPlayers <= 14) resolvedFormat = '7v7';
+    else if (maxPlayers <= 16) resolvedFormat = '8v8';
+    else if (maxPlayers <= 18) resolvedFormat = '9v9';
+    else if (maxPlayers <= 20) resolvedFormat = '10v10';
+    else resolvedFormat = '11v11';
+  }
+
+  switch (resolvedFormat) {
+    case '5v5':
+      return '5v5-1-2-1';
+    case '6v6':
+      return '6v6-2-2-1';
+    case '7v7':
+      return '7v7-2-3-1';
+    case '8v8':
+      return '8v8-3-3-1';
+    case '9v9':
+      return '9v9-3-3-2';
+    case '10v10':
+      return '10v10-4-3-2';
+    case '11v11':
+      return '11v11-4-3-3';
+    default:
+      return '7v7-2-3-1';
+  }
+};

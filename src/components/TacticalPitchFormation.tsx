@@ -333,22 +333,81 @@ export const FORMATIONS: Record<string, FormationConfig> = {
   },
 };
 
-// Helper to normalize formation keys with robust fallbacks
-export const getNormalizedFormationKey = (key?: string, format?: string): string => {
-  if (key && FORMATIONS[key]) return key;
-  // If key is a legacy shorthand like '2-3-1' or '4-3-3', find matching full key
-  if (key) {
-    const matched = Object.keys(FORMATIONS).find((k) => k.endsWith(`-${key}`) || k.includes(key));
-    if (matched) return matched;
+// Helper to get default formation key matching match format and player count
+export const getDefaultFormationForFormat = (format?: string, maxPlayers?: number): string => {
+  let resolvedFormat = format;
+  if (!resolvedFormat && maxPlayers) {
+    if (maxPlayers <= 10) resolvedFormat = '5v5';
+    else if (maxPlayers <= 12) resolvedFormat = '6v6';
+    else if (maxPlayers <= 14) resolvedFormat = '7v7';
+    else if (maxPlayers <= 16) resolvedFormat = '8v8';
+    else if (maxPlayers <= 18) resolvedFormat = '9v9';
+    else if (maxPlayers <= 20) resolvedFormat = '10v10';
+    else resolvedFormat = '11v11';
   }
-  if (format === '5v5') return '5v5-1-2-1';
-  if (format === '6v6') return '6v6-2-2-1';
-  if (format === '7v7') return '7v7-2-3-1';
-  if (format === '8v8') return '8v8-3-3-1';
-  if (format === '9v9') return '9v9-3-3-2';
-  if (format === '10v10') return '10v10-4-3-2';
-  if (format === '11v11') return '11v11-4-3-3';
-  return '7v7-2-3-1';
+
+  switch (resolvedFormat) {
+    case '5v5':
+      return '5v5-1-2-1';
+    case '6v6':
+      return '6v6-2-2-1';
+    case '7v7':
+      return '7v7-2-3-1';
+    case '8v8':
+      return '8v8-3-3-1';
+    case '9v9':
+      return '9v9-3-3-2';
+    case '10v10':
+      return '10v10-4-3-2';
+    case '11v11':
+      return '11v11-4-3-3';
+    default:
+      return '7v7-2-3-1';
+  }
+};
+
+// Helper to normalize formation keys with robust fallbacks matching match format
+export const getNormalizedFormationKey = (
+  key?: string,
+  format?: string,
+  maxPlayers?: number
+): string => {
+  // 1. Determine expected format category
+  let expectedFormat = format;
+  if (!expectedFormat && maxPlayers) {
+    if (maxPlayers <= 10) expectedFormat = '5v5';
+    else if (maxPlayers <= 12) expectedFormat = '6v6';
+    else if (maxPlayers <= 14) expectedFormat = '7v7';
+    else if (maxPlayers <= 16) expectedFormat = '8v8';
+    else if (maxPlayers <= 18) expectedFormat = '9v9';
+    else if (maxPlayers <= 20) expectedFormat = '10v10';
+    else expectedFormat = '11v11';
+  }
+
+  // 2. If a key is passed and exists in FORMATIONS
+  if (key && FORMATIONS[key]) {
+    // If match format is specified, verify the key actually belongs to this format
+    if (expectedFormat) {
+      if (FORMATIONS[key].category === expectedFormat) {
+        return key;
+      }
+    } else {
+      return key;
+    }
+  }
+
+  // 3. If key is a shorthand like '2-2-1' or '2-3-1', find matching key within expected category
+  if (key && expectedFormat) {
+    const matchWithCategory = Object.keys(FORMATIONS).find(
+      (k) =>
+        FORMATIONS[k].category === expectedFormat &&
+        (k.endsWith(`-${key}`) || k === `${expectedFormat}-${key}`)
+    );
+    if (matchWithCategory) return matchWithCategory;
+  }
+
+  // 4. Default strictly to the formation for this match format!
+  return getDefaultFormationForFormat(expectedFormat, maxPlayers);
 };
 
 export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
@@ -359,7 +418,7 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
   const { currentUser, assignPlayerTacticalSlot, joinMatch, assignPlayerTeam } = usePitchStore();
 
   const [formationKey, setFormationKey] = useState<string>(
-    getNormalizedFormationKey(match.formationGreen, match.format)
+    getNormalizedFormationKey(match.formationGreen, match.format, match.maxPlayers)
   );
   const [assignments, setAssignments] = useState<Record<string, string>>(
     match.tacticalAssignments || {}
@@ -369,7 +428,13 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
   const [isConfirmingPosition, setIsConfirmingPosition] = useState(false);
   const [confirmationSuccessMsg, setConfirmationSuccessMsg] = useState<string | null>(null);
 
-  // Sync state if match updates from broadcast
+  // Sync state if match format, match ID, or formation changes
+  React.useEffect(() => {
+    const normalized = getNormalizedFormationKey(match.formationGreen, match.format, match.maxPlayers);
+    setFormationKey(normalized);
+  }, [match.id, match.format, match.formationGreen, match.maxPlayers]);
+
+  // Sync assignments if match updates from broadcast
   React.useEffect(() => {
     if (match.tacticalAssignments) {
       setAssignments(match.tacticalAssignments);
