@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import {
   SoccerMatch,
@@ -17,11 +17,12 @@ import {
   isSuperAdminEmail,
   verifySuperAdminMasterPassword,
   getDefaultFormationForMatch,
+  MatchGoal,
 } from '../types';
 import { INITIAL_MATCHES, INITIAL_USERS, INITIAL_DIRECT_MESSAGES, INITIAL_NOTIFICATIONS, INITIAL_ANNOUNCEMENTS } from './mockData';
 import { SoundEffects } from './audioService';
 import { hashPassword, verifyPassword, generateSalt, sanitizeInput } from './security';
-import { mediaStorage } from './mediaStorage';
+import { balanceTeams } from './teamBalancer';
 
 const STORAGE_KEYS = {
   MATCHES: 'pitchmate_matches_v2',
@@ -33,6 +34,32 @@ const STORAGE_KEYS = {
   DIRECT_MESSAGES: 'pitchmate_direct_messages_v2',
   NOTIFICATIONS: 'pitchmate_notifications_v2',
 };
+
+// Non-blocking asynchronous localStorage writer to keep 60/120fps UI completely fluid
+const storageQueue = new Map<string, any>();
+let storageTimer: any = null;
+
+function scheduleStorageSave(key: string, data: any) {
+  if (typeof window === 'undefined') return;
+  storageQueue.set(key, data);
+  if (storageTimer) return;
+
+  const flush = () => {
+    storageTimer = null;
+    storageQueue.forEach((val, k) => {
+      try {
+        localStorage.setItem(k, typeof val === 'string' ? val : JSON.stringify(val));
+      } catch {}
+    });
+    storageQueue.clear();
+  };
+
+  if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+    storageTimer = (window as any).requestIdleCallback(flush, { timeout: 150 });
+  } else {
+    storageTimer = setTimeout(flush, 50);
+  }
+}
 
 interface PitchStoreContextType {
   matches: SoccerMatch[];
@@ -207,7 +234,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     try {
       const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-      if (!token) return true; // Default signed-in for seamless dev exploration
+      if (!token) return true; // Default signed-in for seamless preview
       return true;
     } catch {
       return true;
@@ -273,70 +300,60 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const [isLoading] = useState(false);
 
-  // Sync to localStorage
+  // Background non-blocking localStorage caching
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.MATCHES, JSON.stringify(matches));
-    } catch {}
+    scheduleStorageSave(STORAGE_KEYS.MATCHES, matches);
   }, [matches]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
-    } catch {}
+    scheduleStorageSave(STORAGE_KEYS.USERS, users);
   }, [users]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, currentUserId);
-    } catch {}
+    scheduleStorageSave(STORAGE_KEYS.CURRENT_USER_ID, currentUserId);
   }, [currentUserId]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.COMMENTS, JSON.stringify(comments));
-    } catch {}
+    scheduleStorageSave(STORAGE_KEYS.COMMENTS, comments);
   }, [comments]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.ANNOUNCEMENTS, JSON.stringify(announcements));
-    } catch {}
+    scheduleStorageSave(STORAGE_KEYS.ANNOUNCEMENTS, announcements);
   }, [announcements]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.DIRECT_MESSAGES, JSON.stringify(directMessages));
-    } catch {}
+    scheduleStorageSave(STORAGE_KEYS.DIRECT_MESSAGES, directMessages);
   }, [directMessages]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.NOTIFICATIONS, JSON.stringify(notifications));
-    } catch {}
+    scheduleStorageSave(STORAGE_KEYS.NOTIFICATIONS, notifications);
   }, [notifications]);
 
   // Current User Object
-  const currentUser: UserProfile = users.find((u) => u.id === currentUserId) || {
-    id: 'user_admin_main',
-    email: 'topreviewsamazon2025@gmail.com',
-    name: 'Mustapha Bouhbous',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    phone: '+212 661-234567',
-    city: 'Casablanca',
-    isAdmin: true,
-    status: 'approved',
-    matchesPlayed: 50,
-    createdAt: new Date().toISOString(),
-  };
+  const currentUser: UserProfile = useMemo(() => {
+    const found = users.find((u) => u.id === currentUserId);
+    if (found) return found;
+    return {
+      id: 'user_admin_main',
+      email: 'topreviewsamazon2025@gmail.com',
+      name: 'Mustapha Bouhbous',
+      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      phone: '+212 661-234567',
+      city: 'Casablanca',
+      isAdmin: true,
+      status: 'approved',
+      matchesPlayed: 50,
+      createdAt: new Date().toISOString(),
+    };
+  }, [users, currentUserId]);
 
-  const unreadMessagesCount = directMessages.filter(
-    (m) => m.receiverId === currentUser.id && !m.read
-  ).length;
+  const unreadMessagesCount = useMemo(() => {
+    return directMessages.filter((m) => m.receiverId === currentUser.id && !m.read).length;
+  }, [directMessages, currentUser.id]);
 
-  const unreadNotificationsCount = notifications.filter(
-    (n) => n.userId === currentUser.id && !n.read
-  ).length;
+  const unreadNotificationsCount = useMemo(() => {
+    return notifications.filter((n) => n.userId === currentUser.id && !n.read).length;
+  }, [notifications, currentUser.id]);
 
   const getAuthHeaders = useCallback(() => {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) || `pitchmate_token_${currentUserId}_${Date.now()}`;
@@ -376,7 +393,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return () => window.removeEventListener('focus', handleFocus);
   }, [fetchGlobalState]);
 
-  // Setup Singleton Server-Sent Events (SSE) for server-authoritative realtime sync
+  // Setup Singleton Server-Sent Events (SSE) for realtime sync
   useEffect(() => {
     let eventSource: EventSource | null = null;
     let reconnectTimeout: any = null;
@@ -453,10 +470,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       read: false,
     };
 
-    setNotifications((prev) => {
-      const updated = [newNotif, ...prev.slice(0, 49)];
-      return updated;
-    });
+    setNotifications((prev) => [newNotif, ...prev.slice(0, 49)]);
 
     fetch('/api/notifications', {
       method: 'POST',
@@ -466,10 +480,9 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, []);
 
   const markNotificationAsRead = useCallback((notificationId: string) => {
-    setNotifications((prev) => {
-      const updated = prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n));
-      return updated;
-    });
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n))
+    );
 
     fetch('/api/notifications/read', {
       method: 'POST',
@@ -479,10 +492,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, []);
 
   const clearAllNotifications = useCallback(() => {
-    setNotifications((prev) => {
-      const updated = prev.filter((n) => n.userId !== currentUser.id);
-      return updated;
-    });
+    setNotifications((prev) => prev.filter((n) => n.userId !== currentUser.id));
 
     fetch('/api/notifications/clear', {
       method: 'POST',
@@ -492,7 +502,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [currentUser.id]);
 
   // Auth Operations
-  const loginWithCredentials = async (email: string, pass: string): Promise<{ success: boolean; error?: string }> => {
+  const loginWithCredentials = useCallback(async (email: string, pass: string): Promise<{ success: boolean; error?: string }> => {
     const cleanEmail = sanitizeInput(email).toLowerCase();
     const cleanPass = pass.trim();
 
@@ -568,9 +578,9 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, targetUser.id);
     return { success: true };
-  };
+  }, [users]);
 
-  const signupWithCredentials = async (
+  const signupWithCredentials = useCallback(async (
     name: string,
     email: string,
     pass: string,
@@ -636,9 +646,9 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     } catch {
       return { success: false, error: 'Network error occurred during registration.' };
     }
-  };
+  }, []);
 
-  const resetPasswordWithEmail = async (email: string, newPass: string): Promise<{ success: boolean; error?: string }> => {
+  const resetPasswordWithEmail = useCallback(async (email: string, newPass: string): Promise<{ success: boolean; error?: string }> => {
     const cleanEmail = sanitizeInput(email).toLowerCase();
     const cleanPass = newPass.trim();
 
@@ -665,21 +675,21 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setCurrentUserId(targetUser.id);
     setIsAuthenticated(true);
     return { success: true };
-  };
+  }, [users]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
     setIsAuthenticated(false);
-  };
+  }, []);
 
-  // Match Operations
-  const joinMatch = async (matchId: string, teamChoice: TeamSide = 'unassigned'): Promise<boolean> => {
+  // Match Operations - Instantaneous Optimistic Updates
+  const joinMatch = useCallback(async (matchId: string, teamChoice: TeamSide = 'unassigned'): Promise<boolean> => {
     if (currentUser.isBanned) {
       alert('Suspended accounts cannot join matches.');
       return false;
     }
 
-    // Audio chime
+    // Audio chime immediately
     SoundEffects.playJoin();
 
     const playerItem: PlayerRosterItem = {
@@ -694,42 +704,107 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       joinedAt: new Date().toISOString(),
     };
 
+    // Instant optimistic state update
+    setMatches((prev) =>
+      prev.map((m) => {
+        if (m.id !== matchId) return m;
+        const alreadyInRoster = m.roster.some((p) => p.userId === currentUser.id);
+        const alreadyInWaitlist = m.waitlist.some((p) => p.userId === currentUser.id);
+        if (alreadyInRoster || alreadyInWaitlist) return m;
+
+        const isFull = m.roster.length >= m.maxPlayers;
+        if (isFull) {
+          return {
+            ...m,
+            waitlist: [...m.waitlist, playerItem],
+            updatedAt: new Date().toISOString(),
+          };
+        } else {
+          return {
+            ...m,
+            roster: [...m.roster, playerItem],
+            updatedAt: new Date().toISOString(),
+          };
+        }
+      })
+    );
+
     try {
-      const res = await fetch(`/api/matches/${matchId}/join`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ playerItem, teamChoice }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setMatches((prev) => prev.map((m) => (m.id === matchId ? data.match : m)));
-        try {
-          confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
-        } catch {}
-        return true;
-      }
+      confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
     } catch {}
 
-    return true;
-  };
+    // Background sync
+    fetch(`/api/matches/${matchId}/join`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ playerItem, teamChoice }),
+    })
+      .then(async (res) => {
+        if (res.ok) {
+          const data = await res.json();
+          if (data.match) {
+            setMatches((prev) => prev.map((m) => (m.id === matchId ? data.match : m)));
+          }
+        }
+      })
+      .catch(() => {});
 
-  const leaveMatch = async (matchId: string): Promise<boolean> => {
-    try {
-      const res = await fetch(`/api/matches/${matchId}/leave`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ userId: currentUser.id }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setMatches((prev) => prev.map((m) => (m.id === matchId ? data.match : m)));
-        return true;
-      }
-    } catch {}
     return true;
-  };
+  }, [currentUser, getAuthHeaders]);
 
-  const createMatch = async (
+  const leaveMatch = useCallback(async (matchId: string): Promise<boolean> => {
+    // Instant optimistic state update
+    setMatches((prev) =>
+      prev.map((m) => {
+        if (m.id !== matchId) return m;
+        const inRoster = m.roster.some((p) => p.userId === currentUser.id);
+        const inWaitlist = m.waitlist.some((p) => p.userId === currentUser.id);
+        if (!inRoster && !inWaitlist) return m;
+
+        let nextRoster = m.roster.filter((p) => p.userId !== currentUser.id);
+        let nextWaitlist = m.waitlist.filter((p) => p.userId !== currentUser.id);
+
+        if (inRoster && nextWaitlist.length > 0) {
+          const promoted = { ...nextWaitlist[0], team: 'unassigned' as TeamSide };
+          nextWaitlist = nextWaitlist.slice(1);
+          nextRoster.push(promoted);
+        }
+
+        const nextAssignments = { ...(m.tacticalAssignments || {}) };
+        Object.keys(nextAssignments).forEach((key) => {
+          if (nextAssignments[key] === currentUser.id) delete nextAssignments[key];
+        });
+
+        return {
+          ...m,
+          roster: nextRoster,
+          waitlist: nextWaitlist,
+          tacticalAssignments: nextAssignments,
+          updatedAt: new Date().toISOString(),
+        };
+      })
+    );
+
+    // Background sync
+    fetch(`/api/matches/${matchId}/leave`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ userId: currentUser.id }),
+    })
+      .then(async (res) => {
+        if (res.ok) {
+          const data = await res.json();
+          if (data.match) {
+            setMatches((prev) => prev.map((m) => (m.id === matchId ? data.match : m)));
+          }
+        }
+      })
+      .catch(() => {});
+
+    return true;
+  }, [currentUser.id, getAuthHeaders]);
+
+  const createMatch = useCallback(async (
     matchData: Omit<SoccerMatch, 'id' | 'createdAt' | 'updatedAt' | 'roster' | 'waitlist' | 'creatorId' | 'creatorName' | 'creatorEmail' | 'isLocked' | 'status'>
   ): Promise<string> => {
     const newId = `match_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
@@ -780,64 +855,69 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       updatedAt: nowIso,
     };
 
-    try {
-      const res = await fetch('/api/matches', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(newMatch),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setMatches((prev) => [data.match, ...prev.filter((m) => m.id !== newId)]);
-        return data.match.id;
-      }
-    } catch {}
-
+    // Instant optimistic state update
     setMatches((prev) => [newMatch, ...prev]);
+
+    // Background sync
+    fetch('/api/matches', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(newMatch),
+    })
+      .then(async (res) => {
+        if (res.ok) {
+          const data = await res.json();
+          if (data.match) {
+            setMatches((prev) => [data.match, ...prev.filter((m) => m.id !== newId)]);
+          }
+        }
+      })
+      .catch(() => {});
+
     return newId;
-  };
+  }, [currentUser, getAuthHeaders]);
 
-  const updateMatch = async (matchId: string, updates: Partial<SoccerMatch>): Promise<boolean> => {
-    try {
-      const res = await fetch(`/api/matches/${matchId}`, {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(updates),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setMatches((prev) => prev.map((m) => (m.id === matchId ? data.match : m)));
-        return true;
-      }
-    } catch {}
-
+  const updateMatch = useCallback(async (matchId: string, updates: Partial<SoccerMatch>): Promise<boolean> => {
+    // Instant optimistic update
     setMatches((prev) =>
       prev.map((m) => (m.id === matchId ? { ...m, ...updates, updatedAt: new Date().toISOString() } : m))
     );
-    return true;
-  };
 
-  const deleteMatch = async (matchId: string): Promise<boolean> => {
+    // Background sync
+    fetch(`/api/matches/${matchId}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(updates),
+    })
+      .then(async (res) => {
+        if (res.ok) {
+          const data = await res.json();
+          if (data.match) {
+            setMatches((prev) => prev.map((m) => (m.id === matchId ? data.match : m)));
+          }
+        }
+      })
+      .catch(() => {});
+
+    return true;
+  }, [getAuthHeaders]);
+
+  const deleteMatch = useCallback(async (matchId: string): Promise<boolean> => {
     // Immediate optimistic state update
-    setMatches((prev) => {
-      const filtered = prev.filter((m) => m.id !== matchId);
-      return filtered;
-    });
+    setMatches((prev) => prev.filter((m) => m.id !== matchId));
 
-    try {
-      await fetch(`/api/matches/${matchId}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      });
-    } catch (err) {
-      console.warn('Delete match API warning:', err);
-    }
+    fetch(`/api/matches/${matchId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    }).catch(() => {});
+
     return true;
-  };
+  }, [getAuthHeaders]);
 
-  const assignPlayerTeam = async (matchId: string, userId: string, team: TeamSide): Promise<boolean> => {
-    setMatches((prev) => {
-      const updated = prev.map((m) => {
+  const assignPlayerTeam = useCallback(async (matchId: string, userId: string, team: TeamSide): Promise<boolean> => {
+    // Instant optimistic state update
+    setMatches((prev) =>
+      prev.map((m) => {
         if (m.id === matchId) {
           return {
             ...m,
@@ -846,25 +926,22 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           };
         }
         return m;
-      });
-      return updated;
-    });
+      })
+    );
 
-    try {
-      await fetch(`/api/matches/${matchId}/assign-team`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ userId, team }),
-      });
-    } catch {}
+    fetch(`/api/matches/${matchId}/assign-team`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ userId, team }),
+    }).catch(() => {});
 
     return true;
-  };
+  }, [getAuthHeaders]);
 
-  const removePlayerFromMatch = async (matchId: string, userId: string): Promise<boolean> => {
+  const removePlayerFromMatch = useCallback(async (matchId: string, userId: string): Promise<boolean> => {
     // Immediate optimistic state update
-    setMatches((prev) => {
-      const updated = prev.map((m) => {
+    setMatches((prev) =>
+      prev.map((m) => {
         if (m.id === matchId) {
           const newRoster = m.roster.filter((p) => p.userId !== userId);
           const newWaitlist = m.waitlist.filter((p) => p.userId !== userId);
@@ -881,45 +958,29 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           };
         }
         return m;
-      });
-      return updated;
-    });
+      })
+    );
 
-    try {
-      const res = await fetch(`/api/matches/${matchId}/remove-player`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ userId }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.match) {
-          setMatches((prev) => prev.map((m) => (m.id === matchId ? data.match : m)));
-        }
-      }
-    } catch {}
+    fetch(`/api/matches/${matchId}/remove-player`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ userId }),
+    }).catch(() => {});
+
     return true;
-  };
+  }, [getAuthHeaders]);
 
-  const toggleMatchLock = async (matchId: string): Promise<boolean> => {
-    try {
-      await fetch(`/api/matches/${matchId}/toggle-lock`, { method: 'POST', headers: getAuthHeaders() });
-    } catch {}
+  const toggleMatchLock = useCallback(async (matchId: string): Promise<boolean> => {
     setMatches((prev) =>
       prev.map((m) => (m.id === matchId ? { ...m, isLocked: !m.isLocked, updatedAt: new Date().toISOString() } : m))
     );
-    return true;
-  };
 
-  const togglePlayerPaidStatus = async (matchId: string, playerId: string): Promise<boolean> => {
+    fetch(`/api/matches/${matchId}/toggle-lock`, { method: 'POST', headers: getAuthHeaders() }).catch(() => {});
+    return true;
+  }, [getAuthHeaders]);
+
+  const togglePlayerPaidStatus = useCallback(async (matchId: string, playerId: string): Promise<boolean> => {
     SoundEffects.playCashRegister();
-    try {
-      await fetch(`/api/matches/${matchId}/toggle-paid`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ playerId }),
-      });
-    } catch {}
 
     setMatches((prev) =>
       prev.map((m) => {
@@ -937,10 +998,17 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         return m;
       })
     );
-    return true;
-  };
 
-  const updatePlayerPaymentStatus = async (
+    fetch(`/api/matches/${matchId}/toggle-paid`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ playerId }),
+    }).catch(() => {});
+
+    return true;
+  }, [getAuthHeaders]);
+
+  const updatePlayerPaymentStatus = useCallback(async (
     matchId: string,
     playerId: string,
     status: 'paid' | 'pending' | 'unpaid' | 'waived',
@@ -949,32 +1017,43 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (status === 'paid') {
       SoundEffects.playCashRegister();
     }
-    try {
-      const res = await fetch(`/api/matches/${matchId}/payment-status`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ playerId, status, method }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setMatches((prev) => prev.map((m) => (m.id === matchId ? data.match : m)));
-        return true;
-      }
-    } catch {}
-    return true;
-  };
 
-  const updateMatchPitchCost = async (matchId: string, totalCost: number, pricePerPlayer: number): Promise<boolean> => {
+    setMatches((prev) =>
+      prev.map((m) => {
+        if (m.id === matchId) {
+          const currentPaid = m.paidPlayerIds || [];
+          const isNowPaid = status === 'paid';
+          const updatedPaid = isNowPaid
+            ? currentPaid.includes(playerId)
+              ? currentPaid
+              : [...currentPaid, playerId]
+            : currentPaid.filter((id) => id !== playerId);
+
+          return {
+            ...m,
+            paidPlayerIds: updatedPaid,
+            roster: m.roster.map((p) =>
+              p.userId === playerId ? { ...p, paymentStatus: status, paymentMethod: method || p.paymentMethod } : p
+            ),
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return m;
+      })
+    );
+
+    fetch(`/api/matches/${matchId}/payment-status`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ playerId, status, method }),
+    }).catch(() => {});
+
+    return true;
+  }, [getAuthHeaders]);
+
+  const updateMatchPitchCost = useCallback(async (matchId: string, totalCost: number, pricePerPlayer: number): Promise<boolean> => {
     const numTotal = !isNaN(Number(totalCost)) ? Number(totalCost) : 0;
     const numPrice = !isNaN(Number(pricePerPlayer)) ? Number(pricePerPlayer) : 0;
-
-    try {
-      await fetch(`/api/matches/${matchId}/cost`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ totalCost: numTotal, pricePerPlayer: numPrice }),
-      });
-    } catch {}
 
     setMatches((prev) =>
       prev.map((m) =>
@@ -983,30 +1062,46 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           : m
       )
     );
-    return true;
-  };
 
-  const autoBalanceTeams = async (
+    fetch(`/api/matches/${matchId}/cost`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ totalCost: numTotal, pricePerPlayer: numPrice }),
+    }).catch(() => {});
+
+    return true;
+  }, [getAuthHeaders]);
+
+  const autoBalanceTeams = useCallback(async (
     matchId: string,
     mode: 'balanced' | 'random' | 'veterans_vs_newcomers' = 'balanced'
   ): Promise<boolean> => {
     SoundEffects.playAutoBalance();
-    try {
-      const res = await fetch(`/api/matches/${matchId}/auto-balance`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ mode }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setMatches((prev) => prev.map((m) => (m.id === matchId ? data.match : m)));
-        return true;
-      }
-    } catch {}
-    return true;
-  };
 
-  const updateTacticalFormation = async (
+    setMatches((prev) =>
+      prev.map((m) => {
+        if (m.id === matchId && m.roster.length > 0) {
+          const balanceResult = balanceTeams(m.roster, mode);
+          return {
+            ...m,
+            roster: balanceResult.roster,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return m;
+      })
+    );
+
+    fetch(`/api/matches/${matchId}/auto-balance`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ mode }),
+    }).catch(() => {});
+
+    return true;
+  }, [getAuthHeaders]);
+
+  const updateTacticalFormation = useCallback(async (
     matchId: string,
     formationGreen: string,
     formationBlue: string,
@@ -1014,9 +1109,9 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   ): Promise<boolean> => {
     SoundEffects.playTacticalSub();
     return updateMatch(matchId, { formationGreen, formationBlue, tacticalAssignments });
-  };
+  }, [updateMatch]);
 
-  const assignPlayerTacticalSlot = async (
+  const assignPlayerTacticalSlot = useCallback(async (
     matchId: string,
     slotKey: string,
     userId: string,
@@ -1025,12 +1120,12 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (userId) {
       SoundEffects.playJoin();
     }
+
     const match = matches.find((m) => m.id === matchId);
     if (!match) return false;
 
     const nextAssignments = { ...(match.tacticalAssignments || {}) };
     if (userId) {
-      // Remove user from any other slot first to prevent duplicate occupancy
       Object.keys(nextAssignments).forEach((key) => {
         if (nextAssignments[key] === userId) {
           delete nextAssignments[key];
@@ -1072,46 +1167,52 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       tacticalAssignments: nextAssignments,
       roster: updatedRoster,
     });
-  };
+  }, [matches, updateMatch]);
 
-  const markMatchAttendance = async (
+  const markMatchAttendance = useCallback(async (
     matchId: string,
     attendedPlayerIds: string[],
     noShowPlayerIds: string[]
   ): Promise<boolean> => {
-    try {
-      const res = await fetch(`/api/matches/${matchId}/attendance`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ attendedPlayerIds, noShowPlayerIds }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setMatches((prev) => prev.map((m) => (m.id === matchId ? data.match : m)));
-        return true;
-      }
-    } catch {}
+    setMatches((prev) =>
+      prev.map((m) =>
+        m.id === matchId
+          ? {
+              ...m,
+              attendedPlayerIds,
+              noShowPlayerIds,
+              status: 'completed',
+              updatedAt: new Date().toISOString(),
+            }
+          : m
+      )
+    );
+
+    fetch(`/api/matches/${matchId}/attendance`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ attendedPlayerIds, noShowPlayerIds }),
+    }).catch(() => {});
+
     return true;
-  };
+  }, [getAuthHeaders]);
 
   // Live Scoreboard & Goals
-  const updateMatchScore = async (matchId: string, green: number, blue: number): Promise<boolean> => {
-    try {
-      const res = await fetch(`/api/matches/${matchId}/score`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ green, blue }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setMatches((prev) => prev.map((m) => (m.id === matchId ? data.match : m)));
-        return true;
-      }
-    } catch {}
-    return true;
-  };
+  const updateMatchScore = useCallback(async (matchId: string, green: number, blue: number): Promise<boolean> => {
+    setMatches((prev) =>
+      prev.map((m) => (m.id === matchId ? { ...m, score: { green, blue }, updatedAt: new Date().toISOString() } : m))
+    );
 
-  const recordMatchGoal = async (
+    fetch(`/api/matches/${matchId}/score`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ green, blue }),
+    }).catch(() => {});
+
+    return true;
+  }, [getAuthHeaders]);
+
+  const recordMatchGoal = useCallback(async (
     matchId: string,
     team: TeamSide,
     scorerId: string,
@@ -1121,52 +1222,55 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     assistName?: string
   ): Promise<boolean> => {
     SoundEffects.playGoal();
+
+    const newGoal: MatchGoal = {
+      id: `goal_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      team,
+      scorerId,
+      scorerName,
+      assistId,
+      assistName,
+      minute: minute || 45,
+      timestamp: new Date().toISOString(),
+    };
+
+    setMatches((prev) =>
+      prev.map((m) => {
+        if (m.id !== matchId) return m;
+        const currentScore = m.score || { green: 0, blue: 0 };
+        const updatedScore = {
+          green: team === 'green' ? currentScore.green + 1 : currentScore.green,
+          blue: team === 'blue' ? currentScore.blue + 1 : currentScore.blue,
+        };
+        return {
+          ...m,
+          score: updatedScore,
+          goals: [...(m.goals || []), newGoal],
+          updatedAt: new Date().toISOString(),
+        };
+      })
+    );
+
     try {
-      const res = await fetch(`/api/matches/${matchId}/goal`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ team, scorerId, scorerName, minute, assistId, assistName }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setMatches((prev) => prev.map((m) => (m.id === matchId ? data.match : m)));
-        try {
-          confetti({ particleCount: 40, spread: 70, origin: { y: 0.6 } });
-        } catch {}
-        return true;
-      }
+      confetti({ particleCount: 45, spread: 70, origin: { y: 0.6 } });
     } catch {}
+
+    fetch(`/api/matches/${matchId}/goal`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ team, scorerId, scorerName, minute, assistId, assistName }),
+    }).catch(() => {});
+
     return true;
-  };
+  }, [getAuthHeaders]);
 
-  const voteMatchMvp = async (matchId: string, nomineeId: string): Promise<boolean> => {
-    return voteManOfTheMatch(matchId, nomineeId);
-  };
-
-  const voteManOfTheMatch = async (matchId: string, nomineeId: string): Promise<boolean> => {
+  const voteManOfTheMatch = useCallback(async (matchId: string, nomineeId: string): Promise<boolean> => {
     SoundEffects.playVictory();
-    try {
-      const res = await fetch(`/api/matches/${matchId}/vote-mvp`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ nomineeId }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setMatches((prev) => prev.map((m) => (m.id === matchId ? data.match : m)));
-        try {
-          confetti({ particleCount: 60, spread: 80, origin: { y: 0.5 } });
-        } catch {}
-        return true;
-      }
-    } catch {}
 
-    // Optimistic fallback
     setMatches((prev) =>
       prev.map((m) => {
         if (m.id === matchId) {
           const currentVotes = { ...(m.mvpVotes || {}), [currentUser.id]: nomineeId };
-          // Count winner
           const tally: Record<string, number> = {};
           Object.values(currentVotes).forEach((id) => {
             tally[id] = (tally[id] || 0) + 1;
@@ -1195,7 +1299,6 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       })
     );
 
-    // Update user stats
     setUsers((prev) =>
       prev.map((u) => (u.id === nomineeId ? { ...u, mvpCount: (u.mvpCount || 0) + 1 } : u))
     );
@@ -1204,10 +1307,20 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       confetti({ particleCount: 60, spread: 80, origin: { y: 0.5 } });
     } catch {}
 
-    return true;
-  };
+    fetch(`/api/matches/${matchId}/vote-mvp`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ nomineeId }),
+    }).catch(() => {});
 
-  const recordMatchSubstitution = async (
+    return true;
+  }, [currentUser.id, users, getAuthHeaders]);
+
+  const voteMatchMvp = useCallback((matchId: string, nomineeId: string) => {
+    return voteManOfTheMatch(matchId, nomineeId);
+  }, [voteManOfTheMatch]);
+
+  const recordMatchSubstitution = useCallback(async (
     matchId: string,
     team: TeamSide,
     playerOutId: string,
@@ -1242,9 +1355,9 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       })
     );
     return true;
-  };
+  }, []);
 
-  const recordMatchCard = async (
+  const recordMatchCard = useCallback(async (
     matchId: string,
     team: TeamSide,
     playerId: string,
@@ -1278,9 +1391,9 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       })
     );
     return true;
-  };
+  }, []);
 
-  const uploadPaymentProof = async (
+  const uploadPaymentProof = useCallback(async (
     matchId: string,
     playerId: string,
     playerName: string,
@@ -1318,16 +1431,16 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       })
     );
     return true;
-  };
+  }, []);
 
-  const updateMatchBankDetails = async (
+  const updateMatchBankDetails = useCallback(async (
     matchId: string,
     bankDetails: { bankName: string; accountHolder: string; rib: string; phone?: string; notes?: string }
   ): Promise<boolean> => {
     return updateMatch(matchId, { bankDetails });
-  };
+  }, [updateMatch]);
 
-  const duplicateAsRecurringMatch = async (matchId: string, daysAhead: number = 7): Promise<string | null> => {
+  const duplicateAsRecurringMatch = useCallback(async (matchId: string, daysAhead: number = 7): Promise<string | null> => {
     const parent = matches.find((m) => m.id === matchId);
     if (!parent) return null;
 
@@ -1354,10 +1467,10 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     });
 
     return newMatchId;
-  };
+  }, [matches, createMatch]);
 
   // Comments
-  const addComment = async (matchId: string, text: string): Promise<boolean> => {
+  const addComment = useCallback(async (matchId: string, text: string): Promise<boolean> => {
     const cleanText = sanitizeInput(text);
     if (!cleanText) return false;
 
@@ -1372,22 +1485,21 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       createdAt: new Date().toISOString(),
     };
 
-    try {
-      await fetch('/api/comments', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(newComment),
-      });
-    } catch {}
-
     setComments((prev) => ({
       ...prev,
       [matchId]: [...(prev[matchId] || []), newComment],
     }));
-    return true;
-  };
 
-  const addVoiceComment = async (matchId: string, audioUrl: string, durationSeconds: number): Promise<boolean> => {
+    fetch('/api/comments', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(newComment),
+    }).catch(() => {});
+
+    return true;
+  }, [currentUser, getAuthHeaders]);
+
+  const addVoiceComment = useCallback(async (matchId: string, audioUrl: string, durationSeconds: number): Promise<boolean> => {
     const newComment: MatchComment = {
       id: `comm_voice_${Date.now()}`,
       matchId,
@@ -1400,35 +1512,32 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       createdAt: new Date().toISOString(),
     };
 
-    try {
-      await fetch('/api/comments', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(newComment),
-      });
-    } catch {}
-
     setComments((prev) => ({
       ...prev,
       [matchId]: [...(prev[matchId] || []), newComment],
     }));
+
+    fetch('/api/comments', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(newComment),
+    }).catch(() => {});
+
     return true;
-  };
+  }, [currentUser, getAuthHeaders]);
 
-  const deleteComment = async (matchId: string, commentId: string): Promise<boolean> => {
-    try {
-      await fetch(`/api/comments/${matchId}/${commentId}`, { method: 'DELETE', headers: getAuthHeaders() });
-    } catch {}
-
+  const deleteComment = useCallback(async (matchId: string, commentId: string): Promise<boolean> => {
     setComments((prev) => ({
       ...prev,
       [matchId]: (prev[matchId] || []).filter((c) => c.id !== commentId),
     }));
+
+    fetch(`/api/comments/${matchId}/${commentId}`, { method: 'DELETE', headers: getAuthHeaders() }).catch(() => {});
     return true;
-  };
+  }, [getAuthHeaders]);
 
   // Direct Messages
-  const sendDirectMessage = async (receiverId: string, text: string, imageUrl?: string): Promise<boolean> => {
+  const sendDirectMessage = useCallback(async (receiverId: string, text: string, imageUrl?: string): Promise<boolean> => {
     const cleanText = sanitizeInput(text);
     if (!cleanText && !imageUrl) return false;
 
@@ -1444,19 +1553,18 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       read: false,
     };
 
-    try {
-      await fetch('/api/messages', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(newMsg),
-      });
-    } catch {}
-
     setDirectMessages((prev) => [...prev, newMsg]);
-    return true;
-  };
 
-  const sendDirectVoiceMessage = async (
+    fetch('/api/messages', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(newMsg),
+    }).catch(() => {});
+
+    return true;
+  }, [currentUser, getAuthHeaders]);
+
+  const sendDirectVoiceMessage = useCallback(async (
     receiverId: string,
     audioUrl: string,
     durationSeconds: number
@@ -1474,50 +1582,45 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       read: false,
     };
 
-    try {
-      await fetch('/api/messages', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(newMsg),
-      });
-    } catch {}
-
     setDirectMessages((prev) => [...prev, newMsg]);
+
+    fetch('/api/messages', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(newMsg),
+    }).catch(() => {});
+
     return true;
-  };
+  }, [currentUser, getAuthHeaders]);
 
-  const markConversationAsRead = (otherUserId: string) => {
-    try {
-      fetch('/api/messages/mark-read', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ otherUserId }),
-      }).catch(() => {});
-    } catch {}
-
+  const markConversationAsRead = useCallback((otherUserId: string) => {
     setDirectMessages((prev) =>
       prev.map((m) => (m.senderId === otherUserId && m.receiverId === currentUser.id ? { ...m, read: true } : m))
     );
-  };
 
-  const deleteDirectMessage = (messageId: string) => {
-    try {
-      fetch(`/api/messages/${messageId}`, { method: 'DELETE', headers: getAuthHeaders() }).catch(() => {});
-    } catch {}
+    fetch('/api/messages/mark-read', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ otherUserId }),
+    }).catch(() => {});
+  }, [currentUser.id, getAuthHeaders]);
+
+  const deleteDirectMessage = useCallback((messageId: string) => {
     setDirectMessages((prev) => prev.filter((m) => m.id !== messageId));
-  };
+    fetch(`/api/messages/${messageId}`, { method: 'DELETE', headers: getAuthHeaders() }).catch(() => {});
+  }, [getAuthHeaders]);
 
   // User Profile Updates
-  const setCurrentUserById = (userId: string) => {
+  const setCurrentUserById = useCallback((userId: string) => {
     const found = users.find((u) => u.id === userId);
     if (found) {
       setCurrentUserId(found.id);
       setIsAuthenticated(true);
       localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, found.id);
     }
-  };
+  }, [users]);
 
-  const authenticateSuperAdmin = (password: string): boolean => {
+  const authenticateSuperAdmin = useCallback((password: string): boolean => {
     if (verifySuperAdminMasterPassword(password)) {
       let mustapha = users.find((u) => isSuperAdminEmail(u.email));
       if (!mustapha) {
@@ -1538,24 +1641,23 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return true;
     }
     return false;
-  };
+  }, [users]);
 
-  const updateUserProfile = async (userId: string, updates: Partial<UserProfile>): Promise<boolean> => {
-    try {
-      await fetch(`/api/users/${userId}`, {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(updates),
-      });
-    } catch {}
-
+  const updateUserProfile = useCallback(async (userId: string, updates: Partial<UserProfile>): Promise<boolean> => {
     setUsers((prev) =>
       prev.map((u) => (u.id === userId ? { ...u, ...updates, isAdmin: isSuperAdminEmail(u.email) } : u))
     );
-    return true;
-  };
 
-  const createNewUserAccount = (name: string, email: string): UserProfile => {
+    fetch(`/api/users/${userId}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(updates),
+    }).catch(() => {});
+
+    return true;
+  }, [getAuthHeaders]);
+
+  const createNewUserAccount = useCallback((name: string, email: string): UserProfile => {
     const isMustapha = isSuperAdminEmail(email);
     const newUser: UserProfile = {
       id: `user_${Date.now()}`,
@@ -1569,90 +1671,84 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
     setUsers((prev) => [...prev, newUser]);
     return newUser;
-  };
+  }, []);
 
-  const approveUser = async (userId: string): Promise<boolean> => {
-    try {
-      await fetch('/api/users/approve', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ userId, adminName: currentUser.name }),
-      });
-    } catch {}
-
+  const approveUser = useCallback(async (userId: string): Promise<boolean> => {
     setUsers((prev) =>
       prev.map((u) => (u.id === userId ? { ...u, status: 'approved', approvedAt: new Date().toISOString() } : u))
     );
-    return true;
-  };
 
-  const rejectUser = async (userId: string, reason: string = 'Declined by admin'): Promise<boolean> => {
-    try {
-      await fetch('/api/users/reject', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ userId, reason }),
-      });
-    } catch {}
+    fetch('/api/users/approve', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ userId, adminName: currentUser.name }),
+    }).catch(() => {});
+
+    return true;
+  }, [currentUser.name, getAuthHeaders]);
+
+  const rejectUser = useCallback(async (userId: string, reason: string = 'Declined by admin'): Promise<boolean> => {
     setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, status: 'rejected' } : u)));
+
+    fetch('/api/users/reject', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ userId, reason }),
+    }).catch(() => {});
+
     return true;
-  };
+  }, [getAuthHeaders]);
 
-  const approveAllPendingUsers = async (): Promise<boolean> => {
-    try {
-      await fetch('/api/users/approve-all', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ adminName: currentUser.name }),
-      });
-    } catch {}
-
+  const approveAllPendingUsers = useCallback(async (): Promise<boolean> => {
     setUsers((prev) =>
       prev.map((u) => (u.status === 'pending' ? { ...u, status: 'approved', approvedAt: new Date().toISOString() } : u))
     );
+
+    fetch('/api/users/approve-all', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ adminName: currentUser.name }),
+    }).catch(() => {});
+
     return true;
-  };
+  }, [currentUser.name, getAuthHeaders]);
 
-  const banUser = async (userId: string, reason: string = 'Violation of rules'): Promise<boolean> => {
-    try {
-      await fetch('/api/users/ban', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ userId, reason }),
-      });
-    } catch {}
-
+  const banUser = useCallback(async (userId: string, reason: string = 'Violation of rules'): Promise<boolean> => {
     setUsers((prev) =>
       prev.map((u) => (u.id === userId ? { ...u, isBanned: true, banReason: reason } : u))
     );
+
+    fetch('/api/users/ban', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ userId, reason }),
+    }).catch(() => {});
+
     return true;
-  };
+  }, [getAuthHeaders]);
 
-  const unbanUser = async (userId: string): Promise<boolean> => {
-    try {
-      await fetch('/api/users/unban', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ userId }),
-      });
-    } catch {}
-
+  const unbanUser = useCallback(async (userId: string): Promise<boolean> => {
     setUsers((prev) =>
       prev.map((u) => (u.id === userId ? { ...u, isBanned: false, banReason: undefined } : u))
     );
+
+    fetch('/api/users/unban', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ userId }),
+    }).catch(() => {});
+
     return true;
-  };
+  }, [getAuthHeaders]);
 
-  const removeUserAccount = async (userId: string): Promise<boolean> => {
-    try {
-      await fetch(`/api/users/${userId}`, { method: 'DELETE', headers: getAuthHeaders() });
-    } catch {}
-
+  const removeUserAccount = useCallback(async (userId: string): Promise<boolean> => {
     setUsers((prev) => prev.filter((u) => u.id !== userId));
-    return true;
-  };
 
-  const createAnnouncement = async (title: string, message: string, type: AdminAnnouncement['type']): Promise<boolean> => {
+    fetch(`/api/users/${userId}`, { method: 'DELETE', headers: getAuthHeaders() }).catch(() => {});
+    return true;
+  }, [getAuthHeaders]);
+
+  const createAnnouncement = useCallback(async (title: string, message: string, type: AdminAnnouncement['type']): Promise<boolean> => {
     const newAnn: AdminAnnouncement = {
       id: `ann_${Date.now()}`,
       title,
@@ -1662,107 +1758,164 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       type,
     };
 
-    try {
-      await fetch('/api/announcements', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(newAnn),
-      });
-    } catch {}
-
     setAnnouncements((prev) => [newAnn, ...prev]);
-    return true;
-  };
 
-  const deleteAnnouncement = async (id: string): Promise<boolean> => {
-    try {
-      await fetch(`/api/announcements/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
-    } catch {}
+    fetch('/api/announcements', {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(newAnn),
+    }).catch(() => {});
+
+    return true;
+  }, [currentUser.name, getAuthHeaders]);
+
+  const deleteAnnouncement = useCallback(async (id: string): Promise<boolean> => {
     setAnnouncements((prev) => prev.filter((a) => a.id !== id));
+    fetch(`/api/announcements/${id}`, { method: 'DELETE', headers: getAuthHeaders() }).catch(() => {});
     return true;
-  };
+  }, [getAuthHeaders]);
 
-  const resetToDefaultData = () => {
-    try {
-      fetch('/api/reset-data', { method: 'POST', headers: getAuthHeaders() }).catch(() => {});
-    } catch {}
-
+  const resetToDefaultData = useCallback(() => {
+    fetch('/api/reset-data', { method: 'POST', headers: getAuthHeaders() }).catch(() => {});
     setMatches(INITIAL_MATCHES);
     setUsers(INITIAL_USERS);
     setDirectMessages(INITIAL_DIRECT_MESSAGES);
     setNotifications(INITIAL_NOTIFICATIONS);
     setCurrentUserId('user_admin_main');
     setIsAuthenticated(true);
-  };
+  }, [getAuthHeaders]);
+
+  const contextValue = useMemo<PitchStoreContextType>(() => ({
+    matches,
+    users,
+    currentUser,
+    isAuthenticated,
+    comments,
+    announcements,
+    directMessages,
+    unreadMessagesCount,
+    notifications,
+    unreadNotificationsCount,
+    isLoading,
+    loginWithCredentials,
+    signupWithCredentials,
+    resetPasswordWithEmail,
+    logout,
+    joinMatch,
+    leaveMatch,
+    createMatch,
+    updateMatch,
+    deleteMatch,
+    assignPlayerTeam,
+    removePlayerFromMatch,
+    toggleMatchLock,
+    togglePlayerPaidStatus,
+    updatePlayerPaymentStatus,
+    updateMatchPitchCost,
+    autoBalanceTeams,
+    updateTacticalFormation,
+    assignPlayerTacticalSlot,
+    markMatchAttendance,
+    updateMatchScore,
+    recordMatchGoal,
+    recordMatchSubstitution,
+    recordMatchCard,
+    voteMatchMvp,
+    voteManOfTheMatch,
+    uploadPaymentProof,
+    updateMatchBankDetails,
+    duplicateAsRecurringMatch,
+    addComment,
+    addVoiceComment,
+    deleteComment,
+    setCurrentUserById,
+    authenticateSuperAdmin,
+    updateUserProfile,
+    createNewUserAccount,
+    approveUser,
+    rejectUser,
+    approveAllPendingUsers,
+    banUser,
+    unbanUser,
+    removeUserAccount,
+    deleteUserAccount: removeUserAccount,
+    createAnnouncement,
+    deleteAnnouncement,
+    sendDirectMessage,
+    sendDirectVoiceMessage,
+    markConversationAsRead,
+    deleteDirectMessage,
+    markNotificationAsRead,
+    clearAllNotifications,
+    sendNotification,
+    resetToDefaultData,
+  }), [
+    matches,
+    users,
+    currentUser,
+    isAuthenticated,
+    comments,
+    announcements,
+    directMessages,
+    unreadMessagesCount,
+    notifications,
+    unreadNotificationsCount,
+    isLoading,
+    loginWithCredentials,
+    signupWithCredentials,
+    resetPasswordWithEmail,
+    logout,
+    joinMatch,
+    leaveMatch,
+    createMatch,
+    updateMatch,
+    deleteMatch,
+    assignPlayerTeam,
+    removePlayerFromMatch,
+    toggleMatchLock,
+    togglePlayerPaidStatus,
+    updatePlayerPaymentStatus,
+    updateMatchPitchCost,
+    autoBalanceTeams,
+    updateTacticalFormation,
+    assignPlayerTacticalSlot,
+    markMatchAttendance,
+    updateMatchScore,
+    recordMatchGoal,
+    recordMatchSubstitution,
+    recordMatchCard,
+    voteMatchMvp,
+    voteManOfTheMatch,
+    uploadPaymentProof,
+    updateMatchBankDetails,
+    duplicateAsRecurringMatch,
+    addComment,
+    addVoiceComment,
+    deleteComment,
+    setCurrentUserById,
+    authenticateSuperAdmin,
+    updateUserProfile,
+    createNewUserAccount,
+    approveUser,
+    rejectUser,
+    approveAllPendingUsers,
+    banUser,
+    unbanUser,
+    removeUserAccount,
+    createAnnouncement,
+    deleteAnnouncement,
+    sendDirectMessage,
+    sendDirectVoiceMessage,
+    markConversationAsRead,
+    deleteDirectMessage,
+    markNotificationAsRead,
+    clearAllNotifications,
+    sendNotification,
+    resetToDefaultData,
+  ]);
 
   return (
-    <PitchStoreContext.Provider
-      value={{
-        matches,
-        users,
-        currentUser,
-        isAuthenticated,
-        comments,
-        announcements,
-        directMessages,
-        unreadMessagesCount,
-        notifications,
-        unreadNotificationsCount,
-        isLoading,
-        loginWithCredentials,
-        signupWithCredentials,
-        resetPasswordWithEmail,
-        logout,
-        joinMatch,
-        leaveMatch,
-        createMatch,
-        updateMatch,
-        deleteMatch,
-        assignPlayerTeam,
-        removePlayerFromMatch,
-        toggleMatchLock,
-        togglePlayerPaidStatus,
-        updatePlayerPaymentStatus,
-        updateMatchPitchCost,
-        autoBalanceTeams,
-        updateTacticalFormation,
-        assignPlayerTacticalSlot,
-        markMatchAttendance,
-        updateMatchScore,
-        recordMatchGoal,
-        recordMatchSubstitution,
-        recordMatchCard,
-        voteMatchMvp,
-        voteManOfTheMatch,
-        uploadPaymentProof,
-        updateMatchBankDetails,
-        duplicateAsRecurringMatch,
-        addComment,
-        addVoiceComment,
-        deleteComment,
-        setCurrentUserById,
-        authenticateSuperAdmin,
-        updateUserProfile,
-        createNewUserAccount,
-        approveUser,
-        rejectUser,
-        approveAllPendingUsers,
-        banUser,
-        unbanUser,
-        removeUserAccount,
-        deleteUserAccount: removeUserAccount,
-        createAnnouncement,
-        deleteAnnouncement,
-        sendDirectMessage,
-        sendDirectVoiceMessage,
-        markConversationAsRead,
-        deleteDirectMessage,
-        markNotificationAsRead,
-        clearAllNotifications,
-        sendNotification,
-        resetToDefaultData,
-      }}
-    >
+    <PitchStoreContext.Provider value={contextValue}>
       {children}
     </PitchStoreContext.Provider>
   );

@@ -49,6 +49,7 @@ export interface MatchGoal {
   scorerName: string;
   assistId?: string;
   assistName?: string;
+  timestamp?: string;
 }
 
 export interface PlayerPaymentDetail {

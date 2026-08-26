@@ -69,12 +69,17 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
     }
   }, [initialSelectedUserId, currentUser.id, users]);
 
-  // Mark conversation as read
+  // Mark conversation as read only if unread messages exist
   useEffect(() => {
     if (selectedUserId && isOpen) {
-      markConversationAsRead(selectedUserId);
+      const hasUnread = directMessages.some(
+        (m) => m.senderId === selectedUserId && m.receiverId === currentUser.id && !m.read
+      );
+      if (hasUnread) {
+        markConversationAsRead(selectedUserId);
+      }
     }
-  }, [selectedUserId, directMessages, isOpen]);
+  }, [selectedUserId, directMessages, isOpen, currentUser.id, markConversationAsRead]);
 
   // Auto scroll to bottom
   useEffect(() => {
