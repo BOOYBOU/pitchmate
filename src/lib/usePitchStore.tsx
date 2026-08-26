@@ -44,7 +44,6 @@ interface PitchStoreContextType {
   unreadMessagesCount: number;
   notifications: InAppNotification[];
   unreadNotificationsCount: number;
-  isSupabaseLive: boolean;
   isLoading: boolean;
 
   // Authentication Actions
@@ -96,7 +95,7 @@ interface PitchStoreContextType {
     noShowPlayerIds: string[]
   ) => Promise<boolean>;
 
-  // Live Scoreboard, Goals & MVP
+  // Live Scoreboard, Goals, Substitutions & Cards
   updateMatchScore: (matchId: string, green: number, blue: number) => Promise<boolean>;
   recordMatchGoal: (
     matchId: string,
@@ -107,7 +106,39 @@ interface PitchStoreContextType {
     assistId?: string,
     assistName?: string
   ) => Promise<boolean>;
+  recordMatchSubstitution: (
+    matchId: string,
+    team: TeamSide,
+    playerOutId: string,
+    playerOutName: string,
+    playerInId: string,
+    playerInName: string,
+    minute: number
+  ) => Promise<boolean>;
+  recordMatchCard: (
+    matchId: string,
+    team: TeamSide,
+    playerId: string,
+    playerName: string,
+    type: 'yellow' | 'red',
+    reason?: string,
+    minute?: number
+  ) => Promise<boolean>;
   voteMatchMvp: (matchId: string, nomineeId: string) => Promise<boolean>;
+  voteManOfTheMatch: (matchId: string, nomineeId: string) => Promise<boolean>;
+  uploadPaymentProof: (
+    matchId: string,
+    playerId: string,
+    playerName: string,
+    amount: number,
+    method: 'cih_bank' | 'attijari' | 'cash' | 'wafacash' | 'other',
+    screenshotUrl?: string,
+    note?: string
+  ) => Promise<boolean>;
+  updateMatchBankDetails: (
+    matchId: string,
+    bankDetails: { bankName: string; accountHolder: string; rib: string; phone?: string; notes?: string }
+  ) => Promise<boolean>;
   duplicateAsRecurringMatch: (matchId: string, daysAhead?: number) => Promise<string | null>;
 
   // Comments & Voice Notes in Match Board
@@ -147,7 +178,6 @@ interface PitchStoreContextType {
 }
 
 const PitchStoreContext = createContext<PitchStoreContextType | null>(null);
-const broadcastChannel = typeof window !== 'undefined' ? new BroadcastChannel('pitchmate_realtime_sync') : null;
 
 export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [users, setUsers] = useState<UserProfile[]>(() => {
@@ -191,7 +221,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         return parsed.map((m) => ({
           ...m,
           currency: m.currency || DEFAULT_CURRENCY,
-          totalPitchCost: m.totalPitchCost ?? m.pricePerPlayer * (m.roster?.length || m.maxPlayers || 14),
+          totalPitchCost: m.totalPitchCost ?? (m.pricePerPlayer * (m.maxPlayers || 14)),
           paidPlayerIds: m.paidPlayerIds ?? [m.creatorId],
           score: m.score || { green: 0, blue: 0 },
           goals: m.goals || [],
@@ -241,7 +271,6 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   });
 
   const [isLoading] = useState(false);
-  const [isSupabaseLive] = useState(true);
 
   // Sync to localStorage
   useEffect(() => {
@@ -308,16 +337,6 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     (n) => n.userId === currentUser.id && !n.read
   ).length;
 
-  const broadcastChange = useCallback((type: string, payload: any) => {
-    if (broadcastChannel) {
-      try {
-        broadcastChannel.postMessage({ type, payload, senderId: currentUserId });
-      } catch (err) {
-        console.warn('Broadcast sync error:', err);
-      }
-    }
-  }, [currentUserId]);
-
   const getAuthHeaders = useCallback(() => {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) || `pitchmate_token_${currentUserId}_${Date.now()}`;
     const isAdminUser = Boolean(
@@ -356,7 +375,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return () => window.removeEventListener('focus', handleFocus);
   }, [fetchGlobalState]);
 
-  // Setup Singleton Server-Sent Events (SSE)
+  // Setup Singleton Server-Sent Events (SSE) for server-authoritative realtime sync
   useEffect(() => {
     let eventSource: EventSource | null = null;
     let reconnectTimeout: any = null;
@@ -435,7 +454,6 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     setNotifications((prev) => {
       const updated = [newNotif, ...prev.slice(0, 49)];
-      broadcastChange('SYNC_NOTIFICATIONS', updated);
       return updated;
     });
 
@@ -444,12 +462,11 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newNotif),
     }).catch(() => {});
-  }, [broadcastChange]);
+  }, []);
 
   const markNotificationAsRead = useCallback((notificationId: string) => {
     setNotifications((prev) => {
       const updated = prev.map((n) => (n.id === notificationId ? { ...n, read: true } : n));
-      broadcastChange('SYNC_NOTIFICATIONS', updated);
       return updated;
     });
 
@@ -458,12 +475,11 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ notificationId }),
     }).catch(() => {});
-  }, [broadcastChange]);
+  }, []);
 
   const clearAllNotifications = useCallback(() => {
     setNotifications((prev) => {
       const updated = prev.filter((n) => n.userId !== currentUser.id);
-      broadcastChange('SYNC_NOTIFICATIONS', updated);
       return updated;
     });
 
@@ -472,7 +488,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId: currentUser.id }),
     }).catch(() => {});
-  }, [currentUser.id, broadcastChange]);
+  }, [currentUser.id]);
 
   // Auth Operations
   const loginWithCredentials = async (email: string, pass: string): Promise<{ success: boolean; error?: string }> => {
@@ -728,12 +744,19 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       isHost: true,
     };
 
+    const numPrice = (matchData.pricePerPlayer !== undefined && matchData.pricePerPlayer !== null && !isNaN(Number(matchData.pricePerPlayer)))
+      ? Number(matchData.pricePerPlayer)
+      : 50;
+    const numTotal = (matchData.totalPitchCost !== undefined && matchData.totalPitchCost !== null && !isNaN(Number(matchData.totalPitchCost)))
+      ? Number(matchData.totalPitchCost)
+      : numPrice * (matchData.maxPlayers || 14);
+
     const newMatch: SoccerMatch = {
       ...matchData,
       id: newId,
       currency: DEFAULT_CURRENCY,
-      pricePerPlayer: Number(matchData.pricePerPlayer) || 50,
-      totalPitchCost: Number(matchData.totalPitchCost) || Number(matchData.pricePerPlayer || 50) * (matchData.maxPlayers || 14),
+      pricePerPlayer: numPrice,
+      totalPitchCost: numTotal,
       creatorId: currentUser.id,
       creatorName: currentUser.name,
       creatorEmail: currentUser.email,
@@ -790,7 +813,6 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     // Immediate optimistic state update
     setMatches((prev) => {
       const filtered = prev.filter((m) => m.id !== matchId);
-      broadcastChange('SYNC_MATCHES', filtered);
       return filtered;
     });
 
@@ -817,7 +839,6 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
         return m;
       });
-      broadcastChange('SYNC_MATCHES', updated);
       return updated;
     });
 
@@ -853,7 +874,6 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
         return m;
       });
-      broadcastChange('SYNC_MATCHES', updated);
       return updated;
     });
 
@@ -933,18 +953,21 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const updateMatchPitchCost = async (matchId: string, totalCost: number, pricePerPlayer: number): Promise<boolean> => {
+    const numTotal = !isNaN(Number(totalCost)) ? Number(totalCost) : 0;
+    const numPrice = !isNaN(Number(pricePerPlayer)) ? Number(pricePerPlayer) : 0;
+
     try {
       await fetch(`/api/matches/${matchId}/cost`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ totalCost, pricePerPlayer }),
+        body: JSON.stringify({ totalCost: numTotal, pricePerPlayer: numPrice }),
       });
     } catch {}
 
     setMatches((prev) =>
       prev.map((m) =>
         m.id === matchId
-          ? { ...m, totalPitchCost: totalCost, pricePerPlayer, currency: DEFAULT_CURRENCY, updatedAt: new Date().toISOString() }
+          ? { ...m, totalPitchCost: numTotal, pricePerPlayer: numPrice, currency: DEFAULT_CURRENCY, updatedAt: new Date().toISOString() }
           : m
       )
     );
@@ -1099,6 +1122,10 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const voteMatchMvp = async (matchId: string, nomineeId: string): Promise<boolean> => {
+    return voteManOfTheMatch(matchId, nomineeId);
+  };
+
+  const voteManOfTheMatch = async (matchId: string, nomineeId: string): Promise<boolean> => {
     try {
       const res = await fetch(`/api/matches/${matchId}/vote-mvp`, {
         method: 'POST',
@@ -1108,10 +1135,175 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       if (res.ok) {
         const data = await res.json();
         setMatches((prev) => prev.map((m) => (m.id === matchId ? data.match : m)));
+        try {
+          confetti({ particleCount: 60, spread: 80, origin: { y: 0.5 } });
+        } catch {}
         return true;
       }
     } catch {}
+
+    // Optimistic fallback
+    setMatches((prev) =>
+      prev.map((m) => {
+        if (m.id === matchId) {
+          const currentVotes = { ...(m.mvpVotes || {}), [currentUser.id]: nomineeId };
+          // Count winner
+          const tally: Record<string, number> = {};
+          Object.values(currentVotes).forEach((id) => {
+            tally[id] = (tally[id] || 0) + 1;
+          });
+          let maxV = 0;
+          let leaderId = '';
+          Object.entries(tally).forEach(([id, count]) => {
+            if (count > maxV) {
+              maxV = count;
+              leaderId = id;
+            }
+          });
+          const nomineeUser = users.find((u) => u.id === leaderId) || m.roster.find((p) => p.userId === leaderId);
+          return {
+            ...m,
+            mvpVotes: currentVotes,
+            motmVotes: currentVotes,
+            mvpWinnerId: leaderId || undefined,
+            mvpWinnerName: nomineeUser?.name || undefined,
+            motmWinnerId: leaderId || undefined,
+            motmWinnerName: nomineeUser?.name || undefined,
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return m;
+      })
+    );
+
+    // Update user stats
+    setUsers((prev) =>
+      prev.map((u) => (u.id === nomineeId ? { ...u, mvpCount: (u.mvpCount || 0) + 1 } : u))
+    );
+
+    try {
+      confetti({ particleCount: 60, spread: 80, origin: { y: 0.5 } });
+    } catch {}
+
     return true;
+  };
+
+  const recordMatchSubstitution = async (
+    matchId: string,
+    team: TeamSide,
+    playerOutId: string,
+    playerOutName: string,
+    playerInId: string,
+    playerInName: string,
+    minute: number
+  ): Promise<boolean> => {
+    const subObj = {
+      id: `sub_${Date.now()}`,
+      minute,
+      team,
+      playerOutId,
+      playerOutName,
+      playerInId,
+      playerInName,
+      timestamp: new Date().toISOString(),
+    };
+
+    setMatches((prev) =>
+      prev.map((m) => {
+        if (m.id === matchId) {
+          const existingSubs = m.substitutions || [];
+          return {
+            ...m,
+            substitutions: [...existingSubs, subObj],
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return m;
+      })
+    );
+    return true;
+  };
+
+  const recordMatchCard = async (
+    matchId: string,
+    team: TeamSide,
+    playerId: string,
+    playerName: string,
+    type: 'yellow' | 'red',
+    reason?: string,
+    minute?: number
+  ): Promise<boolean> => {
+    const cardObj = {
+      id: `card_${Date.now()}`,
+      minute: minute || 45,
+      team,
+      playerId,
+      playerName,
+      type,
+      reason,
+    };
+
+    setMatches((prev) =>
+      prev.map((m) => {
+        if (m.id === matchId) {
+          const existingCards = m.cardEvents || [];
+          return {
+            ...m,
+            cardEvents: [...existingCards, cardObj],
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return m;
+      })
+    );
+    return true;
+  };
+
+  const uploadPaymentProof = async (
+    matchId: string,
+    playerId: string,
+    playerName: string,
+    amount: number,
+    method: 'cih_bank' | 'attijari' | 'cash' | 'wafacash' | 'other',
+    screenshotUrl?: string,
+    note?: string
+  ): Promise<boolean> => {
+    const proofObj = {
+      playerId,
+      playerName,
+      amount,
+      method,
+      screenshotUrl: screenshotUrl || 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=400',
+      note: note || 'Transferred via CIH Mobile',
+      uploadedAt: new Date().toISOString(),
+      verified: true,
+    };
+
+    setMatches((prev) =>
+      prev.map((m) => {
+        if (m.id === matchId) {
+          const proofs = { ...(m.paymentProofs || {}), [playerId]: proofObj };
+          const currentPaid = m.paidPlayerIds || [];
+          const updatedPaid = currentPaid.includes(playerId) ? currentPaid : [...currentPaid, playerId];
+          return {
+            ...m,
+            paymentProofs: proofs,
+            paidPlayerIds: updatedPaid,
+            roster: m.roster.map((p) => (p.userId === playerId ? { ...p, paymentStatus: 'paid' as const } : p)),
+            updatedAt: new Date().toISOString(),
+          };
+        }
+        return m;
+      })
+    );
+    return true;
+  };
+
+  const updateMatchBankDetails = async (
+    matchId: string,
+    bankDetails: { bankName: string; accountHolder: string; rib: string; phone?: string; notes?: string }
+  ): Promise<boolean> => {
+    return updateMatch(matchId, { bankDetails });
   };
 
   const duplicateAsRecurringMatch = async (matchId: string, daysAhead: number = 7): Promise<string | null> => {
@@ -1495,7 +1687,6 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         unreadMessagesCount,
         notifications,
         unreadNotificationsCount,
-        isSupabaseLive,
         isLoading,
         loginWithCredentials,
         signupWithCredentials,
@@ -1518,7 +1709,12 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         markMatchAttendance,
         updateMatchScore,
         recordMatchGoal,
+        recordMatchSubstitution,
+        recordMatchCard,
         voteMatchMvp,
+        voteManOfTheMatch,
+        uploadPaymentProof,
+        updateMatchBankDetails,
         duplicateAsRecurringMatch,
         addComment,
         addVoiceComment,

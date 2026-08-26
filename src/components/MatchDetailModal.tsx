@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Calendar,
   Clock,
@@ -22,6 +22,7 @@ import {
   MessageCircle,
   AlertTriangle,
   Coins,
+  CheckCircle,
   CheckCircle2,
   Edit2,
   Activity,
@@ -39,12 +40,20 @@ import { getMatchMapUrl } from '../lib/mapUtils';
 import { TacticalPitchFormation } from './TacticalPitchFormation';
 import { ErrorBoundary } from './ErrorBoundary';
 import { MatchShareModal } from './MatchShareModal';
+import { LiveMatchClockManager } from './LiveMatchClockManager';
+import { CihPaymentTracker } from './CihPaymentTracker';
+import { MotmPostMatchVoting } from './MotmPostMatchVoting';
+import { getReputationTier } from '../lib/reliabilityEngine';
 import {
   formatMAD,
   formatMoroccoDate,
   generateGoogleCalendarUrl,
   downloadIcsFile,
 } from '../lib/moroccoUtils';
+import {
+  calculateMatchPricing,
+  parsePrice,
+} from '../lib/matchPricing';
 
 interface MatchDetailModalProps {
   match: SoccerMatch | null;
@@ -86,15 +95,15 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
     sendNotification,
   } = usePitchStore();
 
-  const [activeModalTab, setActiveModalTab] = useState<'overview' | 'scoreboard' | 'tactical' | 'attendance'>('overview');
+  const [activeModalTab, setActiveModalTab] = useState<'overview' | 'live' | 'payments' | 'motm' | 'tactical' | 'attendance'>('overview');
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [confirmDeleteModal, setConfirmDeleteModal] = useState(false);
   const [selectedBibFilter, setSelectedBibFilter] = useState<'all' | 'green' | 'blue'>('all');
   const [isEditingCost, setIsEditingCost] = useState(false);
-  const [editTotalCost, setEditTotalCost] = useState<number>(0);
-  const [editPricePerPlayer, setEditPricePerPlayer] = useState<number>(0);
+  const [editTotalCost, setEditTotalCost] = useState<number | string>(0);
+  const [editPricePerPlayer, setEditPricePerPlayer] = useState<number | string>(0);
 
   // Scoreboard form state
   const [goalTeam, setGoalTeam] = useState<TeamSide>('green');
@@ -106,6 +115,25 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   const [attendedIds, setAttendedIds] = useState<string[]>([]);
   const [noShowIds, setNoShowIds] = useState<string[]>([]);
   const [isSavingAttendance, setIsSavingAttendance] = useState(false);
+  const [attendanceSuccessMessage, setAttendanceSuccessMessage] = useState<string | null>(null);
+
+  // Synchronize and reset modal-internal states whenever the selected match changes
+  useEffect(() => {
+    if (match) {
+      const matchFee = match.pricePerPlayer ?? 50;
+      setAttendedIds(match.attendedPlayerIds || []);
+      setNoShowIds(match.noShowPlayerIds || []);
+      setEditTotalCost(match.totalPitchCost ?? (matchFee * match.maxPlayers));
+      setEditPricePerPlayer(matchFee);
+      setGoalScorerId('');
+      setGoalAssistId('');
+      setGoalMinute(15);
+      setCommentText('');
+      setIsEditingCost(false);
+      setSelectedBibFilter('all');
+      setAttendanceSuccessMessage(null);
+    }
+  }, [match?.id]);
 
   if (!isOpen || !match) return null;
 
@@ -129,13 +157,22 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   const formattedTime = formatMoroccoDate(match.dateTime, 'time_only');
   const relativeTime = formatMoroccoDate(match.dateTime, 'relative');
 
-  // Moroccan Dirham Cost calculations
-  const totalCost = match.totalPitchCost ?? (match.pricePerPlayer * match.maxPlayers);
-  const pricePerPlayer = match.pricePerPlayer;
+  // Moroccan Dirham Cost calculations - standardized
+  const pricing = calculateMatchPricing(
+    match.totalPitchCost,
+    match.pricePerPlayer,
+    match.maxPlayers,
+    match.roster.length,
+    match.paidPlayerIds || [],
+    match.roster.map((p) => p.userId)
+  );
+
+  const pricePerPlayer = pricing.pricePerPlayer;
+  const totalCost = pricing.totalPitchCost;
+  const paidCount = pricing.paidCount;
+  const collectedAmount = pricing.totalCollected;
+  const remainingCost = pricing.remainingBalance;
   const paidPlayerIds = match.paidPlayerIds || [];
-  const paidCount = paidPlayerIds.filter((id) => match.roster.some((p) => p.userId === id)).length;
-  const collectedAmount = paidCount * pricePerPlayer;
-  const remainingCost = Math.max(0, totalCost - collectedAmount);
 
   const handleJoin = async (teamSide?: TeamSide) => {
     setIsActionLoading(true);
@@ -172,7 +209,15 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   };
 
   const handleSaveCost = async () => {
-    await updateMatchPitchCost(match.id, editTotalCost, editPricePerPlayer);
+    const finalTotal = typeof editTotalCost === 'number'
+      ? editTotalCost
+      : (editTotalCost !== '' && !isNaN(Number(editTotalCost)) ? Number(editTotalCost) : 0);
+
+    const finalPrice = typeof editPricePerPlayer === 'number'
+      ? editPricePerPlayer
+      : (editPricePerPlayer !== '' && !isNaN(Number(editPricePerPlayer)) ? Number(editPricePerPlayer) : 0);
+
+    await updateMatchPitchCost(match.id, finalTotal, finalPrice);
     setIsEditingCost(false);
   };
 
@@ -180,7 +225,8 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
     setIsSavingAttendance(true);
     try {
       await markMatchAttendance(match.id, attendedIds, noShowIds);
-      alert('Attendance and reliability scores recorded!');
+      setAttendanceSuccessMessage('Attendance recorded successfully! Reliability index updated.');
+      setTimeout(() => setAttendanceSuccessMessage(null), 4000);
     } finally {
       setIsSavingAttendance(false);
     }
@@ -347,51 +393,76 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
           </div>
 
           {/* Modal Tab Navigator */}
-          <div className="flex items-center gap-2 px-5 py-2.5 bg-[#090D16] border-b border-[#1E293B]">
+          <div className="flex items-center gap-1.5 px-4 sm:px-5 py-2.5 bg-[#090D16] border-b border-[#1E293B] overflow-x-auto no-scrollbar">
             <button
               onClick={() => setActiveModalTab('overview')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                 activeModalTab === 'overview'
-                  ? 'bg-emerald-600 text-white'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
               }`}
             >
               <Users className="w-3.5 h-3.5" />
-              Rosters & Moroccan Dirham
+              Squads & Roster
             </button>
 
             <button
-              onClick={() => setActiveModalTab('scoreboard')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                activeModalTab === 'scoreboard'
-                  ? 'bg-emerald-600 text-white'
-                  : 'text-slate-400 hover:text-white'
+              onClick={() => setActiveModalTab('live')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                activeModalTab === 'live'
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
               }`}
             >
-              <Trophy className="w-3.5 h-3.5 text-amber-400" />
-              Live Scoreboard & MVP
+              <Clock className="w-3.5 h-3.5 text-emerald-400" />
+              Live Clock & Subs
+            </button>
+
+            <button
+              onClick={() => setActiveModalTab('payments')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                activeModalTab === 'payments'
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <Coins className="w-3.5 h-3.5 text-amber-400" />
+              CIH Payments (MAD)
+            </button>
+
+            <button
+              id="match-detail-motm-tab-btn"
+              onClick={() => setActiveModalTab('motm')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                activeModalTab === 'motm'
+                  ? 'bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 shadow-md font-black'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <Trophy className={`w-3.5 h-3.5 ${activeModalTab === 'motm' ? 'fill-slate-950 text-slate-950' : 'text-amber-400'}`} />
+              MOTM Voting
             </button>
 
             <button
               id="match-detail-tactical-tab-btn"
               onClick={() => setActiveModalTab('tactical')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                 activeModalTab === 'tactical'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-900/40'
-                  : 'text-slate-400 hover:text-white'
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
               }`}
             >
               <Activity className="w-3.5 h-3.5 text-emerald-400" />
-              3D Tactical Pitch
+              Tactical Pitch
             </button>
 
             {canManage && (
               <button
                 onClick={() => setActiveModalTab('attendance')}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                   activeModalTab === 'attendance'
-                    ? 'bg-emerald-600 text-white'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-emerald-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
                 }`}
               >
                 <ClipboardList className="w-3.5 h-3.5 text-blue-400" />
@@ -467,7 +538,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                       </div>
                       <div>
                         <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                          Moroccan Pitch Cost Split (MAD / د.م.)
+                          Moroccan Pitch Cost Split (MAD)
                         </h3>
                         <p className="text-xs text-slate-400">
                           Track cash on pitch, CIH Bank, Attijariwafa, or Wafacash payments
@@ -499,18 +570,24 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                           <label className="text-[11px] text-slate-400 block mb-1">Total Pitch Rental (MAD)</label>
                           <input
                             type="number"
+                            min={0}
+                            step="any"
+                            placeholder="e.g. 30, 600, 700"
                             value={editTotalCost}
-                            onChange={(e) => setEditTotalCost(Number(e.target.value))}
-                            className="w-full bg-[#090D16] border border-[#1E293B] rounded-lg px-3 py-2 text-xs text-white"
+                            onChange={(e) => setEditTotalCost(e.target.value === '' ? '' : Number(e.target.value))}
+                            className="w-full bg-[#090D16] border border-[#1E293B] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
                           />
                         </div>
                         <div>
                           <label className="text-[11px] text-slate-400 block mb-1">Player Fee (MAD)</label>
                           <input
                             type="number"
+                            min={0}
+                            step="any"
+                            placeholder="e.g. 2, 3, 50, 75"
                             value={editPricePerPlayer}
-                            onChange={(e) => setEditPricePerPlayer(Number(e.target.value))}
-                            className="w-full bg-[#090D16] border border-[#1E293B] rounded-lg px-3 py-2 text-xs text-white"
+                            onChange={(e) => setEditPricePerPlayer(e.target.value === '' ? '' : Number(e.target.value))}
+                            className="w-full bg-[#090D16] border border-[#1E293B] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
                           />
                         </div>
                       </div>
@@ -917,215 +994,19 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
               </div>
             )}
 
-            {/* TAB 2: LIVE SCOREBOARD & MVP VOTING */}
-            {activeModalTab === 'scoreboard' && (
-              <div className="space-y-6">
-                {/* Scoreboard Jumbotron */}
-                <div className="bg-[#090D16] border border-[#1E293B] rounded-3xl p-6 text-center space-y-4">
-                  <span className="text-xs font-bold uppercase tracking-widest text-slate-400">Match Scoreboard</span>
+            {/* TAB: LIVE MATCH CLOCK & SUBS */}
+            {activeModalTab === 'live' && (
+              <LiveMatchClockManager match={match} />
+            )}
 
-                  <div className="flex items-center justify-center gap-8 py-2">
-                    {/* Green Team Score */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-center gap-2 text-emerald-400 font-bold text-sm">
-                        <div className="w-3 h-3 rounded-full bg-emerald-400" />
-                        Team Green
-                      </div>
-                      <div className="text-5xl sm:text-6xl font-extrabold text-emerald-400 font-mono">
-                        {scoreGreen}
-                      </div>
-                      {canManage && (
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => updateMatchScore(match.id, Math.max(0, scoreGreen - 1), scoreBlue)}
-                            className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm"
-                          >
-                            -
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => updateMatchScore(match.id, scoreGreen + 1, scoreBlue)}
-                            className="w-8 h-8 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm"
-                          >
-                            +
-                          </button>
-                        </div>
-                      )}
-                    </div>
+            {/* TAB: CIH BANK & PAYMENTS */}
+            {activeModalTab === 'payments' && (
+              <CihPaymentTracker match={match} />
+            )}
 
-                    <div className="text-3xl font-bold text-slate-600 font-mono">:</div>
-
-                    {/* Blue Team Score */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-center gap-2 text-blue-400 font-bold text-sm">
-                        <div className="w-3 h-3 rounded-full bg-blue-400" />
-                        Team Blue
-                      </div>
-                      <div className="text-5xl sm:text-6xl font-extrabold text-blue-400 font-mono">
-                        {scoreBlue}
-                      </div>
-                      {canManage && (
-                        <div className="flex items-center justify-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => updateMatchScore(match.id, scoreGreen, Math.max(0, scoreBlue - 1))}
-                            className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm"
-                          >
-                            -
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => updateMatchScore(match.id, scoreGreen, scoreBlue + 1)}
-                            className="w-8 h-8 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm"
-                          >
-                            +
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Record Goal Section */}
-                <div className="bg-[#090D16] border border-[#1E293B] rounded-2xl p-5 space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Flame className="w-5 h-5 text-amber-400" />
-                    <h3 className="text-sm font-bold text-white">Record Match Goal</h3>
-                  </div>
-
-                  <form onSubmit={handleAddGoal} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                    <div>
-                      <label className="text-[11px] text-slate-400 block mb-1">Team</label>
-                      <select
-                        value={goalTeam}
-                        onChange={(e) => setGoalTeam(e.target.value as TeamSide)}
-                        className="w-full bg-[#0E1526] border border-[#1E293B] rounded-xl px-3 py-2 text-xs text-white"
-                      >
-                        <option value="green">Team Green</option>
-                        <option value="blue">Team Blue</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-[11px] text-slate-400 block mb-1">Goal Scorer</label>
-                      <select
-                        value={goalScorerId}
-                        onChange={(e) => setGoalScorerId(e.target.value)}
-                        required
-                        className="w-full bg-[#0E1526] border border-[#1E293B] rounded-xl px-3 py-2 text-xs text-white"
-                      >
-                        <option value="">Select Scorer...</option>
-                        {match.roster.map((p) => (
-                          <option key={p.userId} value={p.userId}>{p.name} ({p.team})</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-[11px] text-slate-400 block mb-1">Minute</label>
-                      <input
-                        type="number"
-                        min={1}
-                        max={120}
-                        value={goalMinute}
-                        onChange={(e) => setGoalMinute(Number(e.target.value))}
-                        className="w-full bg-[#0E1526] border border-[#1E293B] rounded-xl px-3 py-2 text-xs text-white"
-                      />
-                    </div>
-
-                    <div className="flex items-end">
-                      <button
-                        type="submit"
-                        disabled={!goalScorerId}
-                        className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Add Goal
-                      </button>
-                    </div>
-                  </form>
-
-                  {/* Goal Timeline */}
-                  {match.goals && match.goals.length > 0 && (
-                    <div className="space-y-2 pt-2 border-t border-[#1E293B]">
-                      <span className="text-[11px] font-bold text-slate-400">Goals Timeline:</span>
-                      <div className="flex flex-wrap gap-2">
-                        {match.goals.map((g) => (
-                          <div
-                            key={g.id}
-                            className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold border ${
-                              g.team === 'green'
-                                ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
-                                : 'bg-blue-500/10 text-blue-300 border-blue-500/30'
-                            }`}
-                          >
-                            <span>⚽ {g.minute ? `${g.minute}'` : ''} <strong>{g.scorerName}</strong></span>
-                            {g.assistName && <span className="text-[10px] opacity-75">(Ast: {g.assistName})</span>}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* MVP Voting */}
-                <div className="bg-[#090D16] border border-[#1E293B] rounded-2xl p-5 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Trophy className="w-5 h-5 text-amber-400" />
-                      <div>
-                        <h3 className="text-sm font-bold text-white">Man of the Match (MVP) Voting</h3>
-                        <p className="text-xs text-slate-400">Vote for the top performer of this clash</p>
-                      </div>
-                    </div>
-
-                    {match.mvpWinnerName && (
-                      <span className="px-3 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5">
-                        <Trophy className="w-4 h-4 text-amber-400" /> Winner: {match.mvpWinnerName}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                    {match.roster.map((player) => {
-                      const voteCount = Object.values(match.mvpVotes || {}).filter((nomineeId) => nomineeId === player.userId).length;
-                      const hasVotedForThis = match.mvpVotes?.[currentUser.id] === player.userId;
-
-                      return (
-                        <div
-                          key={player.userId}
-                          className="flex items-center justify-between p-3 rounded-xl bg-[#0E1526] border border-[#1E293B]"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <img
-                              src={player.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${player.name}`}
-                              alt={player.name}
-                              className="w-8 h-8 rounded-full object-cover"
-                            />
-                            <div className="min-w-0">
-                              <div className="text-xs font-bold text-white truncate">{player.name}</div>
-                              <div className="text-[10px] text-amber-400 font-semibold">{voteCount} votes</div>
-                            </div>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => handleVoteMvp(player.userId)}
-                            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                              hasVotedForThis
-                                ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
-                                : 'bg-slate-800 text-slate-300 hover:bg-amber-500/20 hover:text-amber-300'
-                            }`}
-                          >
-                            {hasVotedForThis ? 'Voted ★' : 'Vote MVP'}
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
+            {/* TAB: MOTM VOTING */}
+            {activeModalTab === 'motm' && (
+              <MotmPostMatchVoting match={match} />
             )}
 
             {/* TAB 3: 2D/3D TACTICAL PITCH */}
@@ -1148,6 +1029,13 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                     Record player attendance to update player reliability and fair play scores.
                   </p>
                 </div>
+
+                {attendanceSuccessMessage && (
+                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+                    <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+                    {attendanceSuccessMessage}
+                  </div>
+                )}
 
                 <div className="space-y-2">
                   {match.roster.map((player) => {

@@ -21,6 +21,7 @@ import {
   Lock,
   AlertCircle,
   Users,
+  Check,
 } from 'lucide-react';
 
 export interface TacticalPitch3DWebGLProps {
@@ -39,6 +40,29 @@ export interface TacticalPitch3DWebGLProps {
 // Pitch dimensions: Width X = 44, Length Z = 64 (standard 105x68 proportion scaled)
 const PITCH_WIDTH = 44;
 const PITCH_LENGTH = 64;
+
+function disposeThreeObject(obj: THREE.Object3D) {
+  if (!obj) return;
+  if (obj.children) {
+    for (let i = obj.children.length - 1; i >= 0; i--) {
+      disposeThreeObject(obj.children[i]);
+    }
+  }
+  if ((obj as any).geometry) {
+    (obj as any).geometry.dispose();
+  }
+  if ((obj as any).material) {
+    if (Array.isArray((obj as any).material)) {
+      (obj as any).material.forEach((mat: THREE.Material) => {
+        if ((mat as any).map) (mat as any).map.dispose();
+        mat.dispose();
+      });
+    } else {
+      if ((obj as any).material.map) (obj as any).material.map.dispose();
+      (obj as any).material.dispose();
+    }
+  }
+}
 
 function slotTo3DPos(leftPct: number, topPct: number): THREE.Vector3 {
   const x = ((leftPct - 50) / 100) * (PITCH_WIDTH * 0.88);
@@ -475,6 +499,10 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
     scene.add(tokenGroup);
     tokenGroupRef.current = tokenGroup;
 
+    // Visibility and Active tab detection
+    let isElementVisible = true;
+    let isTabVisible = !document.hidden;
+
     // Resize Handler using ResizeObserver for smooth responsiveness
     const handleResize = () => {
       if (!container || !rendererRef.current || !cameraRef.current) return;
@@ -494,10 +522,26 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
     }
     window.addEventListener('resize', handleResize);
 
-    // Animation Render Loop
+    let intersectionObserver: IntersectionObserver | null = null;
+    if (typeof IntersectionObserver !== 'undefined') {
+      intersectionObserver = new IntersectionObserver(([entry]) => {
+        isElementVisible = entry.isIntersecting;
+      }, { threshold: 0.05 });
+      intersectionObserver.observe(container);
+    }
+
+    const handleVisibilityChange = () => {
+      isTabVisible = !document.hidden;
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Animation Render Loop with inactive tab & off-screen throttling
     let animationFrameId: number;
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
+
+      // Only perform costly rendering when the tab is focused and the element is in view
+      if (!isTabVisible || !isElementVisible) return;
 
       if (cameraRef.current) {
         const { theta, phi, radius } = orbitAngles.current;
@@ -530,10 +574,16 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
     // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (resizeObserver) resizeObserver.disconnect();
+      if (intersectionObserver) intersectionObserver.disconnect();
       cancelAnimationFrame(animationFrameId);
+      if (sceneRef.current) {
+        disposeThreeObject(sceneRef.current);
+      }
       if (rendererRef.current) {
         rendererRef.current.dispose();
+        rendererRef.current.forceContextLoss();
       }
       if (container && renderer && container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
@@ -546,10 +596,11 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
     const tokenGroup = tokenGroupRef.current;
     if (!tokenGroup) return;
 
-    // Clear existing tokens
+    // Clear existing tokens and dispose their resources
     while (tokenGroup.children.length > 0) {
       const obj = tokenGroup.children[0];
       tokenGroup.remove(obj);
+      disposeThreeObject(obj);
     }
     interactablesRef.current = [];
 
@@ -1038,18 +1089,64 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
         </div>
       </div>
 
-      {/* Bottom Interactive Guide Tip */}
-      <div className="absolute bottom-3 left-3.5 right-3.5 flex items-center justify-between pointer-events-none">
-        <div className="bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-800 text-[11px] text-slate-300 flex items-center gap-2 shadow-lg">
-          <Info className="w-3.5 h-3.5 text-emerald-400" />
-          <span>
-            <strong>Interactive 3D:</strong> Drag anywhere to orbit 360° • Click any 3D token to assign or claim your position
-          </span>
-        </div>
+      {/* Bottom Interactive Guide Tip & 3D Selected Position Callout */}
+      <div className="absolute bottom-3.5 left-3.5 right-3.5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pointer-events-none">
+        {/* Left: General 3D guide or Slot Info */}
+        {!selectedSlotKey ? (
+          <div className="bg-slate-950/85 backdrop-blur-md px-3.5 py-2 rounded-xl border border-slate-800 text-[11px] text-slate-300 flex items-center gap-2 shadow-xl pointer-events-auto">
+            <Info className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>
+              <strong>3D Pitch:</strong> Click any player token to select & lock your exact playing position
+            </span>
+          </div>
+        ) : (
+          (() => {
+            const allSlots = formation ? [...formation.slots.green, ...formation.slots.blue] : [];
+            const activeSlot = allSlots.find((s) => s.key === selectedSlotKey);
+            const occupantId = assignments ? assignments[selectedSlotKey] : null;
+            const occupant = occupantId ? match.roster.find((p) => p.userId === occupantId) : null;
 
-        {hoveredSlotKey && (
-          <div className="bg-amber-500 text-slate-950 px-3 py-1 rounded-lg font-bold text-xs shadow-lg animate-bounce hidden sm:block">
-            Click to manage slot
+            if (!activeSlot) return null;
+
+            return (
+              <div className="bg-[#0E1526]/95 backdrop-blur-md px-4 py-2.5 rounded-2xl border-2 border-amber-400/80 shadow-2xl flex items-center justify-between gap-3 text-white pointer-events-auto animate-in slide-in-from-bottom-2 duration-200">
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shadow-md ${
+                      activeSlot.team === 'green' ? 'bg-emerald-500 text-slate-950' : 'bg-blue-600 text-white'
+                    }`}
+                  >
+                    {activeSlot.label}
+                  </div>
+                  <div>
+                    <div className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                      <span>{activeSlot.team === 'green' ? 'Team Green' : 'Team Blue'}</span>
+                      <span>• {activeSlot.label} ({activeSlot.roleDescription})</span>
+                    </div>
+                    <div className="text-[11px] text-slate-300">
+                      {occupant ? `Current: ${occupant.name}` : 'Vacant Position (Available to lock)'}
+                    </div>
+                  </div>
+                </div>
+
+                {onSelfClaimSlot && (
+                  <button
+                    type="button"
+                    onClick={() => onSelfClaimSlot(activeSlot)}
+                    className="px-3.5 py-1.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 text-xs font-black rounded-xl shadow-lg border border-amber-300 flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                  >
+                    <Check className="w-3.5 h-3.5 text-slate-950" />
+                    <span>Confirm Position</span>
+                  </button>
+                )}
+              </div>
+            );
+          })()
+        )}
+
+        {hoveredSlotKey && !selectedSlotKey && (
+          <div className="bg-amber-500 text-slate-950 px-3.5 py-1.5 rounded-xl font-black text-xs shadow-xl animate-pulse pointer-events-auto self-end">
+            Click to select position ⚽
           </div>
         )}
       </div>

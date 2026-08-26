@@ -857,12 +857,19 @@ async function startServer() {
   // Create Match
   app.post('/api/matches', requireAuth, (req: AuthenticatedRequest, res) => {
     const matchData = req.body;
+    const parsedPrice = (matchData.pricePerPlayer !== undefined && matchData.pricePerPlayer !== null && !isNaN(Number(matchData.pricePerPlayer)))
+      ? Number(matchData.pricePerPlayer)
+      : 50;
+    const parsedTotalCost = (matchData.totalPitchCost !== undefined && matchData.totalPitchCost !== null && !isNaN(Number(matchData.totalPitchCost)))
+      ? Number(matchData.totalPitchCost)
+      : parsedPrice * (matchData.maxPlayers || 14);
+
     const newMatch: SoccerMatch = {
       ...matchData,
       id: matchData.id || `match_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       currency: matchData.currency || DEFAULT_CURRENCY,
-      pricePerPlayer: Number(matchData.pricePerPlayer) || 50,
-      totalPitchCost: Number(matchData.totalPitchCost) || Number(matchData.pricePerPlayer || 50) * (matchData.maxPlayers || 14),
+      pricePerPlayer: parsedPrice,
+      totalPitchCost: parsedTotalCost,
       creatorId: req.user?.id || matchData.creatorId,
       creatorName: req.user?.name || matchData.creatorName,
       creatorEmail: req.user?.email || matchData.creatorEmail,
@@ -1392,7 +1399,7 @@ async function startServer() {
         playerName: player.name,
         status: newPaidStatus ? 'paid' : 'unpaid',
         method: player.paymentMethod || 'cash',
-        amount: match.pricePerPlayer || 50,
+        amount: match.pricePerPlayer ?? 50,
         updatedAt: new Date().toISOString(),
       };
     }
@@ -1410,8 +1417,11 @@ async function startServer() {
     const match = db.matches.find((m) => m.id === matchId);
     if (!match) return res.status(404).json({ success: false, error: 'Match not found' });
 
-    match.totalPitchCost = Number(totalCost) || 0;
-    match.pricePerPlayer = Number(pricePerPlayer) || 0;
+    const numTotal = (totalCost !== undefined && totalCost !== null && !isNaN(Number(totalCost))) ? Number(totalCost) : 0;
+    const numPrice = (pricePerPlayer !== undefined && pricePerPlayer !== null && !isNaN(Number(pricePerPlayer))) ? Number(pricePerPlayer) : 0;
+
+    match.totalPitchCost = numTotal;
+    match.pricePerPlayer = numPrice;
     match.currency = DEFAULT_CURRENCY;
     match.updatedAt = new Date().toISOString();
 

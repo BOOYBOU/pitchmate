@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   Shield,
   Edit3,
@@ -11,8 +11,6 @@ import {
   Plus,
   ChevronRight,
   Camera,
-  Upload,
-  Link,
   X,
   Lock,
   Star,
@@ -21,16 +19,8 @@ import {
 } from 'lucide-react';
 import { SUPER_ADMIN_EMAIL, isSuperAdminEmail, SoccerMatch, PlayerPosition } from '../types';
 import { usePitchStore } from '../lib/usePitchStore';
-import { formatMoroccoDate, MOROCCAN_CITIES } from '../lib/moroccoUtils';
-
-const PRESET_AVATARS = [
-  { name: 'Captain Striker', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80' },
-  { name: 'Playmaker', url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80' },
-  { name: 'Winger Pro', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80' },
-  { name: 'Solid Defender', url: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80' },
-  { name: 'Goalkeeper Ace', url: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=200&auto=format&fit=crop&q=80' },
-  { name: 'Midfield Maestro', url: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=200&auto=format&fit=crop&q=80' },
-];
+import { formatMoroccoDate } from '../lib/moroccoUtils';
+import { ChangeAvatarModal } from './ChangeAvatarModal';
 
 interface ProfileViewProps {
   onOpenMatchDetails: (match: SoccerMatch) => void;
@@ -56,12 +46,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
   const [editPosition, setEditPosition] = useState<PlayerPosition>(currentUser.preferredPosition || 'MID');
   const [editSkillLevel, setEditSkillLevel] = useState<number>(currentUser.skillRating || 3);
 
-  // Avatar Upload Modal state
+  // Avatar Modal State
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
-  const [avatarUrlInput, setAvatarUrlInput] = useState(currentUser.avatarUrl);
-  const [avatarPreview, setAvatarPreview] = useState(currentUser.avatarUrl);
-  const [uploadError, setUploadError] = useState('');
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Super Admin Password Modal state
   const [showAdminPassModal, setShowAdminPassModal] = useState(false);
@@ -78,44 +64,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
   const myMatches = matches.filter((m) => m.roster.some((p) => p.userId === currentUser.id));
 
   const handleOpenAvatarModal = () => {
-    setAvatarUrlInput(currentUser.avatarUrl);
-    setAvatarPreview(currentUser.avatarUrl);
-    setUploadError('');
     setIsAvatarModalOpen(true);
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      setUploadError('Please select a valid image file (PNG, JPG, WebP)');
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      setUploadError('Image size should be under 5MB');
-      return;
-    }
-
-    setUploadError('');
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (typeof event.target?.result === 'string') {
-        setAvatarPreview(event.target.result);
-        setAvatarUrlInput(event.target.result);
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleSaveAvatar = async () => {
-    if (!avatarPreview) return;
-    await updateUserProfile(currentUser.id, {
-      avatarUrl: avatarPreview,
-    });
-    setEditAvatar(avatarPreview);
-    setIsAvatarModalOpen(false);
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -480,16 +429,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">Home City (Morocco)</label>
-                <select
+                <label className="block text-slate-400 mb-1">Home City</label>
+                <input
+                  type="text"
                   value={editCity}
                   onChange={(e) => setEditCity(e.target.value)}
+                  placeholder="e.g. Casablanca, Rabat, Marrakech"
                   className="w-full px-3 py-2 bg-[#0E1526] border border-[#1E293B] rounded-lg text-white focus:outline-none focus:border-emerald-500"
-                >
-                  {MOROCCAN_CITIES.map((c) => (
-                    <option key={c.name} value={c.name}>{c.name} ({c.nameAr})</option>
-                  ))}
-                </select>
+                />
               </div>
 
               <div>
@@ -553,136 +500,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
         )}
       </div>
 
-      {/* Avatar Modal */}
-      {isAvatarModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-lg bg-[#0E1526] border border-[#1E293B] rounded-3xl p-6 shadow-2xl space-y-5 text-white">
-            <div className="flex items-center justify-between pb-3 border-b border-[#1E293B]">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
-                  <Camera className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold font-display text-white">Change Profile Picture</h3>
-                  <p className="text-xs text-slate-400">Upload a photo from your device or paste an image URL</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsAvatarModalOpen(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-center gap-5 p-4 bg-[#090D16] border border-[#1E293B] rounded-2xl">
-              <img
-                src={avatarPreview || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'}
-                alt="Avatar Preview"
-                className="w-20 h-20 rounded-2xl object-cover border-2 border-emerald-500 shadow-lg shrink-0"
-                referrerPolicy="no-referrer"
-              />
-              <div className="space-y-1 text-center sm:text-left">
-                <span className="text-xs font-bold text-white block">Preview on Live Match Rosters</span>
-                <span className="text-[11px] text-slate-400 block">
-                  This picture will appear next to your name in game rosters, comments, and the top navigation bar.
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
-                Option 1: Upload from Device
-              </label>
-              <input
-                type="file"
-                ref={fileInputRef}
-                accept="image/*"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full py-3 px-4 border border-dashed border-slate-700 hover:border-emerald-500/60 rounded-2xl bg-[#090D16] text-xs font-medium text-slate-300 hover:text-emerald-300 flex items-center justify-center gap-2 transition-colors cursor-pointer"
-              >
-                <Upload className="w-4 h-4 text-emerald-400" />
-                Select Image File (JPG, PNG, WebP)
-              </button>
-              {uploadError && <p className="text-xs text-rose-400">{uploadError}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
-                Option 2: Provide Image URL
-              </label>
-              <div className="relative">
-                <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="url"
-                  placeholder="https://example.com/my-photo.jpg"
-                  value={avatarUrlInput}
-                  onChange={(e) => {
-                    setAvatarUrlInput(e.target.value);
-                    setAvatarPreview(e.target.value);
-                  }}
-                  className="w-full pl-9 pr-3 py-2 bg-[#090D16] border border-[#1E293B] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">
-                Or Pick a Soccer Pro Avatar:
-              </label>
-              <div className="grid grid-cols-6 gap-2">
-                {PRESET_AVATARS.map((preset, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => {
-                      setAvatarPreview(preset.url);
-                      setAvatarUrlInput(preset.url);
-                    }}
-                    className={`relative rounded-xl overflow-hidden aspect-square border-2 transition-all cursor-pointer ${
-                      avatarPreview === preset.url
-                        ? 'border-emerald-400 ring-2 ring-emerald-500/40 scale-105'
-                        : 'border-slate-800 hover:border-slate-600 opacity-70 hover:opacity-100'
-                    }`}
-                    title={preset.name}
-                  >
-                    <img
-                      src={preset.url}
-                      alt={preset.name}
-                      className="w-full h-full object-cover"
-                      referrerPolicy="no-referrer"
-                    />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#1E293B]">
-              <button
-                type="button"
-                onClick={() => setIsAvatarModalOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs text-slate-400 hover:text-white cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                id="apply-avatar-btn"
-                type="button"
-                onClick={handleSaveAvatar}
-                className="px-6 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md transition-colors cursor-pointer"
-              >
-                Save Profile Picture
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Standardized Change Avatar Modal */}
+      <ChangeAvatarModal
+        isOpen={isAvatarModalOpen}
+        onClose={() => setIsAvatarModalOpen(false)}
+      />
 
       {/* Confirmed Matches */}
       <div className="space-y-4">

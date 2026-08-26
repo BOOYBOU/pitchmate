@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { SoccerMatch } from '../../types';
+import { filterMatches } from '../../lib/adminUtils';
 import {
   Search,
   Lock,
@@ -34,14 +35,7 @@ export function AdminMatchesTable({
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  const filteredMatches = matches.filter((match) => {
-    return (
-      match.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      match.location.venueName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      match.location.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      match.creatorName.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  });
+  const filteredMatches = filterMatches(matches, searchTerm, 'all');
 
   return (
     <div className="space-y-4">

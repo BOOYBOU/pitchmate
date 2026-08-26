@@ -15,11 +15,17 @@ export const MatchList: React.FC<MatchListProps> = ({ onOpenCreate, onOpenDetail
   const [searchQuery, setSearchQuery] = useState('');
   const [onlyMyMatches, setOnlyMyMatches] = useState(false);
   const [dateFilter, setDateFilter] = useState<'all' | 'today'>('all');
+  const [formatFilter, setFormatFilter] = useState<'all' | '5v5' | '7v7' | '11v11'>('all');
 
   const now = new Date();
 
   // Filter matches
   const filteredMatches = matches.filter((match) => {
+    // Format filter
+    if (formatFilter !== 'all') {
+      if (match.format !== formatFilter) return false;
+    }
+
     // Search query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -149,21 +155,38 @@ export const MatchList: React.FC<MatchListProps> = ({ onOpenCreate, onOpenDetail
           </div>
 
           {/* Quick toggle filters */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
             <button
               type="button"
               onClick={() => {
                 setDateFilter('all');
                 setOnlyMyMatches(false);
+                setFormatFilter('all');
               }}
               className={`px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
-                !onlyMyMatches && dateFilter === 'all'
+                !onlyMyMatches && dateFilter === 'all' && formatFilter === 'all'
                   ? 'bg-slate-700 text-white shadow-sm'
                   : 'bg-[#090D16] border border-[#1E293B] text-slate-400 hover:text-white'
               }`}
             >
-              All Matches
+              All
             </button>
+
+            {/* Format quick filters */}
+            {(['5v5', '7v7', '11v11'] as const).map((fmt) => (
+              <button
+                key={fmt}
+                type="button"
+                onClick={() => setFormatFilter(formatFilter === fmt ? 'all' : fmt)}
+                className={`px-2.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors cursor-pointer ${
+                  formatFilter === fmt
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'bg-[#090D16] border border-[#1E293B] text-slate-400 hover:text-white'
+                }`}
+              >
+                {fmt}
+              </button>
+            ))}
 
             <button
               id="filter-my-matches-btn"
@@ -176,7 +199,7 @@ export const MatchList: React.FC<MatchListProps> = ({ onOpenCreate, onOpenDetail
               }`}
             >
               <Flame className="w-3.5 h-3.5" />
-              My Joined ({myJoinedCount})
+              My Matches ({myJoinedCount})
             </button>
 
             <button

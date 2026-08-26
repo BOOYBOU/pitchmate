@@ -1,0 +1,291 @@
+import React, { useState } from 'react';
+import {
+  Trophy,
+  Star,
+  Award,
+  Flame,
+  CheckCircle2,
+  Users,
+  Sparkles,
+  Crown,
+  Vote,
+} from 'lucide-react';
+import confetti from 'canvas-confetti';
+import { SoccerMatch, PlayerRosterItem } from '../types';
+import { usePitchStore } from '../lib/usePitchStore';
+import { SoundEffects } from '../lib/audioService';
+
+interface MotmPostMatchVotingProps {
+  match: SoccerMatch;
+}
+
+export const MotmPostMatchVoting: React.FC<MotmPostMatchVotingProps> = ({ match }) => {
+  const { currentUser, voteMatchMvp } = usePitchStore();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Extract votes and winner
+  const votes = match.motmVotes || match.mvpVotes || {};
+  const myVote = votes[currentUser.id];
+
+  // Tally votes
+  const tally: Record<string, number> = {};
+  Object.values(votes).forEach((nomineeId) => {
+    tally[nomineeId] = (tally[nomineeId] || 0) + 1;
+  });
+
+  const totalVotesCount = Object.keys(votes).length;
+
+  // Determine leading nominee
+  let topNomineeId = match.motmWinnerId || match.mvpWinnerId || '';
+  let maxVotes = 0;
+  Object.entries(tally).forEach(([nomineeId, count]) => {
+    if (count > maxVotes) {
+      maxVotes = count;
+      topNomineeId = nomineeId;
+    }
+  });
+
+  const topNomineePlayer = match.roster.find((p) => p.userId === topNomineeId);
+
+  // Handle vote action
+  const handleCastVote = async (nomineeId: string) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await voteMatchMvp(match.id, nomineeId);
+      SoundEffects.playJoin();
+      try {
+        confetti({
+          particleCount: 50,
+          spread: 60,
+          origin: { y: 0.6 },
+        });
+      } catch {}
+    } catch (err) {
+      console.error('Failed to cast vote:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Extract goalscorers in this match for performance context
+  const goalsPerPlayer: Record<string, number> = {};
+  if (match.goals) {
+    match.goals.forEach((g) => {
+      if (g.scorerId) {
+        goalsPerPlayer[g.scorerId] = (goalsPerPlayer[g.scorerId] || 0) + 1;
+      }
+    });
+  }
+
+  return (
+    <div id="motm-post-match-voting" className="space-y-6 animate-in fade-in duration-200">
+      {/* MOTM Leader / Winner Header Banner */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-950/50 via-[#0F172A] to-[#0A0F1D] border-2 border-amber-400/80 p-5 md:p-6 shadow-2xl">
+        <div className="absolute top-0 right-0 -mt-6 -mr-6 w-48 h-48 bg-amber-400/15 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              {topNomineePlayer ? (
+                <img
+                  src={
+                    topNomineePlayer.avatarUrl ||
+                    `https://api.dicebear.com/7.x/bottts/svg?seed=${topNomineePlayer.userId}`
+                  }
+                  alt={topNomineePlayer.name}
+                  referrerPolicy="no-referrer"
+                  className="w-16 h-16 rounded-2xl object-cover border-2 border-amber-400 shadow-xl shadow-amber-500/20"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border-2 border-amber-400/50 flex items-center justify-center text-amber-400">
+                  <Trophy className="w-8 h-8" />
+                </div>
+              )}
+              <div className="absolute -bottom-2 -right-2 w-6 h-6 rounded-lg bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center shadow-md">
+                👑
+              </div>
+            </div>
+
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[10px] font-black uppercase tracking-wider border border-amber-400/30">
+                <Star className="w-3 h-3 fill-amber-300" />
+                <span>Man of the Match (MOTM)</span>
+              </div>
+              <h3 className="text-lg md:text-xl font-black text-white mt-1">
+                {topNomineePlayer ? topNomineePlayer.name : 'Voting in Progress...'}
+              </h3>
+              <p className="text-xs text-slate-300 mt-0.5">
+                {topNomineePlayer
+                  ? `${maxVotes} ${maxVotes === 1 ? 'vote' : 'votes'} received from players and supporters`
+                  : 'Cast your vote for the standout player of this fixture!'}
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-slate-900/90 rounded-2xl px-4 py-3 border border-slate-800 flex items-center gap-4 self-start sm:self-auto">
+            <div className="text-center">
+              <div className="text-lg font-black text-amber-400">{totalVotesCount}</div>
+              <div className="text-[10px] font-bold uppercase text-slate-400">Total Votes</div>
+            </div>
+            <div className="h-8 w-px bg-slate-800" />
+            <div className="text-center">
+              <div className="text-lg font-black text-emerald-400">{match.roster.length}</div>
+              <div className="text-[10px] font-bold uppercase text-slate-400">Nominees</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Voting Instruction Card */}
+      <div className="bg-[#0E1526] border border-slate-800/90 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+            <Vote className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-xs font-bold text-white">
+              Who made the biggest impact on the pitch?
+            </div>
+            <div className="text-[11px] text-slate-400">
+              {myVote
+                ? `You voted for ${
+                    match.roster.find((p) => p.userId === myVote)?.name || 'a player'
+                  }. You can change your pick anytime.`
+                : 'Click "Vote MOTM" next to your chosen nominee below.'}
+            </div>
+          </div>
+        </div>
+
+        {myVote && (
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/20 text-emerald-300 text-xs font-black rounded-xl border border-emerald-500/40 shrink-0">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <span>Vote Recorded</span>
+          </span>
+        )}
+      </div>
+
+      {/* Nominees Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+        {match.roster.map((player) => {
+          const voteCount = tally[player.userId] || 0;
+          const percentage =
+            totalVotesCount > 0 ? Math.round((voteCount / totalVotesCount) * 100) : 0;
+          const isVotedByMe = myVote === player.userId;
+          const isCurrentLeader = topNomineeId === player.userId && maxVotes > 0;
+          const goalsScored = goalsPerPlayer[player.userId] || 0;
+
+          return (
+            <div
+              key={player.userId}
+              className={`rounded-2xl p-4 transition-all border ${
+                isCurrentLeader
+                  ? 'bg-gradient-to-r from-[#0F172A] to-[#162035] border-amber-400/80 shadow-lg shadow-amber-500/10 ring-1 ring-amber-400/40'
+                  : isVotedByMe
+                  ? 'bg-gradient-to-r from-emerald-950/30 to-[#0E1526] border-emerald-500/60'
+                  : 'bg-[#0E1526] border-slate-800/80 hover:border-slate-700'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <img
+                      src={
+                        player.avatarUrl ||
+                        `https://api.dicebear.com/7.x/bottts/svg?seed=${player.userId}`
+                      }
+                      alt={player.name}
+                      referrerPolicy="no-referrer"
+                      className="w-12 h-12 rounded-xl object-cover border border-slate-700 shadow-md"
+                    />
+                    {isCurrentLeader && (
+                      <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-amber-400 text-slate-950 rounded-full flex items-center justify-center text-[10px] shadow">
+                        👑
+                      </span>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-black text-white text-sm">{player.name}</span>
+                      <span
+                        className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
+                          player.team === 'green'
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                        }`}
+                      >
+                        {player.team === 'green' ? 'Green' : 'Blue'}
+                      </span>
+                    </div>
+
+                    <div className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-2">
+                      <span>{player.position || 'Player'}</span>
+                      {goalsScored > 0 && (
+                        <span className="text-rose-400 font-bold flex items-center gap-0.5">
+                          <Flame className="w-3 h-3 fill-rose-400" />
+                          {goalsScored} {goalsScored === 1 ? 'Goal' : 'Goals'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Vote Button */}
+                <button
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={() => handleCastVote(player.userId)}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                    isVotedByMe
+                      ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20 ring-1 ring-emerald-300'
+                      : 'bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-200 border border-slate-700'
+                  }`}
+                >
+                  <Star
+                    className={`w-3.5 h-3.5 ${
+                      isVotedByMe ? 'fill-slate-950 text-slate-950' : 'text-amber-400'
+                    }`}
+                  />
+                  <span>{isVotedByMe ? 'My Pick ✓' : 'Vote MOTM'}</span>
+                </button>
+              </div>
+
+              {/* Progress Bar & Votes Count */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-slate-400 font-medium">
+                    {voteCount} {voteCount === 1 ? 'Vote' : 'Votes'}
+                  </span>
+                  <span className="font-bold text-amber-400">{percentage}%</span>
+                </div>
+                <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      isCurrentLeader
+                        ? 'bg-gradient-to-r from-amber-500 to-amber-300'
+                        : isVotedByMe
+                        ? 'bg-emerald-400'
+                        : 'bg-slate-600'
+                    }`}
+                    style={{ width: `${percentage}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {match.roster.length === 0 && (
+        <div className="bg-[#0E1526] border border-slate-800 rounded-2xl p-8 text-center text-slate-400">
+          <Users className="w-10 h-10 text-slate-600 mx-auto mb-2" />
+          <p className="font-bold text-slate-300">No players in this match roster yet</p>
+          <p className="text-xs text-slate-500 mt-1">
+            Players who join this match will be listed here for MOTM voting.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};

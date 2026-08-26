@@ -67,6 +67,46 @@ export interface RecurrenceConfig {
   parentSeriesId?: string;
 }
 
+export interface MatchSubstitution {
+  id: string;
+  minute: number;
+  team: TeamSide;
+  playerOutId: string;
+  playerOutName: string;
+  playerInId: string;
+  playerInName: string;
+  timestamp: string;
+}
+
+export interface MatchCardEvent {
+  id: string;
+  minute: number;
+  team: TeamSide;
+  playerId: string;
+  playerName: string;
+  type: 'yellow' | 'red';
+  reason?: string;
+}
+
+export interface BankDetails {
+  bankName: string; // e.g. 'CIH Bank', 'Attijariwafa Bank', 'Bank of Africa', 'Cash on Pitch'
+  accountHolder: string;
+  rib: string; // 24-digit Moroccan RIB
+  phone?: string;
+  notes?: string;
+}
+
+export interface PaymentProof {
+  playerId: string;
+  playerName: string;
+  amount: number;
+  method: 'cih_bank' | 'attijari' | 'cash' | 'wafacash' | 'other';
+  screenshotUrl?: string;
+  note?: string;
+  uploadedAt: string;
+  verified: boolean;
+}
+
 export interface SoccerMatch {
   id: string;
   title: string;
@@ -80,6 +120,8 @@ export interface SoccerMatch {
   totalPitchCost?: number; // Total rental fee of pitch e.g. 600 MAD
   paidPlayerIds?: string[]; // IDs of roster players who paid their share
   payments?: Record<string, PlayerPaymentDetail>;
+  paymentProofs?: Record<string, PaymentProof>;
+  bankDetails?: BankDetails;
   formationGreen?: string; // e.g. '2-3-1'
   formationBlue?: string; // e.g. '2-3-1'
   tacticalAssignments?: Record<string, string>; // slotKey -> userId
@@ -87,9 +129,14 @@ export interface SoccerMatch {
   noShowPlayerIds?: string[]; // IDs of players marked no-show
   score?: { green: number; blue: number };
   goals?: MatchGoal[];
+  substitutions?: MatchSubstitution[];
+  cardEvents?: MatchCardEvent[];
   mvpVotes?: Record<string, string>; // voterUserId -> nomineeUserId
   mvpWinnerId?: string;
   mvpWinnerName?: string;
+  motmVotes?: Record<string, string>; // voterUserId -> nomineeUserId
+  motmWinnerId?: string;
+  motmWinnerName?: string;
   recurrence?: RecurrenceConfig;
   isRecurring?: boolean;
   notes?: string;

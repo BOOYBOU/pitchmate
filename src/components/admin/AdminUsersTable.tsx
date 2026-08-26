@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { UserProfile, isSuperAdminEmail, SUPER_ADMIN_EMAIL } from '../../types';
+import { filterUsers, getUserStatusBadge } from '../../lib/adminUtils';
 import {
   Users,
   Search,
@@ -40,20 +41,7 @@ export function AdminUsersTable({
   const approvedCount = users.filter((u) => u.status === 'approved' || !u.status).length;
   const bannedCount = users.filter((u) => u.isBanned).length;
 
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch =
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (user.phone && user.phone.includes(searchTerm));
-
-    if (!matchesSearch) return false;
-
-    if (filterTab === 'pending') return user.status === 'pending';
-    if (filterTab === 'approved') return (user.status === 'approved' || !user.status) && !user.isBanned;
-    if (filterTab === 'banned') return user.isBanned;
-
-    return true;
-  });
+  const filteredUsers = filterUsers(users, searchTerm, filterTab);
 
   const handleBatchApprove = async () => {
     if (isProcessing) return;

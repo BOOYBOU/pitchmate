@@ -6,22 +6,21 @@ import { MOROCCO_TIMEZONE } from '../types';
 
 export interface MoroccanCityInfo {
   name: string;
-  nameAr: string;
   lat: number;
   lng: number;
 }
 
 export const MOROCCAN_CITIES: MoroccanCityInfo[] = [
-  { name: 'Casablanca', nameAr: 'الدار البيضاء', lat: 33.5731, lng: -7.5898 },
-  { name: 'Rabat', nameAr: 'الرباط', lat: 34.0209, lng: -6.8416 },
-  { name: 'Marrakech', nameAr: 'مراكش', lat: 31.6295, lng: -7.9811 },
-  { name: 'Tangier', nameAr: 'طنجة', lat: 35.7595, lng: -5.8340 },
-  { name: 'Agadir', nameAr: 'أكادير', lat: 30.4278, lng: -9.5981 },
-  { name: 'Fes', nameAr: 'فاس', lat: 34.0181, lng: -5.0078 },
-  { name: 'Kenitra', nameAr: 'القنيطرة', lat: 34.2610, lng: -6.5802 },
-  { name: 'Tetouan', nameAr: 'تطوان', lat: 35.5785, lng: -5.3684 },
-  { name: 'Mohammedia', nameAr: 'المحمدية', lat: 33.6835, lng: -7.3849 },
-  { name: 'El Jadida', nameAr: 'الجديدة', lat: 33.2316, lng: -8.5007 },
+  { name: 'Casablanca', lat: 33.5731, lng: -7.5898 },
+  { name: 'Rabat', lat: 34.0209, lng: -6.8416 },
+  { name: 'Marrakech', lat: 31.6295, lng: -7.9811 },
+  { name: 'Tangier', lat: 35.7595, lng: -5.8340 },
+  { name: 'Agadir', lat: 30.4278, lng: -9.5981 },
+  { name: 'Fes', lat: 34.0181, lng: -5.0078 },
+  { name: 'Kenitra', lat: 34.2610, lng: -6.5802 },
+  { name: 'Tetouan', lat: 35.5785, lng: -5.3684 },
+  { name: 'Mohammedia', lat: 33.6835, lng: -7.3849 },
+  { name: 'El Jadida', lat: 33.2316, lng: -8.5007 },
 ];
 
 export const MOROCCO_CITIES = MOROCCAN_CITIES;
@@ -41,13 +40,13 @@ export function getMoroccoNow(addHours = 24): string {
 }
 
 /**
- * Format amounts in Moroccan Dirham (MAD / د.م.)
+ * Format amounts in Moroccan Dirham (MAD)
  * Example: 50 MAD or 0 MAD (Free)
  */
 export function formatMAD(amount: number | undefined | null, options?: { showZeroAsFree?: boolean; suffix?: string }): string {
   const num = Number(amount) || 0;
   if (num === 0 && options?.showZeroAsFree) {
-    return 'Free (Gratuit)';
+    return 'Free';
   }
   const suffix = options?.suffix || 'MAD';
   return `${num} ${suffix}`;

@@ -14,9 +14,13 @@ import {
   Sliders,
   Shield,
   Compass,
+  CheckCircle2,
+  ArrowRight,
+  Flame,
 } from 'lucide-react';
 import { usePitchStore } from '../lib/usePitchStore';
 import { TacticalPitch3DWebGL } from './TacticalPitch3DWebGL';
+import { SoundEffects } from '../lib/audioService';
 
 interface TacticalPitchFormationProps {
   match: SoccerMatch;
@@ -32,6 +36,41 @@ export interface SlotDefinition {
   top: number; // percentage 0-100
   left: number; // percentage 0-100
   team: 'green' | 'blue';
+}
+
+export function getPositionArabicLabel(position: PlayerPosition, label: string): string {
+  switch (label.toUpperCase()) {
+    case 'GK':
+      return 'Goalkeeper (GK)';
+    case 'CB':
+      return 'Center Back (CB)';
+    case 'LB':
+      return 'Left Back (LB)';
+    case 'RB':
+      return 'Right Back (RB)';
+    case 'CDM':
+      return 'Defensive Midfielder (CDM)';
+    case 'CM':
+      return 'Central Midfielder (CM)';
+    case 'CAM':
+      return 'Attacking Midfielder (CAM)';
+    case 'LM':
+    case 'LW':
+    case 'LF':
+      return 'Left Winger / Forward (LW)';
+    case 'RM':
+    case 'RW':
+    case 'RF':
+      return 'Right Winger / Forward (RW)';
+    case 'ST':
+    case 'CF':
+      return 'Striker / Center Forward (ST)';
+    default:
+      if (position === 'GK') return 'Goalkeeper (GK)';
+      if (position === 'DEF') return 'Defender (DEF)';
+      if (position === 'MID') return 'Midfielder (MID)';
+      return 'Forward (FWD)';
+  }
 }
 
 export interface FormationConfig {
@@ -317,7 +356,7 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
   onUpdateTactical,
   isHostOrAdmin,
 }) => {
-  const { currentUser, assignPlayerTacticalSlot } = usePitchStore();
+  const { currentUser, assignPlayerTacticalSlot, joinMatch, assignPlayerTeam } = usePitchStore();
 
   const [formationKey, setFormationKey] = useState<string>(
     getNormalizedFormationKey(match.formationGreen, match.format)
@@ -327,6 +366,8 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
   );
   const [selectedSlotKey, setSelectedSlotKey] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'full' | 'green' | 'blue'>('full');
+  const [isConfirmingPosition, setIsConfirmingPosition] = useState(false);
+  const [confirmationSuccessMsg, setConfirmationSuccessMsg] = useState<string | null>(null);
 
   // Sync state if match updates from broadcast
   React.useEffect(() => {
@@ -342,29 +383,67 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
   const isUserInRoster = match.roster.some((p) => p.userId === currentUser.id);
   const userTeam = match.roster.find((p) => p.userId === currentUser.id)?.team;
 
+  // Selected slot details
+  const allSlots = [...formation.slots.green, ...formation.slots.blue];
+  const selectedSlot = allSlots.find((s) => s.key === selectedSlotKey);
+  const isSelectedSlotOccupiedByMe = selectedSlot ? assignments[selectedSlot.key] === currentUser.id : false;
+  const currentOccupantId = selectedSlot ? assignments[selectedSlot.key] : null;
+  const currentOccupantPlayer = currentOccupantId ? match.roster.find((p) => p.userId === currentOccupantId) : null;
+
   // Handle slot selection
   const handleSlotClick = (slotKey: string) => {
     if (selectedSlotKey === slotKey) {
       setSelectedSlotKey(null);
     } else {
       setSelectedSlotKey(slotKey);
+      setConfirmationSuccessMsg(null);
     }
   };
 
-  // Self Claim Position
-  const handleSelfClaimPosition = async (slot: SlotDefinition) => {
-    if (!isUserInRoster) return;
-    const next = { ...assignments };
-    // Remove user from previous slot
-    Object.keys(next).forEach((key) => {
-      if (next[key] === currentUser.id) delete next[key];
-    });
-    next[slot.key] = currentUser.id;
-    setAssignments(next);
-    setSelectedSlotKey(null);
+  // Primary Position Confirmation Function
+  const handleConfirmMyPosition = async (slot: SlotDefinition) => {
+    setIsConfirmingPosition(true);
+    try {
+      // 1. Join match roster if not already joined
+      if (!isUserInRoster) {
+        await joinMatch(match.id, slot.team);
+      } else if (userTeam !== slot.team) {
+        // Switch team side if user is on opposite team
+        await assignPlayerTeam(match.id, currentUser.id, slot.team);
+      }
 
-    await assignPlayerTacticalSlot(match.id, slot.key, currentUser.id, slot.position);
-    onUpdateTactical?.(formationKey, formationKey, next);
+      // 2. Prepare new assignments
+      const next = { ...assignments };
+      // Remove current user from any previous position
+      Object.keys(next).forEach((key) => {
+        if (next[key] === currentUser.id) delete next[key];
+      });
+      next[slot.key] = currentUser.id;
+      setAssignments(next);
+
+      // 3. Assign tactical slot in store
+      await assignPlayerTacticalSlot(match.id, slot.key, currentUser.id, slot.position);
+      onUpdateTactical?.(formationKey, formationKey, next);
+
+      // 4. Trigger audio fanfare and success state
+      SoundEffects.playJoin();
+      const posLabel = getPositionArabicLabel(slot.position, slot.label);
+      const teamLabel = slot.team === 'green' ? 'Team Green' : 'Team Blue';
+      setConfirmationSuccessMsg(`✅ Position confirmed & locked: ${slot.label} - ${posLabel} in ${teamLabel}!`);
+
+      setTimeout(() => {
+        setConfirmationSuccessMsg(null);
+      }, 5000);
+    } catch (err) {
+      console.error('Failed to confirm position:', err);
+    } finally {
+      setIsConfirmingPosition(false);
+    }
+  };
+
+  // Direct Self Claim Position (alias for backwards compatibility)
+  const handleSelfClaimPosition = async (slot: SlotDefinition) => {
+    await handleConfirmMyPosition(slot);
   };
 
   // Host/Admin Assign Player
@@ -376,7 +455,6 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
     });
     next[slotKey] = userId;
     setAssignments(next);
-    setSelectedSlotKey(null);
 
     await assignPlayerTacticalSlot(match.id, slotKey, userId, position);
     onUpdateTactical?.(formationKey, formationKey, next);
@@ -388,6 +466,7 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
     delete next[slotKey];
     setAssignments(next);
     setSelectedSlotKey(null);
+    setConfirmationSuccessMsg(null);
 
     await assignPlayerTacticalSlot(match.id, slotKey, '');
     onUpdateTactical?.(formationKey, formationKey, next);
@@ -444,9 +523,7 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
     }
   };
 
-  // Selected slot details
-  const allSlots = [...formation.slots.green, ...formation.slots.blue];
-  const selectedSlot = allSlots.find((s) => s.key === selectedSlotKey);
+  // Eligible candidate players for selected slot
   const eligiblePlayers = selectedSlot
     ? selectedSlot.team === 'green'
       ? greenPlayers
@@ -567,64 +644,148 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
         </div>
       </div>
 
-      {/* Interactive Slot Assignment Drawer */}
+      {/* Confirmation Success Toast / Banner */}
+      {confirmationSuccessMsg && (
+        <div
+          id="position-confirmation-success-banner"
+          className="bg-gradient-to-r from-emerald-950/90 via-emerald-900/90 to-[#0E1526] border-2 border-emerald-400/80 rounded-2xl p-4 shadow-2xl flex items-center justify-between gap-3 text-white animate-in zoom-in-95 duration-200"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+            </div>
+            <div>
+              <div className="text-xs font-black uppercase tracking-wider text-emerald-400">
+                Position Confirmed & Locked
+              </div>
+              <div className="text-sm font-bold text-slate-100 mt-0.5">
+                {confirmationSuccessMsg}
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setConfirmationSuccessMsg(null)}
+            className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs font-bold rounded-xl border border-emerald-500/30 cursor-pointer"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Interactive Slot Assignment & Confirmation Drawer */}
       {selectedSlot && (
         <div
           id="slot-assignment-drawer"
-          className="bg-[#0E1526] border border-amber-500/50 rounded-2xl p-4 shadow-2xl animate-in fade-in slide-in-from-top-2 duration-200"
+          className="bg-gradient-to-b from-[#0F172A] to-[#0A0F1D] border-2 border-amber-500/60 rounded-3xl p-5 shadow-2xl animate-in fade-in slide-in-from-top-3 duration-200"
         >
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
-            <div>
-              <div className="text-xs font-bold text-white flex items-center gap-2">
-                <span
-                  className={`w-3 h-3 rounded-full ${
-                    selectedSlot.team === 'green' ? 'bg-emerald-400' : 'bg-blue-400'
-                  }`}
-                />
-                <span>
-                  {selectedSlot.team === 'green' ? 'Team Green' : 'Team Blue'} ➔{' '}
-                  <strong className="text-amber-400">{selectedSlot.label}</strong> ({selectedSlot.roleDescription})
+          {/* Header with Slot Identity */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
+            <div className="flex items-center gap-3.5">
+              <div
+                className={`w-12 h-12 rounded-2xl flex flex-col items-center justify-center font-black shadow-lg border ${
+                  selectedSlot.team === 'green'
+                    ? 'bg-emerald-950/80 border-emerald-400 text-emerald-300'
+                    : 'bg-blue-950/80 border-blue-400 text-blue-300'
+                }`}
+              >
+                <span className="text-base leading-none">{selectedSlot.label}</span>
+                <span className="text-[9px] uppercase tracking-tighter text-slate-400 mt-0.5">
+                  {selectedSlot.position}
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                Click an eligible player below or claim this role for yourself to lock it on the 3D pitch.
-              </p>
+
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                      selectedSlot.team === 'green'
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                        : 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${selectedSlot.team === 'green' ? 'bg-emerald-400' : 'bg-blue-400'}`} />
+                    {selectedSlot.team === 'green' ? 'Team Green' : 'Team Blue'}
+                  </span>
+
+                  <span className="text-sm font-black text-amber-400">
+                    {getPositionArabicLabel(selectedSlot.position, selectedSlot.label)}
+                  </span>
+                </div>
+
+                <div className="text-xs text-slate-300 mt-1 font-medium flex items-center gap-2">
+                  <span>{selectedSlot.roleDescription}</span>
+                  {currentOccupantPlayer && (
+                    <span className="text-slate-400 text-[11px]">
+                      • Currently: <strong className="text-white">{currentOccupantPlayer.name}</strong>
+                    </span>
+                  )}
+                  {!currentOccupantPlayer && (
+                    <span className="text-emerald-400 text-[11px] font-bold">
+                      • Vacant Role
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              {/* Direct Self-Claim Button */}
-              {isUserInRoster && userTeam === selectedSlot.team && (
-                <button
-                  id="self-claim-slot-btn"
-                  type="button"
-                  onClick={() => handleSelfClaimPosition(selectedSlot)}
-                  className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-amber-500/20 transition-all cursor-pointer active:scale-95"
-                >
-                  <UserCheck className="w-4 h-4" />
-                  Claim {selectedSlot.label} as {currentUser.name.split(' ')[0]}
-                </button>
-              )}
+            {/* DIRECT ACTION BUTTONS (CONFIRM POSITION BUTTON) */}
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {/* PRIMARY POSITION CONFIRMATION BUTTON */}
+              <button
+                id="confirm-tactical-position-btn"
+                type="button"
+                disabled={isConfirmingPosition}
+                onClick={() => handleConfirmMyPosition(selectedSlot)}
+                className={`px-5 py-3 rounded-2xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 shadow-xl cursor-pointer active:scale-95 ${
+                  isSelectedSlotOccupiedByMe
+                    ? 'bg-emerald-500 text-slate-950 ring-2 ring-emerald-300 shadow-emerald-500/30'
+                    : 'bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 hover:from-amber-300 hover:to-amber-400 text-slate-950 shadow-amber-500/30 border border-amber-300'
+                }`}
+              >
+                {isConfirmingPosition ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                    <span>Confirming Position...</span>
+                  </>
+                ) : isSelectedSlotOccupiedByMe ? (
+                  <>
+                    <CheckCircle2 className="w-5 h-5 text-slate-950" />
+                    <span>Confirmed Position ({selectedSlot.label})</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-5 h-5" />
+                    <span>Confirm Position ({selectedSlot.label})</span>
+                  </>
+                )}
+              </button>
 
-              {/* Clear Slot */}
+              {/* Clear Slot (Host/Admin or Current Player) */}
               {assignments[selectedSlot.key] && (isHostOrAdmin || assignments[selectedSlot.key] === currentUser.id) && (
                 <button
                   id="clear-slot-btn"
                   type="button"
                   onClick={() => handleClearSlot(selectedSlot.key)}
-                  className="px-3 py-1.5 bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/40 rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
+                  className="px-3.5 py-3 bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/40 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                  title="Clear position assignment"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  Clear Slot
+                  <Trash2 className="w-4 h-4" />
+                  <span>Clear</span>
                 </button>
               )}
             </div>
           </div>
 
-          {/* Player Candidates Roster List */}
-          <div className="space-y-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-              Assign Roster Player:
-            </span>
+          {/* Host / Admin Player Candidates List */}
+          <div className="pt-3 space-y-2">
+            <div className="flex items-center justify-between text-[11px] font-bold text-slate-400">
+              <span className="uppercase tracking-wider">
+                Or Assign Another Roster Teammate ({selectedSlot.team === 'green' ? 'Green' : 'Blue'}):
+              </span>
+              <span>Click a teammate to place them here</span>
+            </div>
+
             <div className="flex flex-wrap gap-2">
               {eligiblePlayers.map((player) => {
                 const isCurrent = assignments[selectedSlot.key] === player.userId;
@@ -639,9 +800,9 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
                     onClick={() => handleAssignPlayer(selectedSlot.key, player.userId, selectedSlot.position)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
                       isCurrent
-                        ? 'bg-amber-400 text-slate-950 ring-2 ring-amber-300 shadow-md'
+                        ? 'bg-amber-400 text-slate-950 ring-2 ring-amber-300 shadow-md font-black'
                         : isAssignedElsewhere
-                        ? 'bg-slate-900 text-slate-400 border border-slate-800'
+                        ? 'bg-slate-900 text-slate-400 border border-slate-800 hover:border-slate-700'
                         : selectedSlot.team === 'green'
                         ? 'bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-200 border border-emerald-500/30'
                         : 'bg-blue-500/15 hover:bg-blue-500/30 text-blue-200 border border-blue-500/30'
@@ -659,7 +820,7 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
               })}
               {eligiblePlayers.length === 0 && (
                 <div className="text-xs text-slate-400 py-1">
-                  No confirmed players on this team roster yet. Join match to claim!
+                  No other confirmed players on this team roster yet.
                 </div>
               )}
             </div>

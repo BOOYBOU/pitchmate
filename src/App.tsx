@@ -8,11 +8,11 @@ import { PitchStoreProvider, usePitchStore } from './lib/usePitchStore';
 import { Header } from './components/Header';
 import { MatchList } from './components/MatchList';
 import { ProfileView } from './components/ProfileView';
+import { LeaderboardView } from './components/LeaderboardView';
 import { AdminPanel } from './components/AdminPanel';
 import { CreateMatchModal } from './components/CreateMatchModal';
 import { MatchDetailModal } from './components/MatchDetailModal';
 import { ChangeAvatarModal } from './components/ChangeAvatarModal';
-import { AuthModal } from './components/AuthModal';
 import { AuthView } from './components/AuthView';
 import { DirectMessagesModal } from './components/DirectMessagesModal';
 import { NotificationDrawer } from './components/NotificationDrawer';
@@ -29,11 +29,9 @@ function PitchMateApp() {
     isAuthenticated,
   } = usePitchStore();
 
-  const [activeTab, setActiveTab] = useState<'matches' | 'profile' | 'admin'>('matches');
+  const [activeTab, setActiveTab] = useState<'matches' | 'leaderboard' | 'profile' | 'admin'>('matches');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [selectedMatch, setSelectedMatch] = useState<SoccerMatch | null>(null);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
@@ -57,16 +55,6 @@ function PitchMateApp() {
     setIsDirectMessagesOpen(true);
   };
 
-  const handleOpenSignIn = () => {
-    setAuthMode('signin');
-    setIsAuthModalOpen(true);
-  };
-
-  const handleOpenSignUp = () => {
-    setAuthMode('signup');
-    setIsAuthModalOpen(true);
-  };
-
   return (
     <div className="min-h-screen bg-[#090D16] text-slate-100 flex flex-col selection:bg-emerald-500/30 selection:text-emerald-300">
       {/* App Header & Navigation */}
@@ -75,8 +63,6 @@ function PitchMateApp() {
         setActiveTab={setActiveTab}
         onOpenCreateMatch={() => setIsCreateModalOpen(true)}
         onOpenChangeAvatar={() => setIsAvatarModalOpen(true)}
-        onOpenSignIn={handleOpenSignIn}
-        onOpenSignUp={handleOpenSignUp}
         onOpenNotifications={() => setIsNotificationsOpen(true)}
         onOpenDirectMessages={() => {
           setDirectMessageRecipientId(null);
@@ -90,6 +76,12 @@ function PitchMateApp() {
           <MatchList
             onOpenCreate={() => setIsCreateModalOpen(true)}
             onOpenDetails={handleOpenMatchDetails}
+          />
+        )}
+
+        {activeTab === 'leaderboard' && (
+          <LeaderboardView
+            onOpenDirectMessage={handleOpenDirectMessageWithUser}
           />
         )}
 
@@ -146,12 +138,6 @@ function PitchMateApp() {
       <ChangeAvatarModal
         isOpen={isAvatarModalOpen}
         onClose={() => setIsAvatarModalOpen(false)}
-      />
-
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        initialMode={authMode}
-        onClose={() => setIsAuthModalOpen(false)}
       />
 
       {/* Footer */}

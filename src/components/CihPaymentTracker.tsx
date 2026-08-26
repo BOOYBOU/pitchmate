@@ -1,0 +1,506 @@
+import React, { useState } from 'react';
+import {
+  Coins,
+  CreditCard,
+  Building2,
+  Copy,
+  Check,
+  UploadCloud,
+  CheckCircle2,
+  AlertCircle,
+  Edit2,
+  CheckSquare,
+  Users,
+  Shield,
+  FileText,
+  Image as ImageIcon,
+  ExternalLink,
+  Sparkles,
+} from 'lucide-react';
+import { SoccerMatch, isSuperAdminEmail } from '../types';
+import { usePitchStore } from '../lib/usePitchStore';
+import { formatMAD } from '../lib/moroccoUtils';
+import {
+  calculateMatchPricing,
+  parsePrice,
+  derivePlayerPriceFromTotal,
+  deriveTotalFromPlayerPrice,
+} from '../lib/matchPricing';
+
+interface CihPaymentTrackerProps {
+  match: SoccerMatch;
+}
+
+export const CihPaymentTracker: React.FC<CihPaymentTrackerProps> = ({ match }) => {
+  const {
+    currentUser,
+    togglePlayerPaidStatus,
+    updatePlayerPaymentStatus,
+    updateMatchPitchCost,
+    uploadPaymentProof,
+    updateMatchBankDetails,
+  } = usePitchStore();
+
+  const isCreatorOrAdmin =
+    currentUser.id === match.creatorId ||
+    currentUser.isAdmin ||
+    isSuperAdminEmail(currentUser.email);
+
+  // Bank Details state
+  const defaultBank = match.bankDetails || {
+    bankName: 'CIH Bank',
+    accountHolder: match.creatorName || 'Mustapha Bouhbous',
+    rib: '230 780 4458921000345600 12',
+    phone: '+212 661-234567',
+    notes: 'Please add your name in the transfer motif',
+  };
+
+  const [isEditingBank, setIsEditingBank] = useState(false);
+  const [bankName, setBankName] = useState(defaultBank.bankName);
+  const [accountHolder, setAccountHolder] = useState(defaultBank.accountHolder);
+  const [rib, setRib] = useState(defaultBank.rib);
+  const [copiedRib, setCopiedRib] = useState(false);
+
+  // Cost Splitter state
+  const [isEditingCost, setIsEditingCost] = useState(false);
+  const [totalCost, setTotalCost] = useState<number | string>(match.totalPitchCost ?? ((match.pricePerPlayer ?? 50) * match.maxPlayers));
+  const [pricePerPlayer, setPricePerPlayer] = useState<number | string>(match.pricePerPlayer ?? 50);
+
+  // Proof Upload State
+  const [proofMethod, setProofMethod] = useState<'cih_bank' | 'attijari' | 'cash' | 'wafacash' | 'other'>('cih_bank');
+  const [proofNote, setProofNote] = useState('');
+  const [proofImagePreview, setProofImagePreview] = useState<string | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+
+  const pricing = calculateMatchPricing(
+    match.totalPitchCost,
+    match.pricePerPlayer,
+    match.maxPlayers,
+    match.roster.length,
+    match.paidPlayerIds || [],
+    match.roster.map((p) => p.userId)
+  );
+
+  const currentMatchFee = pricing.pricePerPlayer;
+  const currentTotalCost = pricing.totalPitchCost;
+  const paidCount = pricing.paidCount;
+  const unpaidCount = pricing.unpaidCount;
+  const totalCollected = pricing.totalCollected;
+  const remainingCost = pricing.remainingBalance;
+  const collectionPercentage = pricing.collectionPercentage;
+
+  const handleCopyRib = () => {
+    navigator.clipboard.writeText(rib.replace(/\s+/g, ''));
+    setCopiedRib(true);
+    setTimeout(() => setCopiedRib(false), 2200);
+  };
+
+  const handleSaveBankDetails = async () => {
+    await updateMatchBankDetails(match.id, {
+      bankName,
+      accountHolder,
+      rib,
+      phone: defaultBank.phone,
+      notes: defaultBank.notes,
+    });
+    setIsEditingBank(false);
+  };
+
+  const handleSaveCostSplit = async () => {
+    const finalTotal = typeof totalCost === 'number'
+      ? totalCost
+      : (totalCost !== '' && !isNaN(Number(totalCost)) ? Number(totalCost) : 0);
+
+    const finalPrice = typeof pricePerPlayer === 'number'
+      ? pricePerPlayer
+      : (pricePerPlayer !== '' && !isNaN(Number(pricePerPlayer)) ? Number(pricePerPlayer) : 0);
+
+    await updateMatchPitchCost(match.id, finalTotal, finalPrice);
+    setIsEditingCost(false);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProofImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmitProof = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await uploadPaymentProof(
+      match.id,
+      currentUser.id,
+      currentUser.name,
+      currentMatchFee,
+      proofMethod,
+      proofImagePreview || undefined,
+      proofNote || `Paid via ${proofMethod}`
+    );
+    setUploadSuccess(true);
+    setTimeout(() => setUploadSuccess(false), 3000);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Overview Metric Banner */}
+      <div className="p-6 rounded-3xl bg-gradient-to-br from-[#0E1526] via-[#131C31] to-[#0A101D] border border-[#1E293B] shadow-2xl space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
+              <Coins className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold font-display text-white">CIH Bank & Cash Payment Tracker</h2>
+              <p className="text-xs text-slate-400">Dynamic MAD cost splitter, instant RIB copy & proof upload</p>
+            </div>
+          </div>
+
+          {isCreatorOrAdmin && (
+            <button
+              onClick={() => setIsEditingCost(!isEditingCost)}
+              className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <Edit2 className="w-3.5 h-3.5 text-emerald-400" />
+              {isEditingCost ? 'Cancel Edit' : 'Adjust Pitch Cost'}
+            </button>
+          )}
+        </div>
+
+        {/* Cost Splitter Edit Panel */}
+        {isEditingCost && (
+          <div className="p-4 rounded-2xl bg-[#090D16] border border-emerald-500/30 grid grid-cols-1 sm:grid-cols-3 gap-3 animate-in fade-in">
+            <div>
+              <label className="text-[11px] text-slate-400 block mb-1">Total Pitch Rental (MAD)</label>
+              <input
+                type="number"
+                min={0}
+                step="any"
+                placeholder="e.g. 30, 600, 700"
+                value={totalCost}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setTotalCost(val === '' ? '' : Number(val));
+                  if (val !== '' && match.roster.length > 0) {
+                    setPricePerPlayer(parseFloat((Number(val) / match.roster.length).toFixed(2)));
+                  }
+                }}
+                className="w-full px-3 py-2 bg-[#0E1526] border border-[#1E293B] rounded-xl text-xs text-white font-bold focus:outline-none focus:border-emerald-500"
+              />
+              <span className="text-[10px] text-slate-500 mt-0.5 block">Accepts any custom or micro amount</span>
+            </div>
+            <div>
+              <label className="text-[11px] text-slate-400 block mb-1">Fee Per Player (MAD)</label>
+              <input
+                type="number"
+                min={0}
+                step="any"
+                placeholder="e.g. 2, 3, 50, 75"
+                value={pricePerPlayer}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setPricePerPlayer(val === '' ? '' : Number(val));
+                  if (val !== '' && match.roster.length > 0) {
+                    setTotalCost(Number(val) * match.roster.length);
+                  }
+                }}
+                className="w-full px-3 py-2 bg-[#0E1526] border border-[#1E293B] rounded-xl text-xs text-white font-bold focus:outline-none focus:border-emerald-500"
+              />
+              <span className="text-[10px] text-slate-500 mt-0.5 block">E.g. 2 MAD, 3 MAD, 75 MAD</span>
+            </div>
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={handleSaveCostSplit}
+                className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow cursor-pointer"
+              >
+                Apply Split
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Real-time Progress Bar */}
+        <div className="space-y-2 pt-2">
+          <div className="flex items-center justify-between text-xs font-bold">
+            <span className="text-slate-300">
+              Collected: <strong className="text-emerald-400">{formatMAD(totalCollected)}</strong> of{' '}
+              <strong className="text-white">{formatMAD(currentTotalCost)}</strong>
+            </span>
+            <span className="text-emerald-400">{collectionPercentage}% Funded</span>
+          </div>
+
+          <div className="w-full h-3 rounded-full bg-slate-900 overflow-hidden border border-slate-800">
+            <div
+              className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500 shadow-lg shadow-emerald-500/30"
+              style={{ width: `${collectionPercentage}%` }}
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 pt-1">
+            <div className="p-3 rounded-2xl bg-[#090D16]/80 border border-[#1E293B] text-center">
+              <span className="text-[10px] text-slate-400 uppercase font-bold block">Fee / Player</span>
+              <span className="text-sm font-black text-emerald-400">{formatMAD(currentMatchFee, { showZeroAsFree: true })}</span>
+            </div>
+            <div className="p-3 rounded-2xl bg-[#090D16]/80 border border-[#1E293B] text-center">
+              <span className="text-[10px] text-slate-400 uppercase font-bold block">Paid Players</span>
+              <span className="text-sm font-black text-white">{paidCount} of {match.roster.length}</span>
+            </div>
+            <div className="p-3 rounded-2xl bg-[#090D16]/80 border border-[#1E293B] text-center">
+              <span className="text-[10px] text-slate-400 uppercase font-bold block">Remaining Due</span>
+              <span className="text-sm font-black text-amber-400">{formatMAD(remainingCost)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* CIH Bank Information Card */}
+      <div className="p-5 rounded-3xl bg-[#090D16] border border-[#1E293B] space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-wider">
+            <CreditCard className="w-4 h-4 text-blue-400" />
+            <span>Morocco Bank Account (CIH / Attijariwafa / Cash)</span>
+          </div>
+          {isCreatorOrAdmin && (
+            <button
+              onClick={() => setIsEditingBank(!isEditingBank)}
+              className="text-xs text-blue-400 hover:text-blue-300 font-semibold cursor-pointer"
+            >
+              {isEditingBank ? 'Close' : 'Edit Details'}
+            </button>
+          )}
+        </div>
+
+        {isEditingBank ? (
+          <div className="space-y-3 p-4 rounded-2xl bg-[#0E1526] border border-[#1E293B]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-[11px] text-slate-400 block mb-1">Bank Name</label>
+                <select
+                  value={bankName}
+                  onChange={(e) => setBankName(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#090D16] border border-[#1E293B] rounded-xl text-xs text-white"
+                >
+                  <option value="CIH Bank">CIH Bank</option>
+                  <option value="Attijariwafa Bank">Attijariwafa Bank</option>
+                  <option value="Bank of Africa">Bank of Africa</option>
+                  <option value="Banque Populaire">Banque Populaire</option>
+                  <option value="Cash at Pitch">Cash at Pitch</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[11px] text-slate-400 block mb-1">Account Holder Name</label>
+                <input
+                  type="text"
+                  value={accountHolder}
+                  onChange={(e) => setAccountHolder(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#090D16] border border-[#1E293B] rounded-xl text-xs text-white"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[11px] text-slate-400 block mb-1">24-digit Moroccan RIB</label>
+              <input
+                type="text"
+                value={rib}
+                onChange={(e) => setRib(e.target.value)}
+                className="w-full px-3 py-2 bg-[#090D16] border border-[#1E293B] rounded-xl text-xs font-mono text-emerald-400"
+              />
+            </div>
+
+            <button
+              onClick={handleSaveBankDetails}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl cursor-pointer"
+            >
+              Save Bank Info
+            </button>
+          </div>
+        ) : (
+          <div className="p-4 rounded-2xl bg-[#0E1526] border border-[#1E293B] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded text-[10px] font-black bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                  {bankName}
+                </span>
+                <span className="text-xs font-bold text-white">{accountHolder}</span>
+              </div>
+              <p className="font-mono text-xs text-emerald-400 tracking-wider pt-1">{rib}</p>
+              <p className="text-[11px] text-slate-400">{defaultBank.notes}</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleCopyRib}
+              className="px-4 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+            >
+              {copiedRib ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>RIB Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Copy 24-Digit RIB</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Upload Payment Proof Form */}
+      <form onSubmit={handleSubmitProof} className="p-5 rounded-3xl bg-[#090D16] border border-[#1E293B] space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-wider">
+            <UploadCloud className="w-4 h-4 text-emerald-400" />
+            <span>Upload My Payment Proof Screenshot</span>
+          </div>
+          {uploadSuccess && (
+            <span className="text-xs font-bold text-emerald-400 flex items-center gap-1 animate-in fade-in">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Proof Submitted!
+            </span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="text-[11px] text-slate-400 block mb-1">Payment Method</label>
+            <select
+              value={proofMethod}
+              onChange={(e) => setProofMethod(e.target.value as any)}
+              className="w-full px-3 py-2 bg-[#0E1526] border border-[#1E293B] rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+            >
+              <option value="cih_bank">CIH Mobile / CIH Bank</option>
+              <option value="attijari">Attijariwafa Bank</option>
+              <option value="wafacash">Wafacash / CashPlus</option>
+              <option value="cash">Cash Given to Organizer on Pitch</option>
+              <option value="other">Other Bank Transfer</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[11px] text-slate-400 block mb-1">Transfer Note / Reference</label>
+            <input
+              type="text"
+              placeholder="e.g. CIH Ref #889210 or Paid at entrance"
+              value={proofNote}
+              onChange={(e) => setProofNote(e.target.value)}
+              className="w-full px-3 py-2 bg-[#0E1526] border border-[#1E293B] rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+        </div>
+
+        {/* Screenshot Upload Input */}
+        <div>
+          <label className="text-[11px] text-slate-400 block mb-1">Receipt / Screenshot</label>
+          <div className="flex items-center gap-3">
+            <label className="flex-1 border-2 border-dashed border-[#1E293B] hover:border-emerald-500/50 rounded-2xl p-4 text-center cursor-pointer transition-colors bg-[#0E1526]/50">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              <div className="flex items-center justify-center gap-2 text-xs text-slate-300">
+                <ImageIcon className="w-4 h-4 text-emerald-400" />
+                <span>{proofImagePreview ? 'Screenshot Attached (Click to change)' : 'Attach Transfer Receipt Screenshot'}</span>
+              </div>
+            </label>
+
+            <button
+              type="submit"
+              className="px-5 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl shadow-lg shadow-emerald-950 transition-all flex items-center gap-2 cursor-pointer shrink-0"
+            >
+              <Check className="w-4 h-4" />
+              Submit Proof
+            </button>
+          </div>
+        </div>
+
+        {proofImagePreview && (
+          <div className="p-3 rounded-2xl bg-[#0E1526] border border-emerald-500/30 flex items-center gap-3">
+            <img
+              src={proofImagePreview}
+              alt="Payment Proof"
+              className="w-14 h-14 rounded-xl object-cover border border-slate-700"
+            />
+            <div className="text-xs text-slate-300">
+              <span className="font-bold text-emerald-400 block">Screenshot ready to upload</span>
+              <span className="text-[11px] text-slate-400">Will be verified by the match organizer</span>
+            </div>
+          </div>
+        )}
+      </form>
+
+      {/* Roster Payment Status Table */}
+      <div className="p-5 rounded-3xl bg-[#090D16] border border-[#1E293B] space-y-3">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+          <Users className="w-4 h-4 text-emerald-400" />
+          Roster Payments ({paidCount} Paid • {unpaidCount} Pending)
+        </h3>
+
+        <div className="divide-y divide-[#1E293B]">
+          {match.roster.map((player) => {
+            const isPaid = (match.paidPlayerIds || []).includes(player.userId);
+            const proof = match.paymentProofs?.[player.userId];
+
+            return (
+              <div
+                key={player.userId}
+                className="flex items-center justify-between py-3 hover:bg-[#0E1526]/50 px-2 rounded-xl transition-colors gap-3"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <span
+                    className={`w-2.5 h-2.5 rounded-full shrink-0 ${
+                      player.team === 'green' ? 'bg-emerald-400' : 'bg-blue-400'
+                    }`}
+                  />
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-white block truncate">{player.name}</span>
+                    <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                      <span>{player.position || 'MID'}</span>
+                      {proof && (
+                        <span className="text-emerald-400 font-semibold flex items-center gap-0.5">
+                          • Proof attached ({proof.method})
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <span
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
+                      isPaid
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                        : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                    }`}
+                  >
+                    {isPaid ? 'Paid' : 'Pending'}
+                  </span>
+
+                  {isCreatorOrAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => togglePlayerPaidStatus(match.id, player.userId)}
+                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors text-xs font-semibold cursor-pointer"
+                      title={isPaid ? 'Mark as Unpaid' : 'Mark as Paid'}
+                    >
+                      {isPaid ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Coins className="w-3.5 h-3.5 text-amber-400" />}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};

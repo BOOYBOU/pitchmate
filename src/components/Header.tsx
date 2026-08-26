@@ -4,30 +4,24 @@ import {
   Plus,
   Calendar,
   User,
-  Users,
-  Database,
   Menu,
   X,
   ChevronDown,
-  RefreshCw,
   LogOut,
   Camera,
-  LogIn,
-  UserPlus,
   MessageSquare,
-  Bell
+  Bell,
+  Trophy
 } from 'lucide-react';
 import { usePitchStore } from '../lib/usePitchStore';
 import { SUPER_ADMIN_EMAIL, isSuperAdminEmail } from '../types';
 import { PitchMateLogo } from './PitchMateLogo';
 
 interface HeaderProps {
-  activeTab: 'matches' | 'profile' | 'admin';
-  setActiveTab: (tab: 'matches' | 'profile' | 'admin') => void;
+  activeTab: 'matches' | 'leaderboard' | 'profile' | 'admin';
+  setActiveTab: (tab: 'matches' | 'leaderboard' | 'profile' | 'admin') => void;
   onOpenCreateMatch: () => void;
   onOpenChangeAvatar?: () => void;
-  onOpenSignIn?: () => void;
-  onOpenSignUp?: () => void;
   onOpenDirectMessages?: () => void;
   onOpenNotifications?: () => void;
 }
@@ -37,8 +31,6 @@ export const Header: React.FC<HeaderProps> = ({
   setActiveTab,
   onOpenCreateMatch,
   onOpenChangeAvatar,
-  onOpenSignIn,
-  onOpenSignUp,
   onOpenDirectMessages,
   onOpenNotifications,
 }) => {
@@ -83,6 +75,20 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Calendar className="w-4 h-4" />
               Matches
+            </button>
+
+            <button
+              id="nav-tab-leaderboard"
+              type="button"
+              onClick={() => setActiveTab('leaderboard')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'leaderboard'
+                  ? 'bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 shadow-md shadow-amber-950 font-black'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+              }`}
+            >
+              <Trophy className={`w-4 h-4 ${activeTab === 'leaderboard' ? 'fill-slate-950 text-slate-950' : 'text-amber-400'}`} />
+              Leaderboard & MOTM
             </button>
 
             <button
@@ -182,25 +188,13 @@ export const Header: React.FC<HeaderProps> = ({
               Organize Match
             </button>
 
-            {/* Quick Auth Buttons (if on Landing page or wanting to sign in) */}
-            <button
-              id="header-signin-btn"
-              type="button"
-              onClick={onOpenSignIn}
-              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-[#0E1526] hover:bg-[#131C31] border border-[#1E293B] transition-colors cursor-pointer"
-              title="Sign in with email"
-            >
-              <LogIn className="w-3.5 h-3.5 text-emerald-400" />
-              Sign In
-            </button>
-
-            {/* User Profile Switcher Dropdown */}
+            {/* User Profile Dropdown */}
             <div className="relative">
               <button
                 id="user-menu-btn"
                 type="button"
                 onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
-                className="flex items-center gap-2.5 p-1.5 sm:px-3 sm:py-1.5 rounded-2xl bg-[#0E1526] hover:bg-[#131C31] border border-[#1E293B] text-left transition-colors cursor-pointer"
+                className="flex items-center gap-2.5 p-1.5 sm:px-3 sm:py-1.5 rounded-2xl bg-[#0E1526] hover:bg-[#131C31] border border-[#1E293B] hover:border-emerald-500/40 text-left transition-all cursor-pointer"
               >
                 <div className="relative">
                   <img
@@ -220,7 +214,7 @@ export const Header: React.FC<HeaderProps> = ({
                     {isMustapha ? (
                       <strong className="text-emerald-400">Super Admin</strong>
                     ) : (
-                      `#${currentUser.jerseyNumber} • ${currentUser.preferredPosition}`
+                      `#${currentUser.jerseyNumber || 10} • ${currentUser.preferredPosition || 'Midfielder'}`
                     )}
                   </span>
                 </div>
@@ -232,20 +226,32 @@ export const Header: React.FC<HeaderProps> = ({
               {isUserDropdownOpen && (
                 <div
                   id="user-dropdown-menu"
-                  className="absolute right-0 mt-2 w-72 bg-[#0E1526] border border-[#1E293B] rounded-2xl shadow-2xl p-3 z-50 animate-in fade-in space-y-2.5"
+                  className="absolute right-0 mt-2 w-64 bg-[#0E1526] border border-[#1E293B] rounded-2xl shadow-2xl p-3 z-50 animate-in fade-in space-y-3"
                 >
-                  <div className="p-2 border-b border-[#1E293B] flex items-center justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-white">{currentUser.name}</span>
-                        {isMustapha && (
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-emerald-500/20 text-emerald-300">
-                            Super Admin
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[11px] text-slate-400 block truncate">{currentUser.email}</span>
+                  <div className="p-2 border-b border-[#1E293B]">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-white truncate">{currentUser.name}</span>
+                      {isMustapha && (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-emerald-500/20 text-emerald-300 shrink-0">
+                          Super Admin
+                        </span>
+                      )}
                     </div>
+                    <span className="text-[11px] text-slate-400 block truncate">{currentUser.email}</span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('profile');
+                        setIsUserDropdownOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-200 hover:text-white hover:bg-[#131C31] transition-colors cursor-pointer"
+                    >
+                      <User className="w-4 h-4 text-blue-400" />
+                      View Full Profile
+                    </button>
 
                     <button
                       type="button"
@@ -253,107 +259,40 @@ export const Header: React.FC<HeaderProps> = ({
                         setIsUserDropdownOpen(false);
                         onOpenChangeAvatar?.();
                       }}
-                      className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
-                      title="Change profile picture"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-emerald-400 hover:bg-emerald-950/30 transition-colors cursor-pointer"
                     >
-                      <Camera className="w-4 h-4" />
+                      <Camera className="w-4 h-4 text-emerald-400" />
+                      Change Profile Picture
                     </button>
+
+                    {isMustapha && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('admin');
+                          setIsUserDropdownOpen(false);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-emerald-300 hover:bg-emerald-950/40 transition-colors cursor-pointer"
+                      >
+                        <Shield className="w-4 h-4 text-emerald-400" />
+                        Admin Command Center
+                      </button>
+                    )}
                   </div>
 
-                  {/* Change Profile Photo Direct CTA */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsUserDropdownOpen(false);
-                      onOpenChangeAvatar?.();
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-emerald-400 hover:bg-emerald-950/40 border border-emerald-500/30 transition-colors cursor-pointer"
-                  >
-                    <Camera className="w-4 h-4" />
-                    Change Profile Picture
-                  </button>
-
-                  <div className="text-[10px] font-semibold text-slate-400 px-2 uppercase tracking-wider">
-                    Switch Active User Account:
-                  </div>
-
-                  <div className="space-y-1 max-h-44 overflow-y-auto">
-                    {users.map((u) => {
-                      const isSelected = u.id === currentUser.id;
-                      const isUserSuperAdmin = isSuperAdminEmail(u.email);
-                      return (
-                        <button
-                          key={u.id}
-                          type="button"
-                          onClick={() => {
-                            if (isUserSuperAdmin && !isSelected) {
-                              setIsUserDropdownOpen(false);
-                              onOpenSignIn?.();
-                              return;
-                            }
-                            setCurrentUserById(u.id);
-                            setIsUserDropdownOpen(false);
-                          }}
-                          className={`w-full flex items-center justify-between p-2 rounded-xl text-left text-xs transition-colors cursor-pointer ${
-                            isSelected ? 'bg-emerald-950/50 text-emerald-300' : 'hover:bg-[#131C31] text-slate-300'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 truncate">
-                            <img
-                              src={u.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
-                              alt={u.name}
-                              className="w-5 h-5 rounded-full object-cover"
-                              referrerPolicy="no-referrer"
-                            />
-                            <span className="truncate">{u.name}</span>
-                          </div>
-                          {isUserSuperAdmin && (
-                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold shrink-0">
-                              Super Admin
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="pt-2 border-t border-[#1E293B] space-y-1.5">
+                  <div className="pt-2 border-t border-[#1E293B]">
                     <button
+                      id="header-logout-btn"
                       type="button"
                       onClick={() => {
-                        setActiveTab('profile');
                         setIsUserDropdownOpen(false);
+                        logout();
                       }}
-                      className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 transition-colors cursor-pointer"
+                      className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold bg-rose-950/40 text-rose-300 hover:bg-rose-900/60 border border-rose-500/30 transition-colors cursor-pointer"
                     >
-                      <User className="w-3.5 h-3.5" />
-                      View Profile
+                      <LogOut className="w-3.5 h-3.5 text-rose-400" />
+                      Log Out
                     </button>
-
-                    <div className="grid grid-cols-2 gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsUserDropdownOpen(false);
-                          onOpenSignIn?.();
-                        }}
-                        className="flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-medium bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer"
-                      >
-                        <LogIn className="w-3 h-3" />
-                        Sign In
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsUserDropdownOpen(false);
-                          logout();
-                        }}
-                        className="flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-medium bg-rose-950/40 text-rose-300 hover:bg-rose-900/60 border border-rose-500/30 transition-colors cursor-pointer"
-                      >
-                        <LogOut className="w-3 h-3 text-rose-400" />
-                        Log Out
-                      </button>
-                    </div>
                   </div>
                 </div>
               )}
@@ -373,7 +312,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Mobile Navigation Drawer */}
         {isMobileMenuOpen && (
           <div className="md:hidden py-3 border-t border-[#1E293B] space-y-2 animate-in fade-in">
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-1.5">
               <button
                 onClick={() => {
                   setActiveTab('matches');
@@ -384,6 +323,18 @@ export const Header: React.FC<HeaderProps> = ({
                 }`}
               >
                 Matches
+              </button>
+
+              <button
+                onClick={() => {
+                  setActiveTab('leaderboard');
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`py-2 rounded-xl text-xs font-bold text-center ${
+                  activeTab === 'leaderboard' ? 'bg-amber-500 text-slate-950 font-black' : 'bg-[#0E1526] text-amber-400'
+                }`}
+              >
+                MOTM 🏆
               </button>
 
               <button

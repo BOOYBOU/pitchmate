@@ -1,6 +1,6 @@
-import { PlayerRosterItem, PlayerPosition, TeamSide } from '../types';
+import { PlayerRosterItem } from '../types';
 
-export interface BalancedTeamResult {
+export interface BalanceResult {
   roster: PlayerRosterItem[];
   greenTeam: PlayerRosterItem[];
   blueTeam: PlayerRosterItem[];
@@ -9,16 +9,11 @@ export interface BalancedTeamResult {
   parityPercentage: number;
 }
 
-/**
- * Smart Balanced Team Generator
- * Symmetrically balances Goalkeepers, Defenders, Midfielders, and Forwards,
- * while equalizing total team skill rating.
- */
 export function balanceTeams(
   roster: PlayerRosterItem[],
   mode: 'balanced' | 'random' | 'veterans_vs_newcomers' = 'balanced'
-): BalancedTeamResult {
-  if (!roster || roster.length === 0) {
+): BalanceResult {
+  if (roster.length === 0) {
     return {
       roster: [],
       greenTeam: [],
@@ -29,103 +24,67 @@ export function balanceTeams(
     };
   }
 
+  let players = [...roster];
+  let green: PlayerRosterItem[] = [];
+  let blue: PlayerRosterItem[] = [];
+
   if (mode === 'random') {
-    const shuffled = [...roster].sort(() => Math.random() - 0.5);
-    const half = Math.ceil(shuffled.length / 2);
-    const green = shuffled.slice(0, half).map((p) => ({ ...p, team: 'green' as TeamSide }));
-    const blue = shuffled.slice(half).map((p) => ({ ...p, team: 'blue' as TeamSide }));
-
-    return calculateResult(green, blue);
-  }
-
-  if (mode === 'veterans_vs_newcomers') {
-    const sorted = [...roster].sort((a, b) => {
-      const relA = a.reliabilityScore ?? 95;
-      const relB = b.reliabilityScore ?? 95;
-      return relB - relA;
-    });
-    const half = Math.ceil(sorted.length / 2);
-    const green = sorted.slice(0, half).map((p) => ({ ...p, team: 'green' as TeamSide }));
-    const blue = sorted.slice(half).map((p) => ({ ...p, team: 'blue' as TeamSide }));
-
-    return calculateResult(green, blue);
-  }
-
-  // DEFAULT: 'balanced' (Skill + Position based Snake Draft)
-  const playersWithCompositeRating = roster.map((p) => {
-    const skill = p.rating || 4.5;
-    const reliability = (p.reliabilityScore ?? 95) / 100;
-    const compositeScore = skill * 0.75 + reliability * 1.25;
-    return {
-      player: p,
-      position: (p.position || 'MID') as PlayerPosition,
-      compositeScore,
-    };
-  });
-
-  // Separate Goalkeepers first
-  const gks = playersWithCompositeRating.filter((p) => p.position === 'GK');
-  const outfield = playersWithCompositeRating.filter((p) => p.position !== 'GK');
-
-  // Group outfield by position
-  const defs = outfield.filter((p) => p.position === 'DEF');
-  const mids = outfield.filter((p) => p.position === 'MID');
-  const fwds = outfield.filter((p) => p.position === 'FWD');
-  const any = outfield.filter((p) => p.position === 'ANY');
-
-  const greenTeam: PlayerRosterItem[] = [];
-  const blueTeam: PlayerRosterItem[] = [];
-
-  let greenScoreSum = 0;
-  let blueScoreSum = 0;
-
-  const distributeGroup = (group: typeof playersWithCompositeRating) => {
-    // Sort descending by rating
-    const sorted = [...group].sort((a, b) => b.compositeScore - a.compositeScore);
-
-    sorted.forEach((item) => {
-      // Assign to team with lower score, or lower player count
-      const preferGreen =
-        greenTeam.length < blueTeam.length ||
-        (greenTeam.length === blueTeam.length && greenScoreSum <= blueScoreSum);
-
-      if (preferGreen) {
-        greenTeam.push({ ...item.player, team: 'green' });
-        greenScoreSum += item.compositeScore;
+    // Shuffle randomly
+    players = players.sort(() => Math.random() - 0.5);
+    players.forEach((p, idx) => {
+      if (idx % 2 === 0) {
+        green.push({ ...p, team: 'green' });
       } else {
-        blueTeam.push({ ...item.player, team: 'blue' });
-        blueScoreSum += item.compositeScore;
+        blue.push({ ...p, team: 'blue' });
       }
     });
-  };
+  } else if (mode === 'veterans_vs_newcomers') {
+    // Sort by rating
+    players.sort((a, b) => (b.rating || 3) - (a.rating || 3));
+    const half = Math.ceil(players.length / 2);
+    green = players.slice(0, half).map((p) => ({ ...p, team: 'green' }));
+    blue = players.slice(half).map((p) => ({ ...p, team: 'blue' }));
+  } else {
+    // Balanced: Snake draft by rating
+    players.sort((a, b) => (b.rating || 3) - (a.rating || 3));
 
-  // Distribute Goalkeepers, Defenders, Midfielders, Forwards, and Flex
-  distributeGroup(gks);
-  distributeGroup(defs);
-  distributeGroup(mids);
-  distributeGroup(fwds);
-  distributeGroup(any);
+    let greenSum = 0;
+    let blueSum = 0;
 
-  return calculateResult(greenTeam, blueTeam);
-}
+    players.forEach((player) => {
+      const rating = player.rating || 3;
+      if (green.length < blue.length) {
+        green.push({ ...player, team: 'green' });
+        greenSum += rating;
+      } else if (blue.length < green.length) {
+        blue.push({ ...player, team: 'blue' });
+        blueSum += rating;
+      } else {
+        if (greenSum <= blueSum) {
+          green.push({ ...player, team: 'green' });
+          greenSum += rating;
+        } else {
+          blue.push({ ...player, team: 'blue' });
+          blueSum += rating;
+        }
+      }
+    });
+  }
 
-function calculateResult(greenTeam: PlayerRosterItem[], blueTeam: PlayerRosterItem[]): BalancedTeamResult {
-  const getAvg = (team: PlayerRosterItem[]) => {
-    if (team.length === 0) return 0;
-    const sum = team.reduce((acc, p) => acc + (p.rating || 4.5), 0);
-    return Math.round((sum / team.length) * 10) / 10;
-  };
+  const updatedRoster = [...green, ...blue];
+  const greenAvgRating =
+    green.length > 0 ? Number((green.reduce((acc, p) => acc + (p.rating || 3), 0) / green.length).toFixed(1)) : 0;
+  const blueAvgRating =
+    blue.length > 0 ? Number((blue.reduce((acc, p) => acc + (p.rating || 3), 0) / blue.length).toFixed(1)) : 0;
 
-  const greenAvgRating = getAvg(greenTeam);
-  const blueAvgRating = getAvg(blueTeam);
-
-  const maxDiff = Math.abs(greenAvgRating - blueAvgRating);
-  const parityPercentage = Math.max(70, Math.round(100 - maxDiff * 15));
+  const maxAvg = Math.max(greenAvgRating, blueAvgRating);
+  const minAvg = Math.min(greenAvgRating, blueAvgRating);
+  const parityPercentage = maxAvg > 0 ? Math.round((minAvg / maxAvg) * 100) : 100;
 
   return {
-    roster: [...greenTeam, ...blueTeam],
-    greenTeam,
-    blueTeam,
+    roster: updatedRoster,
+    greenTeam: green,
+    blueTeam: blue,
     greenAvgRating,
     blueAvgRating,
     parityPercentage,
