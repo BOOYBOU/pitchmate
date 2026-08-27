@@ -12,6 +12,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { SoundEffects } from '../lib/audioService';
+import { useLanguage } from '../lib/useLanguage';
 
 interface VoiceNoteRecorderProps {
   onSendVoiceNote?: (audioUrl: string, durationSeconds: number) => void;
@@ -26,6 +27,7 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
   disabled = false,
   compact = false,
 }) => {
+  const { language } = useLanguage();
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [errorMessage, setErrorMessage] = useState('');
@@ -54,7 +56,11 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
     audioChunksRef.current = [];
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setErrorMessage('Audio recording is not supported in this browser.');
+      setErrorMessage(
+        language === 'ar'
+          ? 'التسجيل الصوتي غير مدعوم في هذا المتصفح.'
+          : 'Audio recording is not supported in this browser.'
+      );
       return;
     }
 
@@ -125,8 +131,8 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
       const isPermissionDenied = err instanceof Error && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError');
       setErrorMessage(
         isPermissionDenied
-          ? 'Microphone permission was denied. Please allow microphone access in your browser.'
-          : 'Could not access microphone.'
+          ? (language === 'ar' ? 'تم رفض إذن الميكروفون. يرجى السماح بالوصول في إعدادات المتصفح.' : 'Microphone permission was denied. Please allow microphone access in your browser.')
+          : (language === 'ar' ? 'تعذر الوصول إلى الميكروفون.' : 'Could not access microphone.')
       );
     }
   };
@@ -220,7 +226,7 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
             type="button"
             onClick={cancelRecording}
             className="p-1.5 rounded-xl bg-slate-800/80 hover:bg-rose-950 text-slate-400 hover:text-rose-400 transition-colors cursor-pointer"
-            title="Discard Recording"
+            title={language === 'ar' ? 'إلغاء التسجيل' : 'Discard Recording'}
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -229,10 +235,10 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
             type="button"
             onClick={stopAndSendRecording}
             className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-950 transition-all cursor-pointer"
-            title="Send Voice Note"
+            title={language === 'ar' ? 'إرسال التسجيل' : 'Send Voice Note'}
           >
             <Send className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Send</span>
+            <span className="hidden sm:inline">{language === 'ar' ? 'إرسال' : 'Send'}</span>
           </button>
         </div>
       </div>
@@ -264,10 +270,10 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
             ? 'p-2 bg-[#0E1526] hover:bg-emerald-950/50 border border-[#1E293B] hover:border-emerald-500/40 text-emerald-400 hover:text-emerald-300'
             : 'px-3 py-2 bg-[#0E1526] hover:bg-emerald-950/50 border border-[#1E293B] hover:border-emerald-500/40 text-emerald-400 hover:text-emerald-300 text-xs font-semibold'
         }`}
-        title="Record Voice Note (MediaRecorder)"
+        title={language === 'ar' ? 'تسجيل رسالة صوتية' : 'Record Voice Note'}
       >
         <Mic className="w-4 h-4" />
-        {!compact && <span>Voice Note</span>}
+        {!compact && <span>{language === 'ar' ? 'رسالة صوتية' : 'Voice Note'}</span>}
       </button>
     </div>
   );
@@ -284,11 +290,11 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
   durationSeconds = 0,
   isSender = false,
 }) => {
+  const { language } = useLanguage();
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(durationSeconds);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
-  const [isMuted, setIsMuted] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -399,7 +405,7 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
             ? 'bg-emerald-500 hover:bg-emerald-400 text-black'
             : 'bg-blue-600 hover:bg-blue-500 text-white'
         }`}
-        title={isPlaying ? 'Pause voice message' : 'Play voice message'}
+        title={isPlaying ? (language === 'ar' ? 'إيقاف مؤقت' : 'Pause voice message') : (language === 'ar' ? 'تشغيل الرسالة الصوتية' : 'Play voice message')}
       >
         {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
       </button>
@@ -443,7 +449,7 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
           <span>{formatTime(currentTime > 0 ? currentTime : duration)}</span>
           <span className="flex items-center gap-1">
             <Mic className="w-2.5 h-2.5 text-emerald-400" />
-            Voice Note
+            <span>{language === 'ar' ? 'صوتية' : 'Voice'}</span>
           </span>
         </div>
       </div>
@@ -453,10 +459,11 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
         type="button"
         onClick={cycleSpeed}
         className="px-1.5 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[10px] font-bold shrink-0 transition-colors cursor-pointer"
-        title="Change playback speed"
+        title={language === 'ar' ? 'تغيير سرعة التشغيل' : 'Change playback speed'}
       >
         {playbackSpeed}x
       </button>
     </div>
   );
 };
+

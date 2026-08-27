@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Camera, Upload, Link, X, Check, Sparkles } from 'lucide-react';
 import { usePitchStore } from '../lib/usePitchStore';
+import { useLanguage } from '../lib/useLanguage';
 
 const PRESET_AVATARS = [
   { name: 'Captain Striker', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80' },
@@ -18,6 +19,7 @@ interface ChangeAvatarModalProps {
 
 export const ChangeAvatarModal: React.FC<ChangeAvatarModalProps> = ({ isOpen, onClose }) => {
   const { currentUser, updateUserProfile } = usePitchStore();
+  const { t, language } = useLanguage();
   const [avatarUrlInput, setAvatarUrlInput] = useState(currentUser.avatarUrl);
   const [avatarPreview, setAvatarPreview] = useState(currentUser.avatarUrl);
   const [uploadError, setUploadError] = useState('');
@@ -31,12 +33,12 @@ export const ChangeAvatarModal: React.FC<ChangeAvatarModalProps> = ({ isOpen, on
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      setUploadError('Please select a valid image file (PNG, JPG, WebP)');
+      setUploadError(language === 'ar' ? 'يرجى اختيار ملف صورة صالح (PNG, JPG, WebP)' : 'Please select a valid image file (PNG, JPG, WebP)');
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setUploadError('Image size should be under 5MB');
+      setUploadError(language === 'ar' ? 'حجم الصورة يجب أن لا يتعدى 5 ميغابايت' : 'Image size should be under 5MB');
       return;
     }
 
@@ -74,8 +76,12 @@ export const ChangeAvatarModal: React.FC<ChangeAvatarModalProps> = ({ isOpen, on
               <Camera className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold font-display text-white">Update Profile Picture</h3>
-              <p className="text-xs text-slate-400">Set your avatar via file upload or image URL</p>
+              <h3 className="text-base font-bold font-display text-white">
+                {t('profile.updateAvatar', 'تغيير الصورة الشخصية')}
+              </h3>
+              <p className="text-xs text-slate-400">
+                {language === 'ar' ? 'قم برفع صورة من جهازك أو وضع رابط صورة مباشر' : 'Set your avatar via file upload or image URL'}
+              </p>
             </div>
           </div>
           <button
@@ -101,7 +107,9 @@ export const ChangeAvatarModal: React.FC<ChangeAvatarModalProps> = ({ isOpen, on
           <div className="space-y-1">
             <span className="text-xs font-bold text-white block">{currentUser.name}</span>
             <span className="text-[11px] text-slate-400 block">
-              Displayed in match rosters, comments, and top navigation.
+              {language === 'ar'
+                ? 'تظهر في قوائم وتشكيلات المباريات والتعليقات والشريط العلوي.'
+                : 'Displayed in match rosters, comments, and top navigation.'}
             </span>
           </div>
         </div>
@@ -109,7 +117,7 @@ export const ChangeAvatarModal: React.FC<ChangeAvatarModalProps> = ({ isOpen, on
         {/* Option 1: File Upload */}
         <div className="space-y-2">
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
-            Upload From Device
+            {language === 'ar' ? 'رفع صورة من الجهاز' : 'Upload From Device'}
           </label>
           <input
             type="file"
@@ -124,7 +132,7 @@ export const ChangeAvatarModal: React.FC<ChangeAvatarModalProps> = ({ isOpen, on
             className="w-full py-2.5 px-4 border border-dashed border-slate-700 hover:border-emerald-500/60 rounded-xl bg-[#090D16] text-xs font-medium text-slate-300 hover:text-emerald-300 flex items-center justify-center gap-2 transition-colors cursor-pointer"
           >
             <Upload className="w-4 h-4 text-emerald-400" />
-            Choose Photo File (JPG, PNG, WebP)
+            <span>{language === 'ar' ? 'اختيار ملف صورة (JPG, PNG, WebP)' : 'Choose Photo File (JPG, PNG, WebP)'}</span>
           </button>
           {uploadError && <p className="text-xs text-rose-400">{uploadError}</p>}
         </div>
@@ -132,10 +140,10 @@ export const ChangeAvatarModal: React.FC<ChangeAvatarModalProps> = ({ isOpen, on
         {/* Option 2: Image URL */}
         <div className="space-y-1.5">
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
-            Or Paste Image URL
+            {language === 'ar' ? 'أو أدخل رابط الصورة المباشر' : 'Or Paste Image URL'}
           </label>
           <div className="relative">
-            <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Link className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="url"
               placeholder="https://images.unsplash.com/photo-..."
@@ -144,7 +152,7 @@ export const ChangeAvatarModal: React.FC<ChangeAvatarModalProps> = ({ isOpen, on
                 setAvatarUrlInput(e.target.value);
                 setAvatarPreview(e.target.value);
               }}
-              className="w-full pl-9 pr-3 py-2 bg-[#090D16] border border-[#1E293B] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+              className="w-full pl-9 rtl:pl-3 rtl:pr-9 pr-3 py-2 bg-[#090D16] border border-[#1E293B] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
             />
           </div>
         </div>
@@ -152,7 +160,7 @@ export const ChangeAvatarModal: React.FC<ChangeAvatarModalProps> = ({ isOpen, on
         {/* Presets */}
         <div className="space-y-1.5">
           <label className="block text-xs font-bold uppercase tracking-wider text-slate-400">
-            Or Choose Soccer Pro:
+            {language === 'ar' ? 'أو اختر شخصية جاهزة:' : 'Or Choose Soccer Pro:'}
           </label>
           <div className="grid grid-cols-6 gap-2">
             {PRESET_AVATARS.map((preset, idx) => (
@@ -188,7 +196,7 @@ export const ChangeAvatarModal: React.FC<ChangeAvatarModalProps> = ({ isOpen, on
             onClick={onClose}
             className="px-4 py-2 rounded-xl text-xs text-slate-400 hover:text-white cursor-pointer"
           >
-            Cancel
+            {t('common.cancel', 'إلغاء')}
           </button>
           <button
             id="save-avatar-btn"
@@ -197,10 +205,13 @@ export const ChangeAvatarModal: React.FC<ChangeAvatarModalProps> = ({ isOpen, on
             disabled={isSaving}
             className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 shadow-md shadow-blue-900/30 transition-colors cursor-pointer"
           >
-            {isSaving ? 'Saving...' : 'Save Profile Picture'}
+            {isSaving
+              ? (language === 'ar' ? 'جاري الحفظ...' : 'Saving...')
+              : (language === 'ar' ? 'حفظ الصورة الشخصية' : 'Save Profile Picture')}
           </button>
         </div>
       </div>
     </div>
   );
 };
+

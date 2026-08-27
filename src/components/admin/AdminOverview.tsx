@@ -1,7 +1,7 @@
 import React from 'react';
 import { SoccerMatch, UserProfile, AdminAnnouncement, SUPER_ADMIN_EMAIL } from '../../types';
 import { Users, Trophy, Coins, ShieldCheck, AlertCircle, ArrowUpRight } from 'lucide-react';
-import { formatMAD, formatMoroccoDate } from '../../lib/moroccoUtils';
+import { useLanguage } from '../../lib/useLanguage';
 
 interface AdminOverviewProps {
   matches: SoccerMatch[];
@@ -17,6 +17,7 @@ export function AdminOverview({
   onOpenMatchDetails,
   onNavigateTab,
 }: AdminOverviewProps) {
+  const { t, language, formatMAD, formatMoroccoDate, getCityName } = useLanguage();
   const pendingUsers = users.filter((u) => u.status === 'pending');
   const approvedUsers = users.filter((u) => u.status === 'approved' || !u.status);
 
@@ -34,14 +35,16 @@ export function AdminOverview({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-[#0E1526] border border-[#1E293B] rounded-2xl p-5 shadow-sm hover:border-slate-700 transition-colors">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Players</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              {t('admin.totalUsers', 'إجمالي اللاعبين المسجلين')}
+            </span>
             <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-400">
               <Users className="w-5 h-5" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-2xl font-bold text-white font-display">{approvedUsers.length}</span>
-            <span className="text-xs text-slate-400">registered</span>
+            <span className="text-xs text-slate-400">{language === 'ar' ? 'لاعب نشط' : 'registered'}</span>
           </div>
           {pendingUsers.length > 0 && (
             <button
@@ -49,30 +52,34 @@ export function AdminOverview({
               className="mt-3 text-xs text-amber-400 flex items-center gap-1 font-medium hover:underline cursor-pointer"
             >
               <AlertCircle className="w-3.5 h-3.5" />
-              {pendingUsers.length} pending review
+              <span>{pendingUsers.length} {language === 'ar' ? 'طلبات قيد المراجعة' : 'pending review'}</span>
             </button>
           )}
         </div>
 
         <div className="bg-[#0E1526] border border-[#1E293B] rounded-2xl p-5 shadow-sm hover:border-slate-700 transition-colors">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Morocco Matches</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              {language === 'ar' ? 'المباريات القادمة' : 'Morocco Matches'}
+            </span>
             <div className="p-2 bg-blue-500/10 rounded-xl text-blue-400">
               <Trophy className="w-5 h-5" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-2xl font-bold text-white font-display">{upcomingMatches.length}</span>
-            <span className="text-xs text-slate-400">upcoming</span>
+            <span className="text-xs text-slate-400">{language === 'ar' ? 'مباراة مجدولة' : 'upcoming'}</span>
           </div>
           <div className="mt-3 text-xs text-slate-400 flex items-center gap-1">
-            <span>{totalPlayersInRosters} active roster spots</span>
+            <span>{totalPlayersInRosters} {language === 'ar' ? 'مقعد محجوز في التشكيلات' : 'active roster spots'}</span>
           </div>
         </div>
 
         <div className="bg-[#0E1526] border border-[#1E293B] rounded-2xl p-5 shadow-sm hover:border-slate-700 transition-colors">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Collected Dues (MAD)</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              {language === 'ar' ? 'المبالغ المحصلة' : 'Collected Dues (MAD)'}
+            </span>
             <div className="p-2 bg-emerald-500/10 rounded-xl text-emerald-400">
               <Coins className="w-5 h-5" />
             </div>
@@ -80,18 +87,22 @@ export function AdminOverview({
           <div className="mt-3 flex items-baseline gap-2">
             <span className="text-2xl font-bold text-emerald-400 font-display">{formatMAD(totalRevenueCollected)}</span>
           </div>
-          <div className="mt-3 text-xs text-slate-400">Pitch rental fee tracking</div>
+          <div className="mt-3 text-xs text-slate-400">
+            {language === 'ar' ? 'تتبع مصاريف حجز الملاعب' : 'Pitch rental fee tracking'}
+          </div>
         </div>
 
         <div className="bg-[#0E1526] border border-[#1E293B] rounded-2xl p-5 shadow-sm hover:border-slate-700 transition-colors">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Super Admin</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              {language === 'ar' ? 'المشرف العام' : 'Super Admin'}
+            </span>
             <div className="p-2 bg-purple-500/10 rounded-xl text-purple-400">
               <ShieldCheck className="w-5 h-5" />
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-sm font-bold text-white truncate">Mustapha Bouhbous</span>
+            <span className="text-sm font-bold text-white truncate">مصطفى بوهبوس (Mustapha Bouhbous)</span>
           </div>
           <div className="mt-2 text-[11px] text-slate-400 truncate">{SUPER_ADMIN_EMAIL}</div>
         </div>
@@ -107,10 +118,14 @@ export function AdminOverview({
               </div>
               <div>
                 <h4 className="font-semibold text-white">
-                  {pendingUsers.length} Player Registration{pendingUsers.length > 1 ? 's' : ''} Awaiting Approval
+                  {language === 'ar'
+                    ? `${pendingUsers.length} طلبات انضمام لاعبين بانتظار الموافقة`
+                    : `${pendingUsers.length} Player Registration${pendingUsers.length > 1 ? 's' : ''} Awaiting Approval`}
                 </h4>
                 <p className="text-xs text-slate-300 mt-0.5">
-                  Approve players to grant full access to join matches, vote for MVPs, and message teammates.
+                  {language === 'ar'
+                    ? 'قم باعتماد اللاعبين لمنحهم الصلاحية الكاملة للانضمام للمباريات، والتصويت على رجل المباراة، ومراسلة الفريق.'
+                    : 'Approve players to grant full access to join matches, vote for MVPs, and message teammates.'}
                 </p>
               </div>
             </div>
@@ -118,8 +133,8 @@ export function AdminOverview({
               onClick={() => onNavigateTab('users')}
               className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
             >
-              Review Queue
-              <ArrowUpRight className="w-4 h-4" />
+              <span>{language === 'ar' ? 'مراجعة الطلبات' : 'Review Queue'}</span>
+              <ArrowUpRight className="w-4 h-4 rtl:rotate-[-90deg]" />
             </button>
           </div>
         </div>
@@ -129,15 +144,19 @@ export function AdminOverview({
       <div className="bg-[#0E1526] border border-[#1E293B] rounded-2xl p-5">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="font-bold text-white text-base">Live Fixtures & Moroccan Pitches</h3>
-            <p className="text-xs text-slate-400">Quick management of all upcoming games</p>
+            <h3 className="font-bold text-white text-base">
+              {language === 'ar' ? 'المباريات والملاعب النشطة' : 'Live Fixtures & Moroccan Pitches'}
+            </h3>
+            <p className="text-xs text-slate-400">
+              {language === 'ar' ? 'إدارة سريعة لكافة المباريات المبرمجة' : 'Quick management of all upcoming games'}
+            </p>
           </div>
           <button
             onClick={() => onNavigateTab('matches')}
             className="text-xs text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1 cursor-pointer"
           >
-            Manage All Matches
-            <ArrowUpRight className="w-3.5 h-3.5" />
+            <span>{language === 'ar' ? 'عرض جميع المباريات' : 'Manage All Matches'}</span>
+            <ArrowUpRight className="w-3.5 h-3.5 rtl:rotate-[-90deg]" />
           </button>
         </div>
 
@@ -156,18 +175,19 @@ export function AdminOverview({
                   <h4 className="text-sm font-semibold text-white">{match.title}</h4>
                 </div>
                 <div className="text-xs text-slate-400 flex items-center gap-2">
-                  <span>{formatMoroccoDate(match.dateTime, 'day_month_time')}</span>
+                  <span>{formatMoroccoDate(match.dateTime, 'short')}</span>
                   <span>•</span>
-                  <span>{match.location.venueName} ({match.location.city || 'Casablanca'})</span>
+                  <span>{match.location.venueName} ({getCityName(match.location.city || 'Casablanca')})</span>
                 </div>
               </div>
 
               <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
                 <div className="text-xs text-slate-300">
-                  <span className="font-semibold text-white">{match.roster.length}</span>/{match.maxPlayers} players
+                  <span className="font-semibold text-white">{match.roster.length}</span>/{match.maxPlayers}{' '}
+                  {language === 'ar' ? 'لاعبين' : 'players'}
                 </div>
                 <span className="text-xs font-semibold px-2.5 py-1 rounded bg-slate-800 text-emerald-300">
-                  {formatMAD(match.pricePerPlayer, { showZeroAsFree: true })}
+                  {formatMAD(match.pricePerPlayer)}
                 </span>
               </div>
             </div>
@@ -177,3 +197,4 @@ export function AdminOverview({
     </div>
   );
 }
+

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { SoccerMatch, isSuperAdminEmail } from '../types';
 import { usePitchStore } from '../lib/usePitchStore';
+import { useLanguage } from '../lib/useLanguage';
 import { formatMAD } from '../lib/moroccoUtils';
 import {
   calculateMatchPricing,
@@ -41,6 +42,8 @@ export const CihPaymentTracker: React.FC<CihPaymentTrackerProps> = ({ match }) =
     updateMatchBankDetails,
   } = usePitchStore();
 
+  const { t, language, isRTL } = useLanguage();
+
   const isCreatorOrAdmin =
     currentUser.id === match.creatorId ||
     currentUser.isAdmin ||
@@ -49,10 +52,10 @@ export const CihPaymentTracker: React.FC<CihPaymentTrackerProps> = ({ match }) =
   // Bank Details state
   const defaultBank = match.bankDetails || {
     bankName: 'CIH Bank',
-    accountHolder: match.creatorName || 'Mustapha Bouhbous',
+    accountHolder: match.creatorName || 'مصطفى بوهبوس (Mustapha Bouhbous)',
     rib: '230 780 4458921000345600 12',
     phone: '+212 661-234567',
-    notes: 'Please add your name in the transfer motif',
+    notes: language === 'ar' ? 'يرجى كتابة اسمك في خانة بيان التحويل (Motif)' : 'Please add your name in the transfer motif',
   };
 
   const [isEditingBank, setIsEditingBank] = useState(false);
@@ -139,7 +142,7 @@ export const CihPaymentTracker: React.FC<CihPaymentTrackerProps> = ({ match }) =
       currentMatchFee,
       proofMethod,
       proofImagePreview || undefined,
-      proofNote || `Paid via ${proofMethod}`
+      proofNote || (language === 'ar' ? `تم الدفع عبر ${proofMethod}` : `Paid via ${proofMethod}`)
     );
     setUploadSuccess(true);
     setTimeout(() => setUploadSuccess(false), 3000);
@@ -155,8 +158,12 @@ export const CihPaymentTracker: React.FC<CihPaymentTrackerProps> = ({ match }) =
               <Coins className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold font-display text-white">CIH Bank & Cash Payment Tracker</h2>
-              <p className="text-xs text-slate-400">Dynamic MAD cost splitter, instant RIB copy & proof upload</p>
+              <h2 className="text-lg font-bold font-display text-white">
+                {language === 'ar' ? 'تتبع مدفوعات CIH والدفع نقداً (درهم)' : 'CIH Bank & Cash Payment Tracker'}
+              </h2>
+              <p className="text-xs text-slate-400">
+                {language === 'ar' ? 'تقسيم ديناميكي لتكلفة الملعب، نسخ مباشر لرقم الحساب RIB، ورفع إيصالات التحويل' : 'Dynamic MAD cost splitter, instant RIB copy & proof upload'}
+              </p>
             </div>
           </div>
 
@@ -166,7 +173,7 @@ export const CihPaymentTracker: React.FC<CihPaymentTrackerProps> = ({ match }) =
               className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <Edit2 className="w-3.5 h-3.5 text-emerald-400" />
-              {isEditingCost ? 'Cancel Edit' : 'Adjust Pitch Cost'}
+              {isEditingCost ? (language === 'ar' ? 'إلغاء التعديل' : 'Cancel Edit') : (language === 'ar' ? 'تعديل تكلفة الملعب' : 'Adjust Pitch Cost')}
             </button>
           )}
         </div>
@@ -175,7 +182,9 @@ export const CihPaymentTracker: React.FC<CihPaymentTrackerProps> = ({ match }) =
         {isEditingCost && (
           <div className="p-4 rounded-2xl bg-[#090D16] border border-emerald-500/30 grid grid-cols-1 sm:grid-cols-3 gap-3 animate-in fade-in">
             <div>
-              <label className="text-[11px] text-slate-400 block mb-1">Total Pitch Rental (MAD)</label>
+              <label className="text-[11px] text-slate-400 block mb-1">
+                {language === 'ar' ? 'إجمالي إيجار الملعب (درهم)' : 'Total Pitch Rental (MAD)'}
+              </label>
               <input
                 type="number"
                 min={0}
@@ -191,10 +200,14 @@ export const CihPaymentTracker: React.FC<CihPaymentTrackerProps> = ({ match }) =
                 }}
                 className="w-full px-3 py-2 bg-[#0E1526] border border-[#1E293B] rounded-xl text-xs text-white font-bold focus:outline-none focus:border-emerald-500"
               />
-              <span className="text-[10px] text-slate-500 mt-0.5 block">Accepts any custom or micro amount</span>
+              <span className="text-[10px] text-slate-500 mt-0.5 block">
+                {language === 'ar' ? 'يقبل أي مبالغ مخصصة أو دقيقة' : 'Accepts any custom or micro amount'}
+              </span>
             </div>
             <div>
-              <label className="text-[11px] text-slate-400 block mb-1">Fee Per Player (MAD)</label>
+              <label className="text-[11px] text-slate-400 block mb-1">
+                {language === 'ar' ? 'رسوم كل لاعب (درهم)' : 'Fee Per Player (MAD)'}
+              </label>
               <input
                 type="number"
                 min={0}
@@ -210,7 +223,9 @@ export const CihPaymentTracker: React.FC<CihPaymentTrackerProps> = ({ match }) =
                 }}
                 className="w-full px-3 py-2 bg-[#0E1526] border border-[#1E293B] rounded-xl text-xs text-white font-bold focus:outline-none focus:border-emerald-500"
               />
-              <span className="text-[10px] text-slate-500 mt-0.5 block">E.g. 2 MAD, 3 MAD, 75 MAD</span>
+              <span className="text-[10px] text-slate-500 mt-0.5 block">
+                {language === 'ar' ? 'مثال: 2 دراهم، 3 دراهم، 50 درهم' : 'E.g. 2 MAD, 3 MAD, 75 MAD'}
+              </span>
             </div>
             <div className="flex items-end">
               <button
@@ -218,7 +233,7 @@ export const CihPaymentTracker: React.FC<CihPaymentTrackerProps> = ({ match }) =
                 onClick={handleSaveCostSplit}
                 className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow cursor-pointer"
               >
-                Apply Split
+                {language === 'ar' ? 'حفظ وتطبيق التقسيم' : 'Apply Split'}
               </button>
             </div>
           </div>
@@ -228,10 +243,11 @@ export const CihPaymentTracker: React.FC<CihPaymentTrackerProps> = ({ match }) =
         <div className="space-y-2 pt-2">
           <div className="flex items-center justify-between text-xs font-bold">
             <span className="text-slate-300">
-              Collected: <strong className="text-emerald-400">{formatMAD(totalCollected)}</strong> of{' '}
+              {language === 'ar' ? 'المحصل:' : 'Collected:'}{' '}
+              <strong className="text-emerald-400">{formatMAD(totalCollected)}</strong> {language === 'ar' ? 'من أصل' : 'of'}{' '}
               <strong className="text-white">{formatMAD(currentTotalCost)}</strong>
             </span>
-            <span className="text-emerald-400">{collectionPercentage}% Funded</span>
+            <span className="text-emerald-400">{collectionPercentage}% {language === 'ar' ? 'مكتمل' : 'Funded'}</span>
           </div>
 
           <div className="w-full h-3 rounded-full bg-slate-900 overflow-hidden border border-slate-800">
@@ -243,15 +259,23 @@ export const CihPaymentTracker: React.FC<CihPaymentTrackerProps> = ({ match }) =
 
           <div className="grid grid-cols-3 gap-2 pt-1">
             <div className="p-3 rounded-2xl bg-[#090D16]/80 border border-[#1E293B] text-center">
-              <span className="text-[10px] text-slate-400 uppercase font-bold block">Fee / Player</span>
+              <span className="text-[10px] text-slate-400 uppercase font-bold block">
+                {language === 'ar' ? 'رسوم اللاعب' : 'Fee / Player'}
+              </span>
               <span className="text-sm font-black text-emerald-400">{formatMAD(currentMatchFee, { showZeroAsFree: true })}</span>
             </div>
             <div className="p-3 rounded-2xl bg-[#090D16]/80 border border-[#1E293B] text-center">
-              <span className="text-[10px] text-slate-400 uppercase font-bold block">Paid Players</span>
-              <span className="text-sm font-black text-white">{paidCount} of {match.roster.length}</span>
+              <span className="text-[10px] text-slate-400 uppercase font-bold block">
+                {language === 'ar' ? 'المسددون' : 'Paid Players'}
+              </span>
+              <span className="text-sm font-black text-white">
+                {paidCount} {language === 'ar' ? 'من' : 'of'} {match.roster.length}
+              </span>
             </div>
             <div className="p-3 rounded-2xl bg-[#090D16]/80 border border-[#1E293B] text-center">
-              <span className="text-[10px] text-slate-400 uppercase font-bold block">Remaining Due</span>
+              <span className="text-[10px] text-slate-400 uppercase font-bold block">
+                {language === 'ar' ? 'المبلغ المتبقي' : 'Remaining Due'}
+              </span>
               <span className="text-sm font-black text-amber-400">{formatMAD(remainingCost)}</span>
             </div>
           </div>
@@ -263,14 +287,14 @@ export const CihPaymentTracker: React.FC<CihPaymentTrackerProps> = ({ match }) =
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-wider">
             <CreditCard className="w-4 h-4 text-blue-400" />
-            <span>Morocco Bank Account (CIH / Attijariwafa / Cash)</span>
+            <span>{language === 'ar' ? 'بيانات الحساب البنكي بالمغرب (CIH / التجاري وفا بنك / نقداً)' : 'Morocco Bank Account (CIH / Attijariwafa / Cash)'}</span>
           </div>
           {isCreatorOrAdmin && (
             <button
               onClick={() => setIsEditingBank(!isEditingBank)}
               className="text-xs text-blue-400 hover:text-blue-300 font-semibold cursor-pointer"
             >
-              {isEditingBank ? 'Close' : 'Edit Details'}
+              {isEditingBank ? (language === 'ar' ? 'إغلاق' : 'Close') : (language === 'ar' ? 'تعديل البيانات' : 'Edit Details')}
             </button>
           )}
         </div>
@@ -279,21 +303,21 @@ export const CihPaymentTracker: React.FC<CihPaymentTrackerProps> = ({ match }) =
           <div className="space-y-3 p-4 rounded-2xl bg-[#0E1526] border border-[#1E293B]">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-[11px] text-slate-400 block mb-1">Bank Name</label>
+                <label className="text-[11px] text-slate-400 block mb-1">{language === 'ar' ? 'اسم البنك' : 'Bank Name'}</label>
                 <select
                   value={bankName}
                   onChange={(e) => setBankName(e.target.value)}
                   className="w-full px-3 py-2 bg-[#090D16] border border-[#1E293B] rounded-xl text-xs text-white"
                 >
                   <option value="CIH Bank">CIH Bank</option>
-                  <option value="Attijariwafa Bank">Attijariwafa Bank</option>
-                  <option value="Bank of Africa">Bank of Africa</option>
-                  <option value="Banque Populaire">Banque Populaire</option>
-                  <option value="Cash at Pitch">Cash at Pitch</option>
+                  <option value="Attijariwafa Bank">Attijariwafa Bank (التجاري وفا بنك)</option>
+                  <option value="Bank of Africa">Bank of Africa (بنك إفريقيا)</option>
+                  <option value="Banque Populaire">Banque Populaire (البنك الشعبي)</option>
+                  <option value="Cash at Pitch">نقداً في الملعب (Cash at Pitch)</option>
                 </select>
               </div>
               <div>
-                <label className="text-[11px] text-slate-400 block mb-1">Account Holder Name</label>
+                <label className="text-[11px] text-slate-400 block mb-1">{language === 'ar' ? 'اسم صاحب الحساب' : 'Account Holder Name'}</label>
                 <input
                   type="text"
                   value={accountHolder}
@@ -304,7 +328,7 @@ export const CihPaymentTracker: React.FC<CihPaymentTrackerProps> = ({ match }) =
             </div>
 
             <div>
-              <label className="text-[11px] text-slate-400 block mb-1">24-digit Moroccan RIB</label>
+              <label className="text-[11px] text-slate-400 block mb-1">{language === 'ar' ? 'رقم الحساب البنكي RIB (24 رقماً)' : '24-digit Moroccan RIB'}</label>
               <input
                 type="text"
                 value={rib}
@@ -317,7 +341,7 @@ export const CihPaymentTracker: React.FC<CihPaymentTrackerProps> = ({ match }) =
               onClick={handleSaveBankDetails}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl cursor-pointer"
             >
-              Save Bank Info
+              {language === 'ar' ? 'حفظ البيانات البنكية' : 'Save Bank Info'}
             </button>
           </div>
         ) : (
@@ -341,12 +365,12 @@ export const CihPaymentTracker: React.FC<CihPaymentTrackerProps> = ({ match }) =
               {copiedRib ? (
                 <>
                   <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>RIB Copied!</span>
+                  <span>{language === 'ar' ? 'تم نسخ الـ RIB بنجاح!' : 'RIB Copied!'}</span>
                 </>
               ) : (
                 <>
                   <Copy className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Copy 24-Digit RIB</span>
+                  <span>{language === 'ar' ? 'نسخ رقم الحساب (RIB)' : 'Copy 24-Digit RIB'}</span>
                 </>
               )}
             </button>
@@ -359,36 +383,40 @@ export const CihPaymentTracker: React.FC<CihPaymentTrackerProps> = ({ match }) =
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-wider">
             <UploadCloud className="w-4 h-4 text-emerald-400" />
-            <span>Upload My Payment Proof Screenshot</span>
+            <span>{language === 'ar' ? 'رفع إيصال أو لقطة شاشة لإثبات الدفع' : 'Upload My Payment Proof Screenshot'}</span>
           </div>
           {uploadSuccess && (
             <span className="text-xs font-bold text-emerald-400 flex items-center gap-1 animate-in fade-in">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Proof Submitted!
+              <CheckCircle2 className="w-3.5 h-3.5" /> {language === 'ar' ? 'تم إرسال الإيصال بنجاح!' : 'Proof Submitted!'}
             </span>
           )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="text-[11px] text-slate-400 block mb-1">Payment Method</label>
+            <label className="text-[11px] text-slate-400 block mb-1">
+              {language === 'ar' ? 'طريقة الدفع' : 'Payment Method'}
+            </label>
             <select
               value={proofMethod}
               onChange={(e) => setProofMethod(e.target.value as any)}
               className="w-full px-3 py-2 bg-[#0E1526] border border-[#1E293B] rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
             >
-              <option value="cih_bank">CIH Mobile / CIH Bank</option>
-              <option value="attijari">Attijariwafa Bank</option>
-              <option value="wafacash">Wafacash / CashPlus</option>
-              <option value="cash">Cash Given to Organizer on Pitch</option>
-              <option value="other">Other Bank Transfer</option>
+              <option value="cih_bank">{language === 'ar' ? 'تطبيق CIH بنك (CIH Mobile)' : 'CIH Mobile / CIH Bank'}</option>
+              <option value="attijari">{language === 'ar' ? 'التجاري وفا بنك (Attijariwafa)' : 'Attijariwafa Bank'}</option>
+              <option value="wafacash">{language === 'ar' ? 'وفاكاش / كاش بلوس (CashPlus)' : 'Wafacash / CashPlus'}</option>
+              <option value="cash">{language === 'ar' ? 'دفع نقداً للمنظم في الملعب' : 'Cash Given to Organizer on Pitch'}</option>
+              <option value="other">{language === 'ar' ? 'تحويل بنكي من بنك آخر' : 'Other Bank Transfer'}</option>
             </select>
           </div>
 
           <div>
-            <label className="text-[11px] text-slate-400 block mb-1">Transfer Note / Reference</label>
+            <label className="text-[11px] text-slate-400 block mb-1">
+              {language === 'ar' ? 'ملاحظة أو رقم العملية' : 'Transfer Note / Reference'}
+            </label>
             <input
               type="text"
-              placeholder="e.g. CIH Ref #889210 or Paid at entrance"
+              placeholder={language === 'ar' ? 'مثال: تحويل CIH رقم 889210 أو تم الدفع عند الدخول' : 'e.g. CIH Ref #889210 or Paid at entrance'}
               value={proofNote}
               onChange={(e) => setProofNote(e.target.value)}
               className="w-full px-3 py-2 bg-[#0E1526] border border-[#1E293B] rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
@@ -398,7 +426,9 @@ export const CihPaymentTracker: React.FC<CihPaymentTrackerProps> = ({ match }) =
 
         {/* Screenshot Upload Input */}
         <div>
-          <label className="text-[11px] text-slate-400 block mb-1">Receipt / Screenshot</label>
+          <label className="text-[11px] text-slate-400 block mb-1">
+            {language === 'ar' ? 'صورة الإيصال / لقطة الشاشة' : 'Receipt / Screenshot'}
+          </label>
           <div className="flex items-center gap-3">
             <label className="flex-1 border-2 border-dashed border-[#1E293B] hover:border-emerald-500/50 rounded-2xl p-4 text-center cursor-pointer transition-colors bg-[#0E1526]/50">
               <input
@@ -409,7 +439,11 @@ export const CihPaymentTracker: React.FC<CihPaymentTrackerProps> = ({ match }) =
               />
               <div className="flex items-center justify-center gap-2 text-xs text-slate-300">
                 <ImageIcon className="w-4 h-4 text-emerald-400" />
-                <span>{proofImagePreview ? 'Screenshot Attached (Click to change)' : 'Attach Transfer Receipt Screenshot'}</span>
+                <span>
+                  {proofImagePreview
+                    ? (language === 'ar' ? 'تم اختيار الصورة (انقر للتغيير)' : 'Screenshot Attached (Click to change)')
+                    : (language === 'ar' ? 'انقر لاختيار صورة إيصال التحويل' : 'Attach Transfer Receipt Screenshot')}
+                </span>
               </div>
             </label>
 
@@ -418,7 +452,7 @@ export const CihPaymentTracker: React.FC<CihPaymentTrackerProps> = ({ match }) =
               className="px-5 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-2xl shadow-lg shadow-emerald-950 transition-all flex items-center gap-2 cursor-pointer shrink-0"
             >
               <Check className="w-4 h-4" />
-              Submit Proof
+              {language === 'ar' ? 'إرسال الإيصال' : 'Submit Proof'}
             </button>
           </div>
         </div>
@@ -431,8 +465,12 @@ export const CihPaymentTracker: React.FC<CihPaymentTrackerProps> = ({ match }) =
               className="w-14 h-14 rounded-xl object-cover border border-slate-700"
             />
             <div className="text-xs text-slate-300">
-              <span className="font-bold text-emerald-400 block">Screenshot ready to upload</span>
-              <span className="text-[11px] text-slate-400">Will be verified by the match organizer</span>
+              <span className="font-bold text-emerald-400 block">
+                {language === 'ar' ? 'الصورة جاهزة للإرسال' : 'Screenshot ready to upload'}
+              </span>
+              <span className="text-[11px] text-slate-400">
+                {language === 'ar' ? 'سيتم مراجعتها وتأكيدها من طرف المنظم' : 'Will be verified by the match organizer'}
+              </span>
             </div>
           </div>
         )}
@@ -442,7 +480,9 @@ export const CihPaymentTracker: React.FC<CihPaymentTrackerProps> = ({ match }) =
       <div className="p-5 rounded-3xl bg-[#090D16] border border-[#1E293B] space-y-3">
         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
           <Users className="w-4 h-4 text-emerald-400" />
-          Roster Payments ({paidCount} Paid • {unpaidCount} Pending)
+          {language === 'ar'
+            ? `حالة تسديد اللاعبين (${paidCount} سددوا • ${unpaidCount} في الانتظار)`
+            : `Roster Payments (${paidCount} Paid • ${unpaidCount} Pending)`}
         </h3>
 
         <div className="divide-y divide-[#1E293B]">
@@ -467,7 +507,7 @@ export const CihPaymentTracker: React.FC<CihPaymentTrackerProps> = ({ match }) =
                       <span>{player.position || 'MID'}</span>
                       {proof && (
                         <span className="text-emerald-400 font-semibold flex items-center gap-0.5">
-                          • Proof attached ({proof.method})
+                          • {language === 'ar' ? `تم إرفاق إثبات (${proof.method})` : `Proof attached (${proof.method})`}
                         </span>
                       )}
                     </div>
@@ -482,7 +522,7 @@ export const CihPaymentTracker: React.FC<CihPaymentTrackerProps> = ({ match }) =
                         : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
                     }`}
                   >
-                    {isPaid ? 'Paid' : 'Pending'}
+                    {isPaid ? (language === 'ar' ? 'تم التسديد' : 'Paid') : (language === 'ar' ? 'في الانتظار' : 'Pending')}
                   </span>
 
                   {isCreatorOrAdmin && (
@@ -490,7 +530,7 @@ export const CihPaymentTracker: React.FC<CihPaymentTrackerProps> = ({ match }) =
                       type="button"
                       onClick={() => togglePlayerPaidStatus(match.id, player.userId)}
                       className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors text-xs font-semibold cursor-pointer"
-                      title={isPaid ? 'Mark as Unpaid' : 'Mark as Paid'}
+                      title={isPaid ? (language === 'ar' ? 'تعيين كغير مسدد' : 'Mark as Unpaid') : (language === 'ar' ? 'تأكيد التسديد' : 'Mark as Paid')}
                     >
                       {isPaid ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Coins className="w-3.5 h-3.5 text-amber-400" />}
                     </button>

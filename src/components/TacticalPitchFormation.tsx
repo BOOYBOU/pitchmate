@@ -19,6 +19,7 @@ import {
   Flame,
 } from 'lucide-react';
 import { usePitchStore } from '../lib/usePitchStore';
+import { useLanguage } from '../lib/useLanguage';
 import { TacticalPitch3DWebGL } from './TacticalPitch3DWebGL';
 import { SoundEffects } from '../lib/audioService';
 
@@ -41,35 +42,35 @@ export interface SlotDefinition {
 export function getPositionArabicLabel(position: PlayerPosition, label: string): string {
   switch (label.toUpperCase()) {
     case 'GK':
-      return 'Goalkeeper (GK)';
+      return 'حارس مرمى (GK)';
     case 'CB':
-      return 'Center Back (CB)';
+      return 'قلب دفاع (CB)';
     case 'LB':
-      return 'Left Back (LB)';
+      return 'ظهير أيسر (LB)';
     case 'RB':
-      return 'Right Back (RB)';
+      return 'ظهير أيمن (RB)';
     case 'CDM':
-      return 'Defensive Midfielder (CDM)';
+      return 'وسط دفاعي / ارتكاز (CDM)';
     case 'CM':
-      return 'Central Midfielder (CM)';
+      return 'وسط ميدان (CM)';
     case 'CAM':
-      return 'Attacking Midfielder (CAM)';
+      return 'صانع ألعاب / وسط هجومي (CAM)';
     case 'LM':
     case 'LW':
     case 'LF':
-      return 'Left Winger / Forward (LW)';
+      return 'جناح أيسر / مهاجم (LW)';
     case 'RM':
     case 'RW':
     case 'RF':
-      return 'Right Winger / Forward (RW)';
+      return 'جناح أيمن / مهاجم (RW)';
     case 'ST':
     case 'CF':
-      return 'Striker / Center Forward (ST)';
+      return 'مهاجم صريح / رأس حربة (ST)';
     default:
-      if (position === 'GK') return 'Goalkeeper (GK)';
-      if (position === 'DEF') return 'Defender (DEF)';
-      if (position === 'MID') return 'Midfielder (MID)';
-      return 'Forward (FWD)';
+      if (position === 'GK') return 'حارس مرمى (GK)';
+      if (position === 'DEF') return 'مدافع (DEF)';
+      if (position === 'MID') return 'لاعب وسط (MID)';
+      return 'مهاجم (FWD)';
   }
 }
 
@@ -416,6 +417,7 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
   isHostOrAdmin,
 }) => {
   const { currentUser, assignPlayerTacticalSlot, joinMatch, assignPlayerTeam } = usePitchStore();
+  const { t, language, isRTL } = useLanguage();
 
   const [formationKey, setFormationKey] = useState<string>(
     getNormalizedFormationKey(match.formationGreen, match.format, match.maxPlayers)
@@ -493,8 +495,13 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
       // 4. Trigger audio fanfare and success state
       SoundEffects.playJoin();
       const posLabel = getPositionArabicLabel(slot.position, slot.label);
-      const teamLabel = slot.team === 'green' ? 'Team Green' : 'Team Blue';
-      setConfirmationSuccessMsg(`✅ Position confirmed & locked: ${slot.label} - ${posLabel} in ${teamLabel}!`);
+      const teamLabel = slot.team === 'green' ? (language === 'ar' ? 'الفريق الأخضر' : 'Team Green') : (language === 'ar' ? 'الفريق الأزرق' : 'Team Blue');
+      
+      const successText = language === 'ar'
+        ? `✅ تم تثبيت وتأكيد مركزك في الملعب: ${slot.label} - ${posLabel} في ${teamLabel}!`
+        : `✅ Position confirmed & locked: ${slot.label} - ${posLabel} in ${teamLabel}!`;
+
+      setConfirmationSuccessMsg(successText);
 
       setTimeout(() => {
         setConfirmationSuccessMsg(null);
@@ -581,7 +588,8 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
 
   // Reset / Clear All Slots
   const handleResetFormation = () => {
-    if (confirm('Clear all tactical position assignments on the pitch?')) {
+    const confirmPrompt = language === 'ar' ? 'هل أنت متأكد من رغبتك في تفريغ كافة المراكز التكتيكية في الملعب؟' : 'Clear all tactical position assignments on the pitch?';
+    if (confirm(confirmPrompt)) {
       setAssignments({});
       setSelectedSlotKey(null);
       onUpdateTactical?.(formationKey, formationKey, {});
@@ -614,7 +622,7 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
               <Shirt className="w-3.5 h-3.5 text-emerald-400" />
-              Formation:
+              {language === 'ar' ? 'الخطة التكتيكية:' : 'Formation:'}
             </span>
             <div className="relative">
               <select
@@ -630,7 +638,7 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
                 {categories.map((cat) => (
                   <optgroup
                     key={cat}
-                    label={`─── ${cat} FORMATS ───`}
+                    label={`─── ${cat} ───`}
                     className="bg-slate-900 font-bold text-emerald-400"
                   >
                     {Object.entries(FORMATIONS)
@@ -643,7 +651,7 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
                   </optgroup>
                 ))}
               </select>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 rtl:right-auto rtl:left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
           </div>
         </div>
@@ -656,10 +664,10 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
               type="button"
               onClick={handleAutoFillFormation}
               className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-sm"
-              title="Auto-place confirmed roster players onto tactical pitch slots"
+              title={language === 'ar' ? 'توزيع اللاعبين المؤكدين تلقائياً على مراكز الخطة' : 'Auto-place confirmed roster players onto tactical pitch slots'}
             >
               <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-              Auto-Fill Lineup
+              {language === 'ar' ? 'توزيع التشكيلة تلقائياً' : 'Auto-Fill Lineup'}
             </button>
           )}
 
@@ -669,10 +677,10 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
               type="button"
               onClick={handleResetFormation}
               className="px-2.5 py-1.5 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 border border-rose-500/20 text-xs font-bold rounded-xl transition-all flex items-center gap-1 cursor-pointer"
-              title="Reset all positions"
+              title={language === 'ar' ? 'إعادة ضبط كافة المراكز' : 'Reset all positions'}
             >
               <Trash2 className="w-3.5 h-3.5" />
-              Reset
+              {language === 'ar' ? 'إعادة ضبط' : 'Reset'}
             </button>
           )}
 
@@ -685,7 +693,7 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
                 viewMode === 'full' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'
               }`}
             >
-              Both
+              {language === 'ar' ? 'الفريقين' : 'Both'}
             </button>
             <button
               type="button"
@@ -694,7 +702,7 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
                 viewMode === 'green' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-emerald-300'
               }`}
             >
-              Green
+              {t('matches.greenTeam')}
             </button>
             <button
               type="button"
@@ -703,7 +711,7 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
                 viewMode === 'blue' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-blue-300'
               }`}
             >
-              Blue
+              {t('matches.blueTeam')}
             </button>
           </div>
         </div>
@@ -721,7 +729,7 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
             </div>
             <div>
               <div className="text-xs font-black uppercase tracking-wider text-emerald-400">
-                Position Confirmed & Locked
+                {language === 'ar' ? 'تم تثبيت وتأكيد المركز' : 'Position Confirmed & Locked'}
               </div>
               <div className="text-sm font-bold text-slate-100 mt-0.5">
                 {confirmationSuccessMsg}
@@ -733,7 +741,7 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
             onClick={() => setConfirmationSuccessMsg(null)}
             className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs font-bold rounded-xl border border-emerald-500/30 cursor-pointer"
           >
-            Dismiss
+            {language === 'ar' ? 'إغلاق' : 'Dismiss'}
           </button>
         </div>
       )}
@@ -770,7 +778,7 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
                     }`}
                   >
                     <span className={`w-1.5 h-1.5 rounded-full ${selectedSlot.team === 'green' ? 'bg-emerald-400' : 'bg-blue-400'}`} />
-                    {selectedSlot.team === 'green' ? 'Team Green' : 'Team Blue'}
+                    {selectedSlot.team === 'green' ? (language === 'ar' ? 'الفريق الأخضر' : 'Team Green') : (language === 'ar' ? 'الفريق الأزرق' : 'Team Blue')}
                   </span>
 
                   <span className="text-sm font-black text-amber-400">
@@ -782,12 +790,12 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
                   <span>{selectedSlot.roleDescription}</span>
                   {currentOccupantPlayer && (
                     <span className="text-slate-400 text-[11px]">
-                      • Currently: <strong className="text-white">{currentOccupantPlayer.name}</strong>
+                      • {language === 'ar' ? 'يشغله حالياً:' : 'Currently:'} <strong className="text-white">{currentOccupantPlayer.name}</strong>
                     </span>
                   )}
                   {!currentOccupantPlayer && (
                     <span className="text-emerald-400 text-[11px] font-bold">
-                      • Vacant Role
+                      • {language === 'ar' ? 'مركز شاغر ومتاح' : 'Vacant Role'}
                     </span>
                   )}
                 </div>
@@ -811,17 +819,17 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
                 {isConfirmingPosition ? (
                   <>
                     <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
-                    <span>Confirming Position...</span>
+                    <span>{language === 'ar' ? 'جارٍ تأكيد المركز...' : 'Confirming Position...'}</span>
                   </>
                 ) : isSelectedSlotOccupiedByMe ? (
                   <>
                     <CheckCircle2 className="w-5 h-5 text-slate-950" />
-                    <span>Confirmed Position ({selectedSlot.label})</span>
+                    <span>{language === 'ar' ? `تم حجز مركزك (${selectedSlot.label})` : `Confirmed Position (${selectedSlot.label})`}</span>
                   </>
                 ) : (
                   <>
                     <Check className="w-5 h-5" />
-                    <span>Confirm Position ({selectedSlot.label})</span>
+                    <span>{language === 'ar' ? `تأكيد واختيار المركز (${selectedSlot.label})` : `Confirm Position (${selectedSlot.label})`}</span>
                   </>
                 )}
               </button>
@@ -833,10 +841,10 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
                   type="button"
                   onClick={() => handleClearSlot(selectedSlot.key)}
                   className="px-3.5 py-3 bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/40 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-                  title="Clear position assignment"
+                  title={language === 'ar' ? 'إلغاء تعيين المركز' : 'Clear position assignment'}
                 >
                   <Trash2 className="w-4 h-4" />
-                  <span>Clear</span>
+                  <span>{language === 'ar' ? 'تفريغ' : 'Clear'}</span>
                 </button>
               )}
             </div>
@@ -846,9 +854,11 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
           <div className="pt-3 space-y-2">
             <div className="flex items-center justify-between text-[11px] font-bold text-slate-400">
               <span className="uppercase tracking-wider">
-                Or Assign Another Roster Teammate ({selectedSlot.team === 'green' ? 'Green' : 'Blue'}):
+                {language === 'ar'
+                  ? `أو قم بتعيين لاعب آخر من التشكيلة (${selectedSlot.team === 'green' ? 'الأخضر' : 'الأزرق'}):`
+                  : `Or Assign Another Roster Teammate (${selectedSlot.team === 'green' ? 'Green' : 'Blue'}):`}
               </span>
-              <span>Click a teammate to place them here</span>
+              <span>{language === 'ar' ? 'اضغط على لاعب لوضعه في هذا المركز' : 'Click a teammate to place them here'}</span>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -885,7 +895,7 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
               })}
               {eligiblePlayers.length === 0 && (
                 <div className="text-xs text-slate-400 py-1">
-                  No other confirmed players on this team roster yet.
+                  {language === 'ar' ? 'لا يوجد لاعبون آخرون مؤكدون في تشكيلة هذا الفريق بعد.' : 'No other confirmed players on this team roster yet.'}
                 </div>
               )}
             </div>
@@ -909,9 +919,9 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
         {/* Team Green Lineup & Bench */}
         <div className="bg-[#0B1120] p-4 rounded-2xl border border-emerald-500/20 shadow-md">
           <div className="flex items-center justify-between text-xs font-bold text-emerald-400 mb-2.5">
-            <span>Team Green Squad ({greenPlayers.length})</span>
+            <span>{language === 'ar' ? `تشكيلة الفريق الأخضر (${greenPlayers.length})` : `Team Green Squad (${greenPlayers.length})`}</span>
             <span className="text-[10px] text-slate-400">
-              {Object.keys(assignments).filter((k) => k.startsWith('g_')).length} / {formation.slots.green.length} Roles Assigned
+              {Object.keys(assignments).filter((k) => k.startsWith('g_')).length} / {formation.slots.green.length} {language === 'ar' ? 'مراكز محجوزة' : 'Roles Assigned'}
             </span>
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -933,13 +943,17 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
                       {slotDef.label}
                     </span>
                   ) : (
-                    <span className="text-[10px] text-slate-500 font-medium">Unassigned</span>
+                    <span className="text-[10px] text-slate-500 font-medium">
+                      {language === 'ar' ? 'بدون مركز' : 'Unassigned'}
+                    </span>
                   )}
                 </div>
               );
             })}
             {greenPlayers.length === 0 && (
-              <span className="text-xs text-slate-500 py-1">No players assigned to Team Green yet.</span>
+              <span className="text-xs text-slate-500 py-1">
+                {language === 'ar' ? 'لا يوجد لاعبون مسجلون في الفريق الأخضر بعد.' : 'No players assigned to Team Green yet.'}
+              </span>
             )}
           </div>
         </div>
@@ -947,9 +961,9 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
         {/* Team Blue Lineup & Bench */}
         <div className="bg-[#0B1120] p-4 rounded-2xl border border-blue-500/20 shadow-md">
           <div className="flex items-center justify-between text-xs font-bold text-blue-400 mb-2.5">
-            <span>Team Blue Squad ({bluePlayers.length})</span>
+            <span>{language === 'ar' ? `تشكيلة الفريق الأزرق (${bluePlayers.length})` : `Team Blue Squad (${bluePlayers.length})`}</span>
             <span className="text-[10px] text-slate-400">
-              {Object.keys(assignments).filter((k) => k.startsWith('b_')).length} / {formation.slots.blue.length} Roles Assigned
+              {Object.keys(assignments).filter((k) => k.startsWith('b_')).length} / {formation.slots.blue.length} {language === 'ar' ? 'مراكز محجوزة' : 'Roles Assigned'}
             </span>
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -971,13 +985,17 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
                       {slotDef.label}
                     </span>
                   ) : (
-                    <span className="text-[10px] text-slate-500 font-medium">Unassigned</span>
+                    <span className="text-[10px] text-slate-500 font-medium">
+                      {language === 'ar' ? 'بدون مركز' : 'Unassigned'}
+                    </span>
                   )}
                 </div>
               );
             })}
             {bluePlayers.length === 0 && (
-              <span className="text-xs text-slate-500 py-1">No players assigned to Team Blue yet.</span>
+              <span className="text-xs text-slate-500 py-1">
+                {language === 'ar' ? 'لا يوجد لاعبون مسجلون في الفريق الأزرق بعد.' : 'No players assigned to Team Blue yet.'}
+              </span>
             )}
           </div>
         </div>

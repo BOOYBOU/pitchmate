@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserProfile, isSuperAdminEmail, SUPER_ADMIN_EMAIL } from '../../types';
 import { filterUsers, getUserStatusBadge } from '../../lib/adminUtils';
+import { useLanguage } from '../../lib/useLanguage';
 import {
   Users,
   Search,
@@ -33,6 +34,7 @@ export function AdminUsersTable({
   onUnbanUser,
   onDeleteUser,
 }: AdminUsersTableProps) {
+  const { t, language, getPositionName } = useLanguage();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTab, setFilterTab] = useState<'all' | 'pending' | 'approved' | 'banned'>('all');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -64,7 +66,7 @@ export function AdminUsersTable({
               filterTab === 'all' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'
             }`}
           >
-            All Players ({users.length})
+            {language === 'ar' ? 'كافة اللاعبين' : 'All Players'} ({users.length})
           </button>
           <button
             onClick={() => setFilterTab('pending')}
@@ -74,7 +76,7 @@ export function AdminUsersTable({
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            Pending
+            {language === 'ar' ? 'قيد المراجعة' : 'Pending'}
             {pendingCount > 0 && (
               <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950 font-bold text-[10px]">
                 {pendingCount}
@@ -87,7 +89,7 @@ export function AdminUsersTable({
               filterTab === 'approved' ? 'bg-emerald-500/20 text-emerald-300' : 'text-slate-400 hover:text-white'
             }`}
           >
-            Approved ({approvedCount})
+            {language === 'ar' ? 'المعتمدون' : 'Approved'} ({approvedCount})
           </button>
           <button
             onClick={() => setFilterTab('banned')}
@@ -95,19 +97,19 @@ export function AdminUsersTable({
               filterTab === 'banned' ? 'bg-red-500/20 text-red-300' : 'text-slate-400 hover:text-white'
             }`}
           >
-            Banned ({bannedCount})
+            {language === 'ar' ? 'المحظورون' : 'Banned'} ({bannedCount})
           </button>
         </div>
 
         <div className="flex items-center gap-2">
           <div className="relative flex-1 sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Search by name, email, phone..."
+              placeholder={language === 'ar' ? 'البحث بالاسم، البريد، أو الهاتف...' : 'Search by name, email, phone...'}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+              className="w-full pl-9 rtl:pl-3 rtl:pr-9 pr-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
             />
           </div>
 
@@ -118,7 +120,7 @@ export function AdminUsersTable({
               className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-lg transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer shrink-0 disabled:opacity-50"
             >
               <CheckCheck className="w-4 h-4" />
-              Approve All ({pendingCount})
+              <span>{t('admin.approveAll', 'قبول الكل')} ({pendingCount})</span>
             </button>
           )}
         </div>
@@ -127,14 +129,14 @@ export function AdminUsersTable({
       {/* Users Table */}
       <div className="bg-[#0E1526] border border-slate-800 rounded-xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
+          <table className="w-full text-start text-xs text-slate-300">
             <thead className="bg-slate-900/90 text-slate-400 font-semibold uppercase tracking-wider text-[11px] border-b border-slate-800">
               <tr>
-                <th className="py-3 px-4">Player</th>
-                <th className="py-3 px-4">Status & Role</th>
-                <th className="py-3 px-4">Position & Skill</th>
-                <th className="py-3 px-4">Reliability</th>
-                <th className="py-3 px-4 text-right">Actions</th>
+                <th className="py-3 px-4 text-start">{language === 'ar' ? 'اللاعب' : 'Player'}</th>
+                <th className="py-3 px-4 text-start">{language === 'ar' ? 'الحالة والرتبة' : 'Status & Role'}</th>
+                <th className="py-3 px-4 text-start">{language === 'ar' ? 'المركز والتقييم' : 'Position & Skill'}</th>
+                <th className="py-3 px-4 text-start">{language === 'ar' ? 'نسبة الالتزام' : 'Reliability'}</th>
+                <th className="py-3 px-4 text-end">{language === 'ar' ? 'الإجراءات الإدارية' : 'Actions'}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/80">
@@ -151,18 +153,19 @@ export function AdminUsersTable({
                           src={user.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.name}`}
                           alt={user.name}
                           className="w-9 h-9 rounded-full object-cover border border-slate-700 shrink-0"
+                          referrerPolicy="no-referrer"
                         />
                         <div className="min-w-0">
                           <div className="font-semibold text-white truncate flex items-center gap-1.5">
                             {user.name}
                             {isSuper && (
                               <span className="px-1.5 py-0.2 rounded bg-purple-500/20 text-purple-300 text-[10px] font-bold border border-purple-500/30">
-                                SUPER ADMIN
+                                {language === 'ar' ? 'المشرف العام' : 'SUPER ADMIN'}
                               </span>
                             )}
                           </div>
-                          <div className="text-slate-400 text-[11px] truncate">{user.email}</div>
-                          {user.phone && <div className="text-slate-400 text-[10px] truncate">{user.phone}</div>}
+                          <div className="text-slate-400 text-[11px] truncate font-mono">{user.email}</div>
+                          {user.phone && <div className="text-slate-400 text-[10px] truncate font-mono">{user.phone}</div>}
                         </div>
                       </div>
                     </td>
@@ -171,17 +174,17 @@ export function AdminUsersTable({
                       {isBanned ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-red-500/20 text-red-300 font-semibold text-[11px] border border-red-500/30">
                           <ShieldAlert className="w-3 h-3" />
-                          Banned
+                          {language === 'ar' ? 'محظور' : 'Banned'}
                         </span>
                       ) : isPending ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-semibold text-[11px] border border-amber-500/30">
                           <AlertTriangle className="w-3 h-3" />
-                          Pending Review
+                          {language === 'ar' ? 'قيد المراجعة' : 'Pending Review'}
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold text-[11px] border border-emerald-500/30">
                           <CheckCircle2 className="w-3 h-3" />
-                          Approved
+                          {language === 'ar' ? 'معتمد' : 'Approved'}
                         </span>
                       )}
                     </td>
@@ -189,7 +192,7 @@ export function AdminUsersTable({
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-2">
                         <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-200 font-bold text-[11px]">
-                          {user.preferredPosition || 'MID'}
+                          {getPositionName(user.preferredPosition || 'MID')}
                         </span>
                         <div className="flex items-center gap-1 text-amber-400 font-medium">
                           <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
@@ -217,27 +220,27 @@ export function AdminUsersTable({
                         </span>
                       </div>
                       <span className="text-[10px] text-slate-400">
-                        {user.matchesAttended || user.matchesPlayed || 0} matches attended
+                        {user.matchesAttended || user.matchesPlayed || 0} {language === 'ar' ? 'مباراة ملعوبة' : 'matches attended'}
                       </span>
                     </td>
 
-                    <td className="py-3 px-4 text-right">
+                    <td className="py-3 px-4 text-end">
                       <div className="flex items-center justify-end gap-1.5">
                         {isPending && (
                           <>
                             <button
                               onClick={() => onApproveUser(user.id)}
                               className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold transition-colors cursor-pointer"
-                              title="Approve User"
+                              title={language === 'ar' ? 'قبول اللاعب' : 'Approve User'}
                             >
-                              Approve
+                              {language === 'ar' ? 'قبول' : 'Approve'}
                             </button>
                             <button
                               onClick={() => onRejectUser(user.id)}
                               className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs transition-colors cursor-pointer"
-                              title="Decline"
+                              title={language === 'ar' ? 'رفض الطلب' : 'Decline'}
                             >
-                              Decline
+                              {language === 'ar' ? 'رفض' : 'Decline'}
                             </button>
                           </>
                         )}
@@ -246,7 +249,7 @@ export function AdminUsersTable({
                           <button
                             onClick={() => onBanUser(user.id)}
                             className="p-1.5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded transition-colors cursor-pointer"
-                            title="Ban User"
+                            title={language === 'ar' ? 'حظر اللاعب' : 'Ban User'}
                           >
                             <ShieldAlert className="w-4 h-4" />
                           </button>
@@ -256,9 +259,9 @@ export function AdminUsersTable({
                           <button
                             onClick={() => onUnbanUser(user.id)}
                             className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded text-xs font-semibold transition-colors cursor-pointer"
-                            title="Lift Ban"
+                            title={language === 'ar' ? 'إلغاء الحظر' : 'Lift Ban'}
                           >
-                            Unban
+                            {language === 'ar' ? 'إلغاء الحظر' : 'Unban'}
                           </button>
                         )}
 
@@ -266,7 +269,7 @@ export function AdminUsersTable({
                           <button
                             onClick={() => onDeleteUser(user.id)}
                             className="p-1.5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded transition-colors cursor-pointer"
-                            title="Delete Account"
+                            title={language === 'ar' ? 'حذف الحساب' : 'Delete Account'}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -283,3 +286,4 @@ export function AdminUsersTable({
     </div>
   );
 }
+

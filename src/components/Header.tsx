@@ -11,9 +11,12 @@ import {
   Camera,
   MessageSquare,
   Bell,
-  Trophy
+  Trophy,
+  Globe,
+  Check
 } from 'lucide-react';
 import { usePitchStore } from '../lib/usePitchStore';
+import { useLanguage } from '../lib/useLanguage';
 import { SUPER_ADMIN_EMAIL, isSuperAdminEmail } from '../types';
 import { PitchMateLogo } from './PitchMateLogo';
 
@@ -42,20 +45,22 @@ export const Header: React.FC<HeaderProps> = ({
     unreadNotificationsCount,
     logout
   } = usePitchStore();
+
+  const { language, setLanguage, toggleLanguage, t, isRTL, getPositionName } = useLanguage();
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [isLangDropdownOpen, setIsLangDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const isMustapha = isSuperAdminEmail(currentUser.email);
 
-
   return (
-    <header className="sticky top-0 z-40 bg-[#040813]/90 backdrop-blur-xl border-b border-white/[0.08] shadow-2xl">
+    <header className="sticky top-0 z-40 bg-[#040813]/95 backdrop-blur-xl border-b border-white/[0.08] shadow-2xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20">
           {/* Brand Logo */}
           <div
             id="header-brand-logo"
-            className="cursor-pointer transition-transform hover:scale-[1.02]"
+            className="cursor-pointer transition-transform hover:scale-[1.02] shrink-0"
             onClick={() => setActiveTab('matches')}
           >
             <PitchMateLogo size="md" />
@@ -74,7 +79,7 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               <Calendar className="w-4 h-4" />
-              Matches
+              <span>{t('nav.matches')}</span>
             </button>
 
             <button
@@ -88,7 +93,7 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               <Trophy className={`w-4 h-4 ${activeTab === 'leaderboard' ? 'fill-slate-950 text-slate-950' : 'text-amber-400'}`} />
-              Leaderboard & MOTM
+              <span>{t('nav.leaderboard')}</span>
             </button>
 
             <button
@@ -102,7 +107,7 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               <User className="w-4 h-4" />
-              Profile
+              <span>{t('nav.profile')}</span>
             </button>
 
             {/* Admin Panel (Visible to Super Admin Mustapha) */}
@@ -118,8 +123,8 @@ export const Header: React.FC<HeaderProps> = ({
                 }`}
               >
                 <Shield className="w-4 h-4 text-emerald-400" />
-                Admin Panel
-                <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400" />
+                <span>{t('nav.admin')}</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400 animate-pulse" />
               </button>
             ) : (
               <button
@@ -131,16 +136,69 @@ export const Header: React.FC<HeaderProps> = ({
                     ? 'bg-slate-700 text-slate-200'
                     : 'text-slate-500 hover:text-slate-400 hover:bg-slate-800/40'
                 }`}
-                title="Super Admin restricted to Mustapha (bouhbousmustapha@gmail.com)"
+                title="Super Admin restricted to Mustapha"
               >
                 <Shield className="w-4 h-4 text-slate-500" />
-                Admin
+                <span>{t('nav.admin')}</span>
               </button>
             )}
           </nav>
 
           {/* Right Action Area */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            {/* Language Switcher Button */}
+            <div className="relative">
+              <button
+                id="header-language-toggle-btn"
+                type="button"
+                onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl bg-[#0E1526] hover:bg-[#131C31] border border-[#1E293B] hover:border-emerald-500/40 text-xs font-bold text-slate-200 transition-all cursor-pointer"
+                title={t('nav.switchLanguage')}
+              >
+                <Globe className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="font-extrabold">{language === 'ar' ? 'العربية' : 'English'}</span>
+                <ChevronDown className="w-3 h-3 text-slate-400" />
+              </button>
+
+              {isLangDropdownOpen && (
+                <div
+                  className={`absolute ${isRTL ? 'left-0' : 'right-0'} mt-2 w-36 bg-[#0E1526] border border-[#1E293B] rounded-2xl shadow-2xl p-1.5 z-50 animate-in fade-in space-y-1`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLanguage('ar');
+                      setIsLangDropdownOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                      language === 'ar'
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                        : 'text-slate-300 hover:bg-white/[0.05]'
+                    }`}
+                  >
+                    <span>العربية (المغرب)</span>
+                    {language === 'ar' && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLanguage('en');
+                      setIsLangDropdownOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                      language === 'en'
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                        : 'text-slate-300 hover:bg-white/[0.05]'
+                    }`}
+                  >
+                    <span>English</span>
+                    {language === 'en' && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Notification Bell CTA */}
             {onOpenNotifications && (
               <button
@@ -148,7 +206,7 @@ export const Header: React.FC<HeaderProps> = ({
                 type="button"
                 onClick={onOpenNotifications}
                 className="relative p-2.5 rounded-2xl bg-[#0E1526] hover:bg-[#131C31] border border-[#1E293B] hover:border-blue-500/40 text-slate-300 hover:text-white transition-all cursor-pointer"
-                title="In-App Notifications & Alerts"
+                title={t('nav.notifications')}
               >
                 <Bell className="w-4 h-4 text-blue-400" />
                 {unreadNotificationsCount > 0 && (
@@ -166,7 +224,7 @@ export const Header: React.FC<HeaderProps> = ({
                 type="button"
                 onClick={onOpenDirectMessages}
                 className="relative p-2.5 rounded-2xl bg-[#0E1526] hover:bg-[#131C31] border border-[#1E293B] hover:border-emerald-500/40 text-slate-300 hover:text-white transition-all cursor-pointer"
-                title="Direct Messages & Teammate Chat"
+                title={t('nav.messages')}
               >
                 <MessageSquare className="w-4 h-4 text-emerald-400" />
                 {unreadMessagesCount > 0 && (
@@ -182,10 +240,10 @@ export const Header: React.FC<HeaderProps> = ({
               id="header-create-match-btn"
               type="button"
               onClick={onOpenCreateMatch}
-              className="hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-900/30 transition-all cursor-pointer"
+              className="hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-900/30 transition-all cursor-pointer shrink-0"
             >
               <Plus className="w-4 h-4" />
-              Organize Match
+              <span>{t('nav.createMatch')}</span>
             </button>
 
             {/* User Profile Dropdown */}
@@ -208,13 +266,13 @@ export const Header: React.FC<HeaderProps> = ({
                   )}
                 </div>
 
-                <div className="hidden lg:block">
+                <div className="hidden lg:block text-start">
                   <span className="text-xs font-bold text-white block leading-tight">{currentUser.name}</span>
                   <span className="text-[10px] text-slate-400 flex items-center gap-1">
                     {isMustapha ? (
-                      <strong className="text-emerald-400">Super Admin</strong>
+                      <strong className="text-emerald-400">{t('nav.superAdminBadge')}</strong>
                     ) : (
-                      `#${currentUser.jerseyNumber || 10} • ${currentUser.preferredPosition || 'Midfielder'}`
+                      `#${currentUser.jerseyNumber || 10} • ${getPositionName(currentUser.preferredPosition || 'MID')}`
                     )}
                   </span>
                 </div>
@@ -226,21 +284,21 @@ export const Header: React.FC<HeaderProps> = ({
               {isUserDropdownOpen && (
                 <div
                   id="user-dropdown-menu"
-                  className="absolute right-0 mt-2 w-64 bg-[#0E1526] border border-[#1E293B] rounded-2xl shadow-2xl p-3 z-50 animate-in fade-in space-y-3"
+                  className={`absolute ${isRTL ? 'left-0' : 'right-0'} mt-2 w-64 bg-[#0E1526] border border-[#1E293B] rounded-2xl shadow-2xl p-3 z-50 animate-in fade-in space-y-3`}
                 >
-                  <div className="p-2 border-b border-[#1E293B]">
+                  <div className="p-2 border-b border-[#1E293B] text-start">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-white truncate">{currentUser.name}</span>
                       {isMustapha && (
                         <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-emerald-500/20 text-emerald-300 shrink-0">
-                          Super Admin
+                          {t('nav.superAdminBadge')}
                         </span>
                       )}
                     </div>
                     <span className="text-[11px] text-slate-400 block truncate">{currentUser.email}</span>
                   </div>
 
-                  <div className="space-y-1">
+                  <div className="space-y-1 text-start">
                     <button
                       type="button"
                       onClick={() => {
@@ -250,7 +308,7 @@ export const Header: React.FC<HeaderProps> = ({
                       className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-200 hover:text-white hover:bg-[#131C31] transition-colors cursor-pointer"
                     >
                       <User className="w-4 h-4 text-blue-400" />
-                      View Full Profile
+                      <span>{t('profile.title')}</span>
                     </button>
 
                     <button
@@ -262,7 +320,7 @@ export const Header: React.FC<HeaderProps> = ({
                       className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-emerald-400 hover:bg-emerald-950/30 transition-colors cursor-pointer"
                     >
                       <Camera className="w-4 h-4 text-emerald-400" />
-                      Change Profile Picture
+                      <span>{t('nav.changeAvatar')}</span>
                     </button>
 
                     {isMustapha && (
@@ -275,7 +333,7 @@ export const Header: React.FC<HeaderProps> = ({
                         className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-emerald-300 hover:bg-emerald-950/40 transition-colors cursor-pointer"
                       >
                         <Shield className="w-4 h-4 text-emerald-400" />
-                        Admin Command Center
+                        <span>{t('admin.title')}</span>
                       </button>
                     )}
                   </div>
@@ -291,7 +349,7 @@ export const Header: React.FC<HeaderProps> = ({
                       className="w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-bold bg-rose-950/40 text-rose-300 hover:bg-rose-900/60 border border-rose-500/30 transition-colors cursor-pointer"
                     >
                       <LogOut className="w-3.5 h-3.5 text-rose-400" />
-                      Log Out
+                      <span>{t('nav.signOut')}</span>
                     </button>
                   </div>
                 </div>
@@ -322,7 +380,7 @@ export const Header: React.FC<HeaderProps> = ({
                   activeTab === 'matches' ? 'bg-blue-600 text-white' : 'bg-[#0E1526] text-slate-300'
                 }`}
               >
-                Matches
+                {t('nav.matches')}
               </button>
 
               <button
@@ -346,7 +404,7 @@ export const Header: React.FC<HeaderProps> = ({
                   activeTab === 'profile' ? 'bg-blue-600 text-white' : 'bg-[#0E1526] text-slate-300'
                 }`}
               >
-                Profile
+                {t('nav.profile')}
               </button>
 
               <button
@@ -362,7 +420,7 @@ export const Header: React.FC<HeaderProps> = ({
                     : 'bg-[#0E1526] text-slate-300'
                 }`}
               >
-                Admin {isMustapha ? '' : '🔒'}
+                {t('nav.admin')} {isMustapha ? '' : '🔒'}
               </button>
             </div>
 
@@ -375,7 +433,7 @@ export const Header: React.FC<HeaderProps> = ({
                 className="py-2 bg-[#0E1526] border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-semibold flex items-center justify-center gap-1"
               >
                 <Camera className="w-3.5 h-3.5" />
-                Change Photo
+                <span>{t('nav.changeAvatar')}</span>
               </button>
               <button
                 onClick={() => {
@@ -385,7 +443,7 @@ export const Header: React.FC<HeaderProps> = ({
                 className="py-2 bg-rose-950/40 border border-rose-500/30 text-rose-300 rounded-xl text-xs font-semibold flex items-center justify-center gap-1"
               >
                 <LogOut className="w-3.5 h-3.5 text-rose-400" />
-                Log Out
+                <span>{t('nav.signOut')}</span>
               </button>
             </div>
 
@@ -397,7 +455,7 @@ export const Header: React.FC<HeaderProps> = ({
               className="w-full py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5"
             >
               <Plus className="w-4 h-4" />
-              Create Soccer Match
+              <span>{t('createMatch.modalTitle')}</span>
             </button>
           </div>
         )}
@@ -405,4 +463,5 @@ export const Header: React.FC<HeaderProps> = ({
     </header>
   );
 };
+
 

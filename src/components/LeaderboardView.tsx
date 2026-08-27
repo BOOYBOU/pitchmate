@@ -14,6 +14,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { usePitchStore } from '../lib/usePitchStore';
+import { useLanguage } from '../lib/useLanguage';
 import { UserProfile, PlayerPosition } from '../types';
 import { getReputationTier } from '../lib/reliabilityEngine';
 
@@ -25,6 +26,7 @@ type LeaderboardCategory = 'motm' | 'scorers' | 'fairplay';
 
 export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMessage }) => {
   const { users, currentUser, matches } = usePitchStore();
+  const { t, language, isRTL } = useLanguage();
 
   const [activeCategory, setActiveCategory] = useState<LeaderboardCategory>('motm');
   const [selectedCity, setSelectedCity] = useState<string>('all');
@@ -163,34 +165,34 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-black uppercase tracking-wider mb-2">
               <Trophy className="w-3.5 h-3.5" />
-              <span>Hall of Fame & Player Rankings</span>
+              <span>{language === 'ar' ? 'لوحة الشرف وتصنيف اللاعبين' : 'Hall of Fame & Player Rankings'}</span>
             </div>
             <h1 className="text-2xl md:text-4xl font-black text-white tracking-tight flex items-center gap-3">
-              <span>Leaderboard & MOTM Stars</span>
+              <span>{t('leaderboard.title')}</span>
               <span className="text-xs md:text-sm font-bold px-2.5 py-1 bg-amber-400/20 text-amber-300 rounded-xl border border-amber-400/40">
-                Morocco 🇲🇦
+                {language === 'ar' ? 'المغرب 🇲🇦' : 'Morocco 🇲🇦'}
               </span>
             </h1>
             <p className="text-slate-300 text-sm md:text-base mt-1.5 max-w-2xl">
-              Track top performers, Man of the Match awards, league top scorers, and the most reliable teammates across all pitches.
+              {t('leaderboard.subtitle')}
             </p>
           </div>
 
           {/* Quick Stat Highlights */}
           <div className="flex items-center gap-3 self-start md:self-auto bg-slate-900/80 backdrop-blur-md p-3.5 rounded-2xl border border-slate-800">
-            <div className="text-center px-3 border-r border-slate-800">
+            <div className="text-center px-3 border-r rtl:border-r-0 rtl:border-l border-slate-800">
               <div className="text-lg md:text-xl font-black text-amber-400">{enrichedUsers.length}</div>
-              <div className="text-[10px] font-bold uppercase text-slate-400">Players</div>
+              <div className="text-[10px] font-bold uppercase text-slate-400">{t('common.players')}</div>
             </div>
-            <div className="text-center px-3 border-r border-slate-800">
+            <div className="text-center px-3 border-r rtl:border-r-0 rtl:border-l border-slate-800">
               <div className="text-lg md:text-xl font-black text-emerald-400">{matches.length}</div>
-              <div className="text-[10px] font-bold uppercase text-slate-400">Matches</div>
+              <div className="text-[10px] font-bold uppercase text-slate-400">{language === 'ar' ? 'مباراة' : 'Matches'}</div>
             </div>
             <div className="text-center px-3">
               <div className="text-lg md:text-xl font-black text-rose-400">
                 {enrichedUsers.reduce((acc, u) => acc + (u.totalGoals || 0), 0)}
               </div>
-              <div className="text-[10px] font-bold uppercase text-slate-400">Goals Scored</div>
+              <div className="text-[10px] font-bold uppercase text-slate-400">{language === 'ar' ? 'هدف مسجل' : 'Goals Scored'}</div>
             </div>
           </div>
         </div>
@@ -210,7 +212,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
             }`}
           >
             <Star className={`w-4 h-4 ${activeCategory === 'motm' ? 'fill-slate-950 text-slate-950' : 'text-amber-400'}`} />
-            <span>MOTM / MVP Stars</span>
+            <span>{t('leaderboard.tabTopMotm')}</span>
           </button>
 
           <button
@@ -224,7 +226,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
             }`}
           >
             <Flame className={`w-4 h-4 ${activeCategory === 'scorers' ? 'fill-white text-white' : 'text-rose-400'}`} />
-            <span>Top Scorers</span>
+            <span>{t('leaderboard.tabTopScorers')}</span>
           </button>
 
           <button
@@ -238,7 +240,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
             }`}
           >
             <ShieldCheck className={`w-4 h-4 ${activeCategory === 'fairplay' ? 'text-slate-950' : 'text-emerald-400'}`} />
-            <span>Fair Play & Reliability</span>
+            <span>{t('leaderboard.tabMostReliable')}</span>
           </button>
         </div>
 
@@ -246,13 +248,13 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           {/* Search Box */}
           <div className="relative flex-1 sm:w-56">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search player or city..."
+              placeholder={language === 'ar' ? 'ابحث بالاسم أو المدينة...' : 'Search player or city...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#0E1526] border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-colors"
+              className="w-full bg-[#0E1526] border border-slate-800 rounded-xl pl-9 rtl:pl-3 rtl:pr-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-colors"
             />
           </div>
 
@@ -263,7 +265,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
               onChange={(e) => setSelectedCity(e.target.value)}
               className="bg-[#0E1526] border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-500 cursor-pointer"
             >
-              <option value="all">All Cities 🇲🇦</option>
+              <option value="all">{language === 'ar' ? 'كافة المدن 🇲🇦' : 'All Cities 🇲🇦'}</option>
               {availableCities.map((c) => (
                 <option key={c} value={c}>
                   {c}
@@ -278,11 +280,11 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
             onChange={(e) => setSelectedPosition(e.target.value)}
             className="bg-[#0E1526] border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-500 cursor-pointer"
           >
-            <option value="all">All Positions</option>
-            <option value="GK">Goalkeeper (GK)</option>
-            <option value="DEF">Defender (DEF)</option>
-            <option value="MID">Midfielder (MID)</option>
-            <option value="FWD">Forward (FWD)</option>
+            <option value="all">{language === 'ar' ? 'كافة المراكز' : 'All Positions'}</option>
+            <option value="GK">{language === 'ar' ? 'حارس مرمى (GK)' : 'Goalkeeper (GK)'}</option>
+            <option value="DEF">{language === 'ar' ? 'مدافع (DEF)' : 'Defender (DEF)'}</option>
+            <option value="MID">{language === 'ar' ? 'وسط ميدان (MID)' : 'Midfielder (MID)'}</option>
+            <option value="FWD">{language === 'ar' ? 'مهاجم (FWD)' : 'Forward (FWD)'}</option>
           </select>
         </div>
       </div>
@@ -293,7 +295,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
           {/* 2nd Place (Silver) */}
           {topThree[1] && (
             <div className="md:order-1 bg-gradient-to-b from-slate-800/50 to-[#0E1526] border-2 border-slate-500/40 rounded-3xl p-5 shadow-xl relative overflow-hidden flex flex-col justify-between">
-              <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-slate-300/20 border border-slate-300/40 flex items-center justify-center font-black text-slate-200 text-sm">
+              <div className="absolute top-3 right-3 rtl:right-auto rtl:left-3 w-8 h-8 rounded-full bg-slate-300/20 border border-slate-300/40 flex items-center justify-center font-black text-slate-200 text-sm">
                 🥈 2
               </div>
 
@@ -310,7 +312,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
                     {renderPositionBadge(topThree[1].preferredPosition)}
                   </div>
                   <div className="text-xs text-slate-400">
-                    {topThree[1].preferredCity || topThree[1].city || 'Morocco'} • #{topThree[1].jerseyNumber || '10'}
+                    {topThree[1].preferredCity || topThree[1].city || (language === 'ar' ? 'المغرب' : 'Morocco')} • #{topThree[1].jerseyNumber || '10'}
                   </div>
                 </div>
               </div>
@@ -318,7 +320,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
               <div className="bg-slate-900/90 rounded-2xl p-3 border border-slate-800 flex items-center justify-between">
                 <div>
                   <div className="text-[10px] uppercase font-bold text-slate-400">
-                    {activeCategory === 'motm' ? 'MOTM Awards' : activeCategory === 'scorers' ? 'Goals Scored' : 'Reliability'}
+                    {activeCategory === 'motm' ? t('leaderboard.motmCount') : activeCategory === 'scorers' ? t('leaderboard.goalsCount') : t('leaderboard.reliabilityScore')}
                   </div>
                   <div className="text-xl font-black text-slate-200">
                     {activeCategory === 'motm'
@@ -328,9 +330,9 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
                       : `${topThree[1].reliability}% 🛡️`}
                   </div>
                 </div>
-                <div className="text-right text-xs text-slate-400">
-                  <div>{topThree[1].matchesPlayed} Matches</div>
-                  <div className="text-emerald-400 font-bold">{topThree[1].reliability}% Attended</div>
+                <div className="text-right rtl:text-left text-xs text-slate-400">
+                  <div>{topThree[1].matchesPlayed} {language === 'ar' ? 'مباراة' : 'Matches'}</div>
+                  <div className="text-emerald-400 font-bold">{topThree[1].reliability}% {language === 'ar' ? 'حضور' : 'Attended'}</div>
                 </div>
               </div>
             </div>
@@ -339,9 +341,9 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
           {/* 1st Place (Gold Champion) */}
           {topThree[0] && (
             <div className="md:order-2 bg-gradient-to-b from-amber-950/40 via-[#0F172A] to-[#0A0F1D] border-2 border-amber-400/80 rounded-3xl p-6 shadow-2xl relative overflow-hidden flex flex-col justify-between -mt-2 md:-mt-4">
-              <div className="absolute top-0 right-0 bg-gradient-to-l from-amber-400 to-amber-500 text-slate-950 text-xs font-black px-4 py-1.5 rounded-bl-2xl shadow-lg flex items-center gap-1">
+              <div className="absolute top-0 right-0 rtl:right-auto rtl:left-0 bg-gradient-to-l rtl:bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 text-xs font-black px-4 py-1.5 rounded-bl-2xl rtl:rounded-bl-none rtl:rounded-br-2xl shadow-lg flex items-center gap-1">
                 <CrownIcon className="w-3.5 h-3.5 fill-slate-950" />
-                <span>LEADER #1</span>
+                <span>{language === 'ar' ? 'المتصدر الأول 👑' : 'LEADER #1'}</span>
               </div>
 
               <div className="flex items-center gap-4 mb-4 mt-2">
@@ -352,7 +354,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
                     referrerPolicy="no-referrer"
                     className="w-18 h-18 rounded-2xl object-cover border-2 border-amber-400 shadow-xl shadow-amber-500/20"
                   />
-                  <div className="absolute -bottom-2 -right-2 w-7 h-7 rounded-xl bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center shadow-md">
+                  <div className="absolute -bottom-2 -right-2 rtl:-right-auto rtl:-left-2 w-7 h-7 rounded-xl bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center shadow-md">
                     👑
                   </div>
                 </div>
@@ -362,11 +364,11 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
                     {renderPositionBadge(topThree[0].preferredPosition)}
                   </div>
                   <div className="text-xs text-amber-300/80 font-medium">
-                    {topThree[0].preferredCity || topThree[0].city || 'Morocco'} • Jersey #{topThree[0].jerseyNumber || '10'}
+                    {topThree[0].preferredCity || topThree[0].city || (language === 'ar' ? 'المغرب' : 'Morocco')} • #{topThree[0].jerseyNumber || '10'}
                   </div>
                   <div className="mt-1 flex items-center gap-2">
                     <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
-                      🏆 Hall of Fame
+                      🏆 {language === 'ar' ? 'لوحة الشرف' : 'Hall of Fame'}
                     </span>
                   </div>
                 </div>
@@ -375,19 +377,19 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
               <div className="bg-gradient-to-r from-amber-950/60 to-slate-900 rounded-2xl p-4 border border-amber-500/40 flex items-center justify-between">
                 <div>
                   <div className="text-[10px] uppercase font-bold text-amber-400">
-                    {activeCategory === 'motm' ? 'Total MOTM Wins' : activeCategory === 'scorers' ? 'Golden Boot Goals' : 'Reliability Score'}
+                    {activeCategory === 'motm' ? t('leaderboard.motmCount') : activeCategory === 'scorers' ? t('leaderboard.goalsCount') : t('leaderboard.reliabilityScore')}
                   </div>
                   <div className="text-2xl md:text-3xl font-black text-amber-300">
                     {activeCategory === 'motm'
-                      ? `${topThree[0].totalMotm} Awards ⭐`
+                      ? `${topThree[0].totalMotm} ⭐`
                       : activeCategory === 'scorers'
-                      ? `${topThree[0].totalGoals} Goals ⚽`
-                      : `${topThree[0].reliability}% Rating 🛡️`}
+                      ? `${topThree[0].totalGoals} ⚽`
+                      : `${topThree[0].reliability}% 🛡️`}
                   </div>
                 </div>
-                <div className="text-right text-xs text-slate-300">
-                  <div className="font-bold">{topThree[0].matchesPlayed} Matches Played</div>
-                  <div className="text-emerald-400 font-bold">{topThree[0].reliability}% Reliability</div>
+                <div className="text-right rtl:text-left text-xs text-slate-300">
+                  <div className="font-bold">{topThree[0].matchesPlayed} {language === 'ar' ? 'مباراة ملعوبة' : 'Matches Played'}</div>
+                  <div className="text-emerald-400 font-bold">{topThree[0].reliability}% {t('leaderboard.reliabilityScore')}</div>
                 </div>
               </div>
             </div>
@@ -396,7 +398,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
           {/* 3rd Place (Bronze) */}
           {topThree[2] && (
             <div className="md:order-3 bg-gradient-to-b from-amber-950/20 to-[#0E1526] border-2 border-amber-700/40 rounded-3xl p-5 shadow-xl relative overflow-hidden flex flex-col justify-between">
-              <div className="absolute top-3 right-3 w-8 h-8 rounded-full bg-amber-700/20 border border-amber-700/40 flex items-center justify-center font-black text-amber-300 text-sm">
+              <div className="absolute top-3 right-3 rtl:right-auto rtl:left-3 w-8 h-8 rounded-full bg-amber-700/20 border border-amber-700/40 flex items-center justify-center font-black text-amber-300 text-sm">
                 🥉 3
               </div>
 
@@ -413,7 +415,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
                     {renderPositionBadge(topThree[2].preferredPosition)}
                   </div>
                   <div className="text-xs text-slate-400">
-                    {topThree[2].preferredCity || topThree[2].city || 'Morocco'} • #{topThree[2].jerseyNumber || '10'}
+                    {topThree[2].preferredCity || topThree[2].city || (language === 'ar' ? 'المغرب' : 'Morocco')} • #{topThree[2].jerseyNumber || '10'}
                   </div>
                 </div>
               </div>
@@ -421,7 +423,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
               <div className="bg-slate-900/90 rounded-2xl p-3 border border-slate-800 flex items-center justify-between">
                 <div>
                   <div className="text-[10px] uppercase font-bold text-slate-400">
-                    {activeCategory === 'motm' ? 'MOTM Awards' : activeCategory === 'scorers' ? 'Goals Scored' : 'Reliability'}
+                    {activeCategory === 'motm' ? t('leaderboard.motmCount') : activeCategory === 'scorers' ? t('leaderboard.goalsCount') : t('leaderboard.reliabilityScore')}
                   </div>
                   <div className="text-xl font-black text-amber-200">
                     {activeCategory === 'motm'
@@ -431,9 +433,9 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
                       : `${topThree[2].reliability}% 🛡️`}
                   </div>
                 </div>
-                <div className="text-right text-xs text-slate-400">
-                  <div>{topThree[2].matchesPlayed} Matches</div>
-                  <div className="text-emerald-400 font-bold">{topThree[2].reliability}% Attended</div>
+                <div className="text-right rtl:text-left text-xs text-slate-400">
+                  <div>{topThree[2].matchesPlayed} {language === 'ar' ? 'مباراة' : 'Matches'}</div>
+                  <div className="text-emerald-400 font-bold">{topThree[2].reliability}% {language === 'ar' ? 'حضور' : 'Attended'}</div>
                 </div>
               </div>
             </div>
@@ -447,34 +449,34 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
           <div className="flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-amber-400" />
             <h3 className="font-black text-white text-sm md:text-base">
-              Full Standings ({filteredAndSortedUsers.length} Players)
+              {language === 'ar' ? `الترتيب الكامل (${filteredAndSortedUsers.length} لاعب)` : `Full Standings (${filteredAndSortedUsers.length} Players)`}
             </h3>
           </div>
           <span className="text-xs text-slate-400">
-            Updated in real-time with match outcomes
+            {language === 'ar' ? 'محدّث لحظياً بنتائج وإحصائيات المباريات' : 'Updated in real-time with match outcomes'}
           </span>
         </div>
 
         {filteredAndSortedUsers.length === 0 ? (
           <div className="p-12 text-center text-slate-400">
             <Trophy className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-            <p className="font-bold text-slate-300">No players match the selected filters</p>
-            <p className="text-xs text-slate-500 mt-1">Try resetting the city or position filter.</p>
+            <p className="font-bold text-slate-300">{language === 'ar' ? 'لا يوجد لاعبون مطابقون للبحث والتصفية' : 'No players match the selected filters'}</p>
+            <p className="text-xs text-slate-500 mt-1">{language === 'ar' ? 'جرب تغيير خيارات التصفية حسب المدينة أو المركز.' : 'Try resetting the city or position filter.'}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-start border-collapse">
               <thead>
                 <tr className="bg-slate-900/60 text-[11px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-800">
-                  <th className="py-3.5 px-4 text-center w-16">Rank</th>
-                  <th className="py-3.5 px-4">Player</th>
-                  <th className="py-3.5 px-4">Position</th>
-                  <th className="py-3.5 px-4">City</th>
-                  <th className="py-3.5 px-4 text-center">Matches</th>
+                  <th className="py-3.5 px-4 text-center w-16">{t('leaderboard.rank')}</th>
+                  <th className="py-3.5 px-4 text-start">{t('leaderboard.player')}</th>
+                  <th className="py-3.5 px-4 text-start">{t('profile.position')}</th>
+                  <th className="py-3.5 px-4 text-start">{t('profile.city')}</th>
+                  <th className="py-3.5 px-4 text-center">{t('leaderboard.matchesPlayed')}</th>
                   <th className="py-3.5 px-4 text-center">
-                    {activeCategory === 'motm' ? 'MOTM Wins ⭐' : activeCategory === 'scorers' ? 'Goals ⚽' : 'Reliability 🛡️'}
+                    {activeCategory === 'motm' ? `${t('leaderboard.motmCount')} ⭐` : activeCategory === 'scorers' ? `${t('leaderboard.goalsCount')} ⚽` : `${t('leaderboard.reliabilityScore')} 🛡️`}
                   </th>
-                  <th className="py-3.5 px-4 text-right">Actions</th>
+                  <th className="py-3.5 px-4 text-end">{language === 'ar' ? 'إجراءات' : 'Actions'}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 text-xs">
@@ -521,12 +523,12 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
                               <span>{user.name}</span>
                               {isCurrent && (
                                 <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-500 text-slate-950">
-                                  YOU
+                                  {language === 'ar' ? 'أنت' : 'YOU'}
                                 </span>
                               )}
                             </div>
                             <div className="text-[11px] text-slate-400">
-                              Jersey #{user.jerseyNumber || '10'} • {tier.label}
+                              #{user.jerseyNumber || '10'} • {tier.label}
                             </div>
                           </div>
                         </div>
@@ -537,7 +539,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
                       </td>
 
                       <td className="py-3.5 px-4 text-slate-300 font-medium">
-                        {user.preferredCity || user.city || 'Morocco'}
+                        {user.preferredCity || user.city || (language === 'ar' ? 'المغرب' : 'Morocco')}
                       </td>
 
                       <td className="py-3.5 px-4 text-center font-bold text-slate-300">
@@ -548,12 +550,12 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
                         {activeCategory === 'motm' ? (
                           <span className="text-amber-400 text-sm font-black flex items-center justify-center gap-1">
                             <Star className="w-3.5 h-3.5 fill-amber-400" />
-                            {user.totalMotm || 0}
+                            <span>{user.totalMotm || 0}</span>
                           </span>
                         ) : activeCategory === 'scorers' ? (
                           <span className="text-rose-400 text-sm font-black flex items-center justify-center gap-1">
                             <Flame className="w-3.5 h-3.5 fill-rose-400" />
-                            {user.totalGoals || 0}
+                            <span>{user.totalGoals || 0}</span>
                           </span>
                         ) : (
                           <span className="text-emerald-400 text-sm font-black">
@@ -562,16 +564,16 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
                         )}
                       </td>
 
-                      <td className="py-3.5 px-4 text-right">
+                      <td className="py-3.5 px-4 text-end">
                         {user.id !== currentUser.id && onOpenDirectMessage && (
                           <button
                             type="button"
                             onClick={() => onOpenDirectMessage(user.id)}
                             className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-bold rounded-xl transition-all inline-flex items-center gap-1 cursor-pointer"
-                            title={`Chat with ${user.name}`}
+                            title={`${language === 'ar' ? 'مراسلة' : 'Chat with'} ${user.name}`}
                           >
                             <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
-                            <span>Message</span>
+                            <span>{t('leaderboard.sendMessage')}</span>
                           </button>
                         )}
                       </td>
@@ -594,3 +596,4 @@ function CrownIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+

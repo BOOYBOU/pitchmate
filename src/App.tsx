@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { PitchStoreProvider, usePitchStore } from './lib/usePitchStore';
+import { LanguageProvider, useLanguage } from './lib/useLanguage';
 import { Header } from './components/Header';
 import { MatchList } from './components/MatchList';
 import { ProfileView } from './components/ProfileView';
@@ -28,6 +29,8 @@ function PitchMateApp() {
     setCurrentUserById,
     isAuthenticated,
   } = usePitchStore();
+
+  const { t, isRTL } = useLanguage();
 
   const [activeTab, setActiveTab] = useState<'matches' | 'leaderboard' | 'profile' | 'admin'>('matches');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -146,31 +149,31 @@ function PitchMateApp() {
           <div className="flex items-center gap-2">
             <span className="font-bold text-white font-display">PitchMate</span>
             <span>•</span>
-            <span>Local Soccer Match Organizer</span>
+            <span>{t('brand.tagline')}</span>
           </div>
 
-          <div className="flex items-center gap-4 text-[11px]">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-[11px]">
             <button
               onClick={() => setActiveTab('matches')}
-              className="text-slate-400 hover:text-slate-200 cursor-pointer"
+              className="text-slate-400 hover:text-slate-200 cursor-pointer transition-colors"
             >
-              Matches
+              {t('nav.matches')}
             </button>
 
             <span>•</span>
 
             <button
               onClick={() => setActiveTab('profile')}
-              className="text-slate-400 hover:text-slate-200 cursor-pointer"
+              className="text-slate-400 hover:text-slate-200 cursor-pointer transition-colors"
             >
-              My Profile
+              {t('nav.profile')}
             </button>
 
             <span>•</span>
 
             <span className="flex items-center gap-1 text-slate-300">
               <Shield className="w-3.5 h-3.5 text-emerald-400" />
-              Super Admin: <strong className="text-emerald-400">Mustapha Bouhbous</strong>
+              <span>{t('nav.superAdminBadge')}:</span> <strong className="text-emerald-400">Mustapha Bouhbous</strong>
             </span>
 
             <span>•</span>
@@ -183,9 +186,9 @@ function PitchMateApp() {
                   setActiveTab('admin');
                 }
               }}
-              className="text-blue-400 hover:underline hover:text-blue-300 font-semibold cursor-pointer"
+              className="text-blue-400 hover:underline hover:text-blue-300 font-semibold cursor-pointer transition-colors"
             >
-              Open Admin Command Center
+              {t('admin.title')}
             </button>
           </div>
         </div>
@@ -198,7 +201,9 @@ export default function App() {
   return (
     <ErrorBoundary>
       <PitchStoreProvider>
-        <PitchMateApp />
+        <LanguageProvider>
+          <PitchMateApp />
+        </LanguageProvider>
       </PitchStoreProvider>
     </ErrorBoundary>
   );

@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { MatchLocation } from '../types';
 import { usePitchStore } from '../lib/usePitchStore';
-import { formatMAD } from '../lib/moroccoUtils';
+import { useLanguage } from '../lib/useLanguage';
 import {
   parsePrice,
   derivePlayerPriceFromTotal,
@@ -28,6 +28,7 @@ interface CreateMatchModalProps {
 
 export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { createMatch } = usePitchStore();
+  const { t, language, isRTL, formatMAD } = useLanguage();
 
   const [title, setTitle] = useState('');
 
@@ -101,9 +102,9 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
       }
 
       const locationData: MatchLocation = {
-        venueName: venueName.trim() || 'Morocco Football Pitch',
-        address: trimmedLink || 'Morocco',
-        city: city.trim() || 'Casablanca',
+        venueName: venueName.trim() || (language === 'ar' ? 'ملعب كرة قدم' : 'Morocco Football Pitch'),
+        address: trimmedLink || (language === 'ar' ? 'المغرب' : 'Morocco'),
+        city: city.trim() || (language === 'ar' ? 'الدار البيضاء' : 'Casablanca'),
         latitude,
         longitude,
         googleMapsUrl: isUrl ? trimmedLink : (trimmedLink ? `https://maps.google.com/?q=${encodeURIComponent(trimmedLink)}` : undefined),
@@ -156,8 +157,8 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
               <PlusCircle className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold font-display text-white">Create Match</h2>
-              <p className="text-xs text-slate-400">Set pitch location, kickoff time & split fees</p>
+              <h2 className="text-lg font-bold font-display text-white">{t('createMatch.modalTitle')}</h2>
+              <p className="text-xs text-slate-400">{t('createMatch.modalSubtitle')}</p>
             </div>
           </div>
           <button
@@ -174,13 +175,13 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
           {/* Match Title */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
-              Match Title *
+              {t('createMatch.titleLabel')}
             </label>
             <input
               id="match-title-input"
               type="text"
               required
-              placeholder="e.g. Oasis Sports Club 7v7 Friday Night"
+              placeholder={t('createMatch.titlePlaceholder')}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full px-4 py-2.5 bg-[#090D16] border border-[#1E293B] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
@@ -191,13 +192,13 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
-                Pitch / Stadium Name *
+                {t('createMatch.venueLabel')}
               </label>
               <input
                 id="match-venue-name-input"
                 type="text"
                 required
-                placeholder="e.g. Oasis Sports Club"
+                placeholder={t('createMatch.venuePlaceholder')}
                 value={venueName}
                 onChange={(e) => setVenueName(e.target.value)}
                 className="w-full px-3 py-2 bg-[#090D16] border border-[#1E293B] rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
@@ -205,13 +206,13 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
             </div>
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
-                City / Area *
+                {t('createMatch.cityLabel')}
               </label>
               <input
                 id="match-city-input"
                 type="text"
                 required
-                placeholder="e.g. Casablanca, Rabat, Marrakech"
+                placeholder={t('createMatch.cityPlaceholder')}
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
                 className="w-full px-3 py-2 bg-[#090D16] border border-[#1E293B] rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500 font-medium"
@@ -224,7 +225,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-emerald-400" />
-                Date *
+                <span>{t('createMatch.dateLabel')}</span>
               </label>
               <input
                 id="match-date-input"
@@ -239,7 +240,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-blue-400" />
-                Kick-Off (GMT+1) *
+                <span>{t('createMatch.timeLabel')}</span>
               </label>
               <input
                 id="match-time-input"
@@ -253,16 +254,16 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
 
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
-                Duration
+                {t('createMatch.durationLabel')}
               </label>
               <select
                 value={durationMinutes}
                 onChange={(e) => setDurationMinutes(Number(e.target.value))}
                 className="w-full px-3 py-2 bg-[#090D16] border border-[#1E293B] rounded-xl text-sm text-white focus:outline-none focus:border-slate-600 font-medium"
               >
-                <option value={60}>60 Minutes (1 hr)</option>
-                <option value={90}>90 Minutes (1.5 hrs)</option>
-                <option value={120}>120 Minutes (2 hrs)</option>
+                <option value={60}>{language === 'ar' ? '60 دقيقة (ساعة)' : '60 Minutes (1 hr)'}</option>
+                <option value={90}>{language === 'ar' ? '90 دقيقة (ساعة ونصف)' : '90 Minutes (1.5 hrs)'}</option>
+                <option value={120}>{language === 'ar' ? '120 دقيقة (ساعتان)' : '120 Minutes (2 hrs)'}</option>
               </select>
             </div>
           </div>
@@ -272,7 +273,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5 text-emerald-400" />
-                Location / Address / Maps Link *
+                <span>{t('createMatch.locationLabel')}</span>
               </label>
               {isLinkValidUrl && (
                 <a
@@ -282,7 +283,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
                   className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition-colors"
                 >
                   <Navigation className="w-3 h-3" />
-                  Test Map Link
+                  <span>{t('createMatch.testMapLink')}</span>
                 </a>
               )}
             </div>
@@ -290,7 +291,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
               id="maps-url-input"
               type="text"
               required
-              placeholder="e.g. https://maps.google.com/?q=33.5592,-7.6321 or street address"
+              placeholder="e.g. https://maps.google.com/?q=33.5592,-7.6321"
               value={locationLink}
               onChange={(e) => setLocationLink(e.target.value)}
               className="w-full px-4 py-2.5 bg-[#090D16] border border-[#1E293B] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-mono text-xs"
@@ -301,7 +302,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
-                Format
+                {t('createMatch.formatLabel')}
               </label>
               <select
                 id="match-format-select"
@@ -326,19 +327,19 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
                 }}
                 className="w-full px-3 py-2 bg-[#090D16] border border-[#1E293B] rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500 font-bold"
               >
-                <option value="5v5">5 vs 5 (10 players)</option>
-                <option value="6v6">6 vs 6 (12 players)</option>
-                <option value="7v7">7 vs 7 (14 players)</option>
-                <option value="8v8">8 vs 8 (16 players)</option>
-                <option value="9v9">9 vs 9 (18 players)</option>
-                <option value="11v11">11 vs 11 (22 players)</option>
+                <option value="5v5">5 vs 5 ({language === 'ar' ? '10 لاعبين' : '10 players'})</option>
+                <option value="6v6">6 vs 6 ({language === 'ar' ? '12 لاعباً' : '12 players'})</option>
+                <option value="7v7">7 vs 7 ({language === 'ar' ? '14 لاعباً' : '14 players'})</option>
+                <option value="8v8">8 vs 8 ({language === 'ar' ? '16 لاعباً' : '16 players'})</option>
+                <option value="9v9">9 vs 9 ({language === 'ar' ? '18 لاعباً' : '18 players'})</option>
+                <option value="11v11">11 vs 11 ({language === 'ar' ? '22 لاعباً' : '22 players'})</option>
               </select>
             </div>
 
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center gap-1.5">
                 <Users className="w-3.5 h-3.5 text-blue-400" />
-                Max Players Capacity
+                <span>{t('createMatch.maxPlayers')}</span>
               </label>
               <input
                 id="match-max-players-input"
@@ -362,17 +363,17 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-white flex items-center gap-1.5">
                 <Coins className="w-4 h-4 text-amber-400" />
-                Match Pricing & Pitch Split (MAD)
+                <span>{t('createMatch.pricingHeading')}</span>
               </span>
               <span className="text-[11px] text-emerald-400 font-semibold">
-                {pricePerPlayer === 0 || pricePerPlayer === '0' ? 'Free Match' : `${pricePerPlayer} MAD / player`}
+                {pricePerPlayer === 0 || pricePerPlayer === '0' ? (language === 'ar' ? 'مباراة مجانية' : 'Free Match') : formatMAD(pricePerPlayer) + (language === 'ar' ? ' / للاعب' : ' / player')}
               </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                  Price Per Player (MAD)
+                  {t('createMatch.pricePerPlayer')}
                 </label>
                 <div className="relative">
                   <input
@@ -380,17 +381,17 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
                     type="number"
                     value={pricePerPlayer}
                     onChange={(e) => handlePriceChange(e.target.value)}
-                    className="w-full px-3 py-2 bg-[#0E1526] border border-[#1E293B] rounded-xl text-sm text-emerald-400 font-bold focus:outline-none focus:border-emerald-500 pr-14"
+                    className="w-full px-3 py-2 bg-[#0E1526] border border-[#1E293B] rounded-xl text-sm text-emerald-400 font-bold focus:outline-none focus:border-emerald-500 rtl:pl-14 rtl:pr-3 pr-14"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                    MAD
+                  <span className="absolute right-3 rtl:right-auto rtl:left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                    {t('common.mad')}
                   </span>
                 </div>
               </div>
 
               <div>
                 <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                  Total Pitch Booking (MAD)
+                  {t('createMatch.totalPitchCost')}
                 </label>
                 <div className="relative">
                   <input
@@ -398,16 +399,16 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
                     type="number"
                     value={totalPitchCost}
                     onChange={(e) => handleTotalCostChange(e.target.value)}
-                    className="w-full px-3 py-2 bg-[#0E1526] border border-[#1E293B] rounded-xl text-sm text-amber-400 font-bold focus:outline-none focus:border-amber-500 pr-14"
+                    className="w-full px-3 py-2 bg-[#0E1526] border border-[#1E293B] rounded-xl text-sm text-amber-400 font-bold focus:outline-none focus:border-amber-500 rtl:pl-14 rtl:pr-3 pr-14"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                    MAD
+                  <span className="absolute right-3 rtl:right-auto rtl:left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                    {t('common.mad')}
                   </span>
                 </div>
               </div>
             </div>
             <p className="text-[11px] text-slate-400">
-              Set to 0 MAD for free matches, or enter any custom rate.
+              {t('createMatch.pricingNote')}
             </p>
           </div>
 
@@ -418,7 +419,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
               onClick={onClose}
               className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               id="submit-create-match-btn"
@@ -427,7 +428,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
               className="px-6 py-2.5 rounded-xl text-xs font-black text-slate-950 bg-emerald-500 hover:bg-emerald-400 active:scale-95 transition-all flex items-center gap-2 shadow-lg shadow-emerald-950 cursor-pointer disabled:opacity-50"
             >
               <PlusCircle className="w-4 h-4" />
-              {isSubmitting ? 'Publishing...' : 'Publish Match'}
+              <span>{isSubmitting ? t('common.loading') : t('createMatch.publishBtn')}</span>
             </button>
           </div>
         </form>
@@ -435,3 +436,4 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
     </div>
   );
 };
+

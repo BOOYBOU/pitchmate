@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { SUPER_ADMIN_EMAIL, isSuperAdminEmail, SoccerMatch, PlayerPosition } from '../types';
 import { usePitchStore } from '../lib/usePitchStore';
-import { formatMoroccoDate } from '../lib/moroccoUtils';
+import { useLanguage } from '../lib/useLanguage';
 import { ChangeAvatarModal } from './ChangeAvatarModal';
 
 interface ProfileViewProps {
@@ -37,12 +37,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
     updateUserProfile,
     createNewUserAccount,
   } = usePitchStore();
+  const { t, language, isRTL, formatMoroccoDate } = useLanguage();
 
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(currentUser.name);
   const [editPhone, setEditPhone] = useState(currentUser.phone || '');
   const [editAvatar, setEditAvatar] = useState(currentUser.avatarUrl);
-  const [editCity, setEditCity] = useState(currentUser.preferredCity || 'Casablanca');
+  const [editCity, setEditCity] = useState(currentUser.preferredCity || (language === 'ar' ? 'الدار البيضاء' : 'Casablanca'));
   const [editPosition, setEditPosition] = useState<PlayerPosition>(currentUser.preferredPosition || 'MID');
   const [editSkillLevel, setEditSkillLevel] = useState<number>(currentUser.skillRating || 3);
 
@@ -87,7 +88,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
 
     const emailClean = newUserEmail.trim().toLowerCase();
     if (isSuperAdminEmail(emailClean)) {
-      setNewUserError('The Super Admin account already exists.');
+      setNewUserError(language === 'ar' ? 'حساب المشرف العام مسجل مسبقاً.' : 'The Super Admin account already exists.');
       return;
     }
 
@@ -112,7 +113,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
       setShowAdminPassModal(false);
       setAdminPassInput('');
     } else {
-      setAdminPassError('Incorrect Master Password.');
+      setAdminPassError(language === 'ar' ? 'كلمة المرور الرئيسية غير صحيحة.' : 'Incorrect Master Password.');
     }
   };
 
@@ -123,8 +124,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
         <div className="flex items-center gap-2">
           <RefreshCw className="w-4 h-4 text-emerald-400" />
           <div>
-            <span className="text-xs font-bold text-white block">Switch Active User Account</span>
-            <span className="text-[11px] text-slate-400">Test different player roles or login as Mustapha (Super Admin)</span>
+            <span className="text-xs font-bold text-white block">
+              {language === 'ar' ? 'تبديل الحساب النشط للتجربة' : 'Switch Active User Account'}
+            </span>
+            <span className="text-[11px] text-slate-400">
+              {language === 'ar' ? 'تجربة أدوار اللاعبين المختلفة أو الدخول بحساب المشرف العام' : 'Test different player roles or login as Mustapha (Super Admin)'}
+            </span>
           </div>
         </div>
 
@@ -147,7 +152,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
                   setEditName(u.name);
                   setEditPhone(u.phone || '');
                   setEditAvatar(u.avatarUrl);
-                  setEditCity(u.preferredCity || 'Casablanca');
+                  setEditCity(u.preferredCity || (language === 'ar' ? 'الدار البيضاء' : 'Casablanca'));
                   setEditPosition(u.preferredPosition || 'MID');
                   setIsEditing(false);
                 }}
@@ -166,7 +171,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
                 <span>{u.name.split(' ')[0]}</span>
                 {isUserAdmin && (
                   <span className="px-1 py-0.2 rounded text-[9px] bg-emerald-500/30 text-emerald-300 font-bold">
-                    Admin
+                    {language === 'ar' ? 'مشرف' : 'Admin'}
                   </span>
                 )}
               </button>
@@ -177,10 +182,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
             type="button"
             onClick={() => setIsAddingUser(true)}
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-blue-600/20 text-blue-400 border border-blue-500/30 hover:bg-blue-600/30 transition-colors"
-            title="Create new player account"
+            title={language === 'ar' ? 'إنشاء حساب لاعب جديد' : 'Create new player account'}
           >
             <Plus className="w-3.5 h-3.5" />
-            New
+            <span>{language === 'ar' ? 'جديد' : 'New'}</span>
           </button>
         </div>
       </div>
@@ -192,7 +197,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Shield className="w-4 h-4 text-emerald-400" />
-                <h3 className="text-sm font-bold text-white">Super Admin Verification</h3>
+                <h3 className="text-sm font-bold text-white">
+                  {language === 'ar' ? 'التحقق من هوية المشرف العام' : 'Super Admin Verification'}
+                </h3>
               </div>
               <button
                 onClick={() => setShowAdminPassModal(false)}
@@ -203,7 +210,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
             </div>
 
             <p className="text-xs text-slate-400">
-              Access to <span className="text-emerald-400 font-mono font-semibold">{SUPER_ADMIN_EMAIL}</span> requires the Master Password.
+              {language === 'ar' ? (
+                <>
+                  يتطلب الوصول لحساب <span className="text-emerald-400 font-mono font-semibold">{SUPER_ADMIN_EMAIL}</span> إدخال كلمة المرور الرئيسية.
+                </>
+              ) : (
+                <>
+                  Access to <span className="text-emerald-400 font-mono font-semibold">{SUPER_ADMIN_EMAIL}</span> requires the Master Password.
+                </>
+              )}
             </p>
 
             <form onSubmit={handleAdminAuthSubmit} className="space-y-3 text-xs">
@@ -214,15 +229,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
               )}
 
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Lock className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
                   type="password"
                   required
                   autoFocus
                   value={adminPassInput}
                   onChange={(e) => setAdminPassInput(e.target.value)}
-                  placeholder="Master Password..."
-                  className="w-full pl-9 pr-3 py-2 bg-[#090D16] border border-[#1E293B] rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                  placeholder={language === 'ar' ? 'كلمة المرور الرئيسية...' : 'Master Password...'}
+                  className="w-full pl-9 rtl:pl-3 rtl:pr-9 pr-3 py-2 bg-[#090D16] border border-[#1E293B] rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
@@ -232,13 +247,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
                   onClick={() => setShowAdminPassModal(false)}
                   className="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-medium"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
                   className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold"
                 >
-                  Authenticate
+                  {language === 'ar' ? 'تحقق ودخول' : 'Authenticate'}
                 </button>
               </div>
             </form>
@@ -251,10 +266,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
         <div className="p-4 bg-[#090D16] border border-blue-500/30 rounded-2xl space-y-3 animate-in fade-in">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">
-              Register New Player Account
+              {language === 'ar' ? 'تسجيل حساب لاعب جديد' : 'Register New Player Account'}
             </span>
             <button onClick={() => setIsAddingUser(false)} className="text-slate-400 hover:text-white text-xs cursor-pointer">
-              Cancel
+              {t('common.cancel')}
             </button>
           </div>
 
@@ -268,7 +283,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
             <input
               type="text"
               required
-              placeholder="Full Name (e.g. Hakim Ziyech)"
+              placeholder={language === 'ar' ? 'الاسم الكامل (مثال: حكيم زياش)' : 'Full Name (e.g. Hakim Ziyech)'}
               value={newUserName}
               onChange={(e) => setNewUserName(e.target.value)}
               className="px-3 py-2 bg-[#0E1526] border border-[#1E293B] rounded-lg text-white placeholder-slate-500"
@@ -277,7 +292,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
               <input
                 type="email"
                 required
-                placeholder="Email Address"
+                placeholder={t('auth.email')}
                 value={newUserEmail}
                 onChange={(e) => setNewUserEmail(e.target.value)}
                 className="flex-1 px-3 py-2 bg-[#0E1526] border border-[#1E293B] rounded-lg text-white placeholder-slate-500"
@@ -286,7 +301,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
                 type="submit"
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold cursor-pointer"
               >
-                Create
+                {language === 'ar' ? 'إنشاء الحساب' : 'Create'}
               </button>
             </div>
           </form>
@@ -296,7 +311,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
       {/* Main Profile Card */}
       <div className="bg-[#0E1526] border border-[#1E293B] rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-left">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-start">
             <div className="relative group">
               <img
                 src={currentUser.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'}
@@ -309,10 +324,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
                 type="button"
                 onClick={handleOpenAvatarModal}
                 className="absolute inset-0 rounded-2xl bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-[11px] font-bold gap-1 transition-opacity cursor-pointer"
-                title="Change profile picture"
+                title={language === 'ar' ? 'تغيير الصورة الشخصية' : 'Change profile picture'}
               >
                 <Camera className="w-5 h-5 text-emerald-400" />
-                Change
+                <span>{language === 'ar' ? 'تغيير' : 'Change'}</span>
               </button>
             </div>
 
@@ -322,7 +337,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
                 {isMustapha && (
                   <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm">
                     <Shield className="w-3.5 h-3.5 text-emerald-400" />
-                    Super Admin
+                    <span>{t('nav.superAdminBadge')}</span>
                   </span>
                 )}
               </div>
@@ -330,14 +345,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
               <div className="flex items-center justify-center sm:justify-start gap-3 text-xs text-slate-400">
                 <span className="flex items-center gap-1 text-slate-300">
                   <Mail className="w-3.5 h-3.5 text-blue-400" />
-                  {currentUser.email}
+                  <span>{currentUser.email}</span>
                 </span>
                 {currentUser.phone && (
                   <>
                     <span>•</span>
                     <span className="flex items-center gap-1 text-slate-300">
                       <Phone className="w-3.5 h-3.5 text-emerald-400" />
-                      {currentUser.phone}
+                      <span>{currentUser.phone}</span>
                     </span>
                   </>
                 )}
@@ -346,7 +361,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
                 <span className="px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-[#090D16] border border-[#1E293B] text-emerald-300 flex items-center gap-1">
                   <MapPin className="w-3 h-3 text-emerald-400" />
-                  {currentUser.preferredCity || 'Casablanca, Morocco'}
+                  <span>{currentUser.preferredCity || (language === 'ar' ? 'الدار البيضاء، المغرب' : 'Casablanca, Morocco')}</span>
                 </span>
               </div>
             </div>
@@ -359,37 +374,37 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-[#131C31] hover:bg-slate-800 text-slate-200 border border-slate-700 transition-colors self-center md:self-start cursor-pointer"
           >
             <Edit3 className="w-3.5 h-3.5 text-emerald-400" />
-            {isEditing ? 'Cancel Edit' : 'Edit Profile'}
+            <span>{isEditing ? t('common.cancel') : t('profile.editProfile')}</span>
           </button>
         </div>
 
         {/* Stats Grid */}
         <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-3 pt-6 border-t border-[#1E293B]">
           <div className="p-3.5 bg-[#090D16] border border-[#1E293B] rounded-2xl space-y-1">
-            <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Matches</span>
+            <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">{t('profile.totalMatches')}</span>
             <div className="text-base font-bold text-emerald-300 font-display">
-              {currentUser.matchesPlayed + myMatches.length} Games
+              {currentUser.matchesPlayed + myMatches.length} {language === 'ar' ? 'مباراة' : 'Games'}
             </div>
           </div>
 
           <div className="p-3.5 bg-[#090D16] border border-[#1E293B] rounded-2xl space-y-1">
-            <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Reliability</span>
+            <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">{t('profile.reliabilityRate')}</span>
             <div className="text-base font-bold text-emerald-400 font-display">
-              {currentUser.reliabilityScore ?? 95}% Fair Play
+              {currentUser.reliabilityScore ?? 95}% {language === 'ar' ? 'التزام' : 'Fair Play'}
             </div>
           </div>
 
           <div className="p-3.5 bg-[#090D16] border border-[#1E293B] rounded-2xl space-y-1">
-            <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Skill Level</span>
+            <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">{t('profile.skillRating')}</span>
             <div className="text-base font-bold text-amber-300 font-display">
               {'★'.repeat(currentUser.skillRating || 3)} ({currentUser.skillRating || 3}/5)
             </div>
           </div>
 
           <div className="p-3.5 bg-[#090D16] border border-[#1E293B] rounded-2xl space-y-1">
-            <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Status</span>
+            <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold">{language === 'ar' ? 'الحالة' : 'Status'}</span>
             <div className="text-base font-bold text-emerald-400 font-display flex items-center gap-1">
-              <CheckCircle className="w-4 h-4" /> Active
+              <CheckCircle className="w-4 h-4" /> <span>{language === 'ar' ? 'نشط ومعتمد' : 'Active'}</span>
             </div>
           </div>
         </div>
@@ -400,11 +415,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
             onSubmit={handleSaveProfile}
             className="relative z-10 p-5 bg-[#090D16] border border-emerald-500/30 rounded-2xl space-y-4 animate-in fade-in"
           >
-            <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400">Update Profile Details</h3>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400">
+              {language === 'ar' ? 'تحديث البيانات الرياضية والشخصية' : 'Update Profile Details'}
+            </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
               <div>
-                <label className="block text-slate-400 mb-1">Full Name</label>
+                <label className="block text-slate-400 mb-1">{t('auth.fullName')}</label>
                 <input
                   type="text"
                   required
@@ -415,7 +432,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">Phone Number (Morocco +212)</label>
+                <label className="block text-slate-400 mb-1">{t('profile.phone')} (+212)</label>
                 <input
                   type="text"
                   value={editPhone}
@@ -426,18 +443,18 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">Home City</label>
+                <label className="block text-slate-400 mb-1">{t('profile.city')}</label>
                 <input
                   type="text"
                   value={editCity}
                   onChange={(e) => setEditCity(e.target.value)}
-                  placeholder="e.g. Casablanca, Rabat, Marrakech"
+                  placeholder={language === 'ar' ? 'الدار البيضاء، الرباط، مراكش...' : 'e.g. Casablanca, Rabat, Marrakech'}
                   className="w-full px-3 py-2 bg-[#0E1526] border border-[#1E293B] rounded-lg text-white focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">Avatar Image URL</label>
+                <label className="block text-slate-400 mb-1">{t('auth.avatarUpload')}</label>
                 <input
                   type="text"
                   value={editAvatar}
@@ -453,14 +470,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
                 onClick={() => setIsEditing(false)}
                 className="px-3 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white cursor-pointer"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 id="save-profile-btn"
                 type="submit"
                 className="px-5 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md transition-colors cursor-pointer"
               >
-                Save Changes
+                {t('common.save')}
               </button>
             </div>
           </form>
@@ -478,13 +495,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
         <div className="flex items-center justify-between">
           <h3 className="text-base font-bold font-display text-white flex items-center gap-2">
             <Calendar className="w-4 h-4 text-emerald-400" />
-            My Confirmed Matches ({myMatches.length})
+            <span>{t('profile.matchHistory')} ({myMatches.length})</span>
           </h3>
         </div>
 
         {myMatches.length === 0 ? (
           <div className="p-8 text-center bg-[#0E1526] border border-[#1E293B] rounded-2xl text-xs text-slate-400">
-            You haven't joined any matches yet. Head over to the Matches tab and click "Join Match"!
+            {t('profile.noMatchesYet')}
           </div>
         ) : (
           <div className="space-y-2.5">
@@ -506,19 +523,19 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
                             : 'bg-blue-500/20 text-blue-300'
                         }`}
                       >
-                        Team {myRosterEntry?.team === 'green' ? 'Green' : 'Blue'}
+                        {myRosterEntry?.team === 'green' ? t('matches.greenTeam') : t('matches.blueTeam')}
                       </span>
                     </div>
                     <p className="text-xs text-slate-400">
-                      {m.location.venueName} ({m.location.city || 'Casablanca'}) • {formatMoroccoDate(m.dateTime, 'day_month_time')}
+                      {m.location.venueName} ({m.location.city || (language === 'ar' ? 'الدار البيضاء' : 'Casablanca')}) • {formatMoroccoDate(m.dateTime, 'day_month_time')}
                     </p>
                   </div>
 
                   <div className="flex items-center gap-3 self-end sm:self-center">
                     <span className="text-xs text-slate-300 font-semibold">
-                      {m.roster.length}/{m.maxPlayers} Players
+                      {m.roster.length}/{m.maxPlayers} {t('common.players')}
                     </span>
-                    <ChevronRight className="w-4 h-4 text-slate-400" />
+                    <ChevronRight className="w-4 h-4 text-slate-400 rtl:rotate-180" />
                   </div>
                 </div>
               );
@@ -529,3 +546,4 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
     </div>
   );
 };
+

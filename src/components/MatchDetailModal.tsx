@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { SoccerMatch, TeamSide, isSuperAdminEmail, SUPER_ADMIN_EMAIL } from '../types';
 import { usePitchStore } from '../lib/usePitchStore';
+import { useLanguage } from '../lib/useLanguage';
 import { VoiceNoteRecorder, VoiceNotePlayer } from './VoiceNotes';
 import { getMatchMapUrl } from '../lib/mapUtils';
 import { TacticalPitchFormation } from './TacticalPitchFormation';
@@ -45,8 +46,6 @@ import { CihPaymentTracker } from './CihPaymentTracker';
 import { MotmPostMatchVoting } from './MotmPostMatchVoting';
 import { getReputationTier } from '../lib/reliabilityEngine';
 import {
-  formatMAD,
-  formatMoroccoDate,
   generateGoogleCalendarUrl,
   downloadIcsFile,
 } from '../lib/moroccoUtils';
@@ -94,6 +93,8 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
     banUser,
     sendNotification,
   } = usePitchStore();
+
+  const { t, formatMAD, formatMoroccoDate, isRTL, language } = useLanguage();
 
   const [activeModalTab, setActiveModalTab] = useState<'overview' | 'live' | 'payments' | 'motm' | 'tactical' | 'attendance'>('overview');
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -225,7 +226,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
     setIsSavingAttendance(true);
     try {
       await markMatchAttendance(match.id, attendedIds, noShowIds);
-      setAttendanceSuccessMessage('Attendance recorded successfully! Reliability index updated.');
+      setAttendanceSuccessMessage(language === 'ar' ? 'تم تسجيل الحضور بنجاح وتحديث مؤشر الموثوقية!' : 'Attendance recorded successfully! Reliability index updated.');
       setTimeout(() => setAttendanceSuccessMessage(null), 4000);
     } finally {
       setIsSavingAttendance(false);
@@ -256,7 +257,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   const handleDuplicateNextWeek = async () => {
     const newId = await duplicateAsRecurringMatch(match.id, 7);
     if (newId) {
-      alert('Recurring match scheduled for next week!');
+      alert(language === 'ar' ? 'تمت جدولة مباراة متكررة للأسبوع القادم بنجاح!' : 'Recurring match scheduled for next week!');
       onClose();
     }
   };
@@ -285,15 +286,15 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
           <div className="p-4 sm:p-5 border-b border-[#1E293B] flex items-center justify-between bg-[#090D16]/90">
             <div className="flex items-center gap-2">
               <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                {match.format || '7v7'} Match
+                {match.format || '7v7'} {t('matches.matchLabel')}
               </span>
               {match.isLocked ? (
                 <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                  <Lock className="w-3.5 h-3.5" /> Locked
+                  <Lock className="w-3.5 h-3.5" /> {language === 'ar' ? 'مغلقة' : 'Locked'}
                 </span>
               ) : (
                 <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  <Unlock className="w-3.5 h-3.5" /> Open
+                  <Unlock className="w-3.5 h-3.5" /> {language === 'ar' ? 'متاحة' : 'Open'}
                 </span>
               )}
             </div>
@@ -305,10 +306,10 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                 type="button"
                 onClick={() => downloadIcsFile(match)}
                 className="p-2 text-slate-300 hover:text-emerald-400 rounded-xl bg-slate-800 hover:bg-slate-700 transition-colors flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
-                title="Download .ics Calendar Event"
+                title={t('matches.addToCalendar')}
               >
                 <CalendarPlus className="w-4 h-4 text-emerald-400" />
-                <span className="hidden sm:inline">Calendar</span>
+                <span className="hidden sm:inline">{t('matches.addToCalendar')}</span>
               </button>
 
               <button
@@ -316,10 +317,10 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                 type="button"
                 onClick={() => setIsShareModalOpen(true)}
                 className="p-2 text-slate-300 hover:text-white rounded-xl bg-slate-800 hover:bg-slate-700 transition-colors flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
-                title="Share WhatsApp invite"
+                title={t('matches.shareMatch')}
               >
                 <Share2 className="w-4 h-4 text-emerald-400" />
-                <span className="hidden sm:inline">Share</span>
+                <span className="hidden sm:inline">{t('matches.shareMatch')}</span>
               </button>
 
               {canManage && (
@@ -328,7 +329,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   type="button"
                   onClick={handleDuplicateNextWeek}
                   className="p-2 text-slate-400 hover:text-indigo-300 rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
-                  title="Schedule Next Week's Match"
+                  title={language === 'ar' ? 'تكرار للأسبوع القادم' : "Schedule Next Week's Match"}
                 >
                   <Repeat className="w-4 h-4 text-indigo-400" />
                 </button>
@@ -340,7 +341,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   type="button"
                   onClick={() => toggleMatchLock(match.id)}
                   className="p-2 text-slate-400 hover:text-amber-300 rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
-                  title={match.isLocked ? 'Unlock match' : 'Lock match roster'}
+                  title={match.isLocked ? (language === 'ar' ? 'إلغاء قفل المباراة' : 'Unlock match') : (language === 'ar' ? 'قفل تشكيلة المباراة' : 'Lock match roster')}
                 >
                   {match.isLocked ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                 </button>
@@ -357,14 +358,14 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                       title="Confirm Permanent Deletion"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                      <span>Confirm?</span>
+                      <span>{t('admin.confirmDelete')}</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setConfirmDeleteModal(false)}
-                      className="px-2 py-1.5 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl text-xs"
+                      className="px-2 py-1.5 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl text-xs cursor-pointer"
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                   </div>
                 ) : (
@@ -376,7 +377,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                     title={isAdmin ? 'Super Admin: Universal Delete Match' : 'Delete Match'}
                   >
                     <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-                    <span className="hidden sm:inline">{isAdmin ? 'Delete Match' : 'Delete'}</span>
+                    <span className="hidden sm:inline">{isAdmin ? t('admin.deleteMatch') : t('common.delete')}</span>
                   </button>
                 )
               )}
@@ -403,7 +404,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
               }`}
             >
               <Users className="w-3.5 h-3.5" />
-              Squads & Roster
+              <span>{language === 'ar' ? 'التشكيلة واللاعبون' : 'Squads & Roster'}</span>
             </button>
 
             <button
@@ -415,7 +416,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
               }`}
             >
               <Clock className="w-3.5 h-3.5 text-emerald-400" />
-              Live Clock & Subs
+              <span>{language === 'ar' ? 'توقيت المباراة والتبديلات' : 'Live Clock & Subs'}</span>
             </button>
 
             <button
@@ -427,7 +428,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
               }`}
             >
               <Coins className="w-3.5 h-3.5 text-amber-400" />
-              CIH Payments (MAD)
+              <span>{language === 'ar' ? 'تتبع مدفوعات CIH' : 'CIH Payments (MAD)'}</span>
             </button>
 
             <button
@@ -440,7 +441,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
               }`}
             >
               <Trophy className={`w-3.5 h-3.5 ${activeModalTab === 'motm' ? 'fill-slate-950 text-slate-950' : 'text-amber-400'}`} />
-              MOTM Voting
+              <span>{t('motm.title')}</span>
             </button>
 
             <button
@@ -453,7 +454,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
               }`}
             >
               <Activity className="w-3.5 h-3.5 text-emerald-400" />
-              Tactical Pitch
+              <span>{language === 'ar' ? 'الرسم التكتيكي' : 'Tactical Pitch'}</span>
             </button>
 
             {canManage && (
@@ -466,7 +467,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                 }`}
               >
                 <ClipboardList className="w-3.5 h-3.5 text-blue-400" />
-                Attendance
+                <span>{language === 'ar' ? 'تسجيل الحضور' : 'Attendance'}</span>
               </button>
             )}
           </div>
@@ -480,11 +481,11 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   <h1 className="text-xl sm:text-2xl font-bold font-display text-white">{match.title}</h1>
                   <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-slate-400">
                     <span className="flex items-center gap-1.5">
-                      Organized by <strong className="text-slate-200">{match.creatorName}</strong>
+                      <span>{language === 'ar' ? 'المنظم:' : 'Organized by'}</span> <strong className="text-slate-200">{match.creatorName}</strong>
                     </span>
                     {isSuperAdminEmail(match.creatorEmail) && (
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                        <Shield className="w-3 h-3 text-emerald-400" /> Super Admin Mustapha
+                        <Shield className="w-3 h-3 text-emerald-400" /> {language === 'ar' ? 'المشرف العام مصطفى' : 'Super Admin Mustapha'}
                       </span>
                     )}
                   </div>
@@ -495,7 +496,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   <div className="p-3 bg-[#090D16] border border-[#1E293B] rounded-xl flex items-center gap-3">
                     <Calendar className="w-5 h-5 text-emerald-400 shrink-0" />
                     <div>
-                      <div className="text-[11px] text-slate-400">Date (Morocco)</div>
+                      <div className="text-[11px] text-slate-400">{language === 'ar' ? 'التاريخ (المغرب)' : 'Date (Morocco)'}</div>
                       <div className="text-xs font-bold text-slate-200">{formattedDate}</div>
                     </div>
                   </div>
@@ -511,9 +512,9 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   <div className="p-3 bg-[#090D16] border border-[#1E293B] rounded-xl flex items-center gap-3">
                     <Users className="w-5 h-5 text-purple-400 shrink-0" />
                     <div>
-                      <div className="text-[11px] text-slate-400">Capacity</div>
+                      <div className="text-[11px] text-slate-400">{t('createMatch.maxPlayers')}</div>
                       <div className="text-xs font-bold text-slate-200">
-                        {match.roster.length} / {match.maxPlayers} Players
+                        {match.roster.length} / {match.maxPlayers} {language === 'ar' ? 'لاعبين' : 'Players'}
                       </div>
                     </div>
                   </div>
@@ -521,7 +522,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   <div className="p-3 bg-[#090D16] border border-[#1E293B] rounded-xl flex items-center gap-3">
                     <Coins className="w-5 h-5 text-emerald-400 shrink-0" />
                     <div>
-                      <div className="text-[11px] text-slate-400">Match Fee</div>
+                      <div className="text-[11px] text-slate-400">{language === 'ar' ? 'رسوم المشاركة' : 'Match Fee'}</div>
                       <div className="text-xs font-bold text-emerald-300">
                         {formatMAD(match.pricePerPlayer, { showZeroAsFree: true })}
                       </div>
@@ -538,10 +539,10 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                       </div>
                       <div>
                         <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                          Moroccan Pitch Cost Split (MAD)
+                          {language === 'ar' ? 'تقسيم تكلفة إيجار الملعب (درهم)' : 'Moroccan Pitch Cost Split (MAD)'}
                         </h3>
                         <p className="text-xs text-slate-400">
-                          Track cash on pitch, CIH Bank, Attijariwafa, or Wafacash payments
+                          {language === 'ar' ? 'تتبع الدفع نقداً بالملعب أو عبر CIH Bank أو التجاري وفا بنك أو كاش بلس' : 'Track cash on pitch, CIH Bank, Attijariwafa, or Wafacash payments'}
                         </p>
                       </div>
                     </div>
@@ -557,17 +558,17 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors cursor-pointer"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
-                        {isEditingCost ? 'Cancel' : 'Edit Fee (MAD)'}
+                        <span>{isEditingCost ? t('common.cancel') : (language === 'ar' ? 'تعديل الرسوم' : 'Edit Fee (MAD)')}</span>
                       </button>
                     )}
                   </div>
 
                   {isEditingCost && (
                     <div className="p-4 rounded-xl bg-[#0E1526] border border-blue-500/30 space-y-3">
-                      <h4 className="text-xs font-bold text-blue-300 uppercase tracking-wider">Update Pitch Fees (MAD)</h4>
+                      <h4 className="text-xs font-bold text-blue-300 uppercase tracking-wider">{language === 'ar' ? 'تعديل رسوم وتكاليف الملعب' : 'Update Pitch Fees (MAD)'}</h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="text-[11px] text-slate-400 block mb-1">Total Pitch Rental (MAD)</label>
+                          <label className="text-[11px] text-slate-400 block mb-1">{language === 'ar' ? 'إجمالي إيجار الملعب (درهم)' : 'Total Pitch Rental (MAD)'}</label>
                           <input
                             type="number"
                             min={0}
@@ -579,7 +580,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                           />
                         </div>
                         <div>
-                          <label className="text-[11px] text-slate-400 block mb-1">Player Fee (MAD)</label>
+                          <label className="text-[11px] text-slate-400 block mb-1">{language === 'ar' ? 'رسوم كل لاعب (درهم)' : 'Player Fee (MAD)'}</label>
                           <input
                             type="number"
                             min={0}
@@ -596,26 +597,26 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                         onClick={handleSaveCost}
                         className="px-4 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer"
                       >
-                        Save Fees
+                        {t('common.save')}
                       </button>
                     </div>
                   )}
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="p-3 bg-[#0E1526] rounded-xl border border-[#1E293B]">
-                      <span className="text-[10px] text-slate-400 block">Total Pitch Cost</span>
+                      <span className="text-[10px] text-slate-400 block">{language === 'ar' ? 'إجمالي إيجار الملعب' : 'Total Pitch Cost'}</span>
                       <span className="text-base font-bold text-white">{formatMAD(totalCost)}</span>
                     </div>
                     <div className="p-3 bg-[#0E1526] rounded-xl border border-[#1E293B]">
-                      <span className="text-[10px] text-slate-400 block">Per Player</span>
+                      <span className="text-[10px] text-slate-400 block">{language === 'ar' ? 'سعر اللاعب' : 'Per Player'}</span>
                       <span className="text-base font-bold text-slate-200">{formatMAD(pricePerPlayer)}</span>
                     </div>
                     <div className="p-3 bg-[#0E1526] rounded-xl border border-emerald-500/30">
-                      <span className="text-[10px] text-emerald-400 block">Collected So Far</span>
-                      <span className="text-base font-bold text-emerald-400">{formatMAD(collectedAmount)} ({paidCount} Paid)</span>
+                      <span className="text-[10px] text-emerald-400 block">{language === 'ar' ? 'المبلغ المحصل' : 'Collected So Far'}</span>
+                      <span className="text-base font-bold text-emerald-400">{formatMAD(collectedAmount)} ({paidCount} {language === 'ar' ? 'دفعوا' : 'Paid'})</span>
                     </div>
                     <div className="p-3 bg-[#0E1526] rounded-xl border border-amber-500/30">
-                      <span className="text-[10px] text-amber-400 block">Uncollected Balance</span>
+                      <span className="text-[10px] text-amber-400 block">{language === 'ar' ? 'المتبقي لتحصيله' : 'Uncollected Balance'}</span>
                       <span className="text-base font-bold text-amber-400">{formatMAD(remainingCost)}</span>
                     </div>
                   </div>
@@ -631,7 +632,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                       <div className="flex items-center gap-2">
                         <h3 className="text-sm font-bold text-white">{match.location.venueName}</h3>
                         <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-800 text-emerald-400 border border-emerald-500/20">
-                          {match.location.city || 'Casablanca'}
+                          {match.location.city || 'الدار البيضاء'}
                         </span>
                       </div>
                       <p className="text-xs text-slate-400 mt-0.5">{match.location.address}</p>
@@ -646,7 +647,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                     className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 border border-blue-400/30 transition-all shrink-0 cursor-pointer shadow-sm"
                   >
                     <Navigation className="w-3.5 h-3.5" />
-                    Open Google Maps
+                    <span>{t('matches.viewOnMap')}</span>
                     <ExternalLink className="w-3 h-3 ml-0.5" />
                   </a>
                 </div>
@@ -656,7 +657,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2">
                       <Shirt className="w-4 h-4 text-emerald-400" />
-                      <h3 className="text-sm font-bold text-white">Confirmed Match Rosters</h3>
+                      <h3 className="text-sm font-bold text-white">{language === 'ar' ? 'تشكيلة الفريقين المؤكدة' : 'Confirmed Match Rosters'}</h3>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -670,7 +671,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                             title="Auto-Balance Teams (Skill Snake Draft)"
                           >
                             <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                            Skill Snake Draft
+                            <span>{language === 'ar' ? 'توزيع ذكي متوازن' : 'Skill Snake Draft'}</span>
                           </button>
                         </div>
                       )}
@@ -683,7 +684,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                             selectedBibFilter === 'all' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'
                           }`}
                         >
-                          All ({match.roster.length})
+                          {language === 'ar' ? 'الكل' : 'All'} ({match.roster.length})
                         </button>
                         <button
                           type="button"
@@ -692,7 +693,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                             selectedBibFilter === 'green' ? 'bg-emerald-600 text-white' : 'text-emerald-400'
                           }`}
                         >
-                          Green ({greenTeam.length})
+                          {t('matches.greenTeam')} ({greenTeam.length})
                         </button>
                         <button
                           type="button"
@@ -701,7 +702,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                             selectedBibFilter === 'blue' ? 'bg-blue-600 text-white' : 'text-blue-400'
                           }`}
                         >
-                          Blue ({blueTeam.length})
+                          {t('matches.blueTeam')} ({blueTeam.length})
                         </button>
                       </div>
                     </div>
@@ -714,16 +715,16 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                         <div className="flex items-center justify-between pb-2 border-b border-emerald-500/20">
                           <div className="flex items-center gap-2">
                             <div className="w-3 h-3 rounded-full bg-emerald-400 shadow-sm" />
-                            <span className="text-sm font-bold text-emerald-400">Team Green Bibs</span>
+                            <span className="text-sm font-bold text-emerald-400">{t('matches.greenTeam')}</span>
                           </div>
                           <span className="text-xs font-semibold text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/20">
-                            {greenTeam.length} Players
+                            {greenTeam.length} {language === 'ar' ? 'لاعبين' : 'Players'}
                           </span>
                         </div>
 
                         <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                           {greenTeam.length === 0 ? (
-                            <p className="text-xs text-slate-500 py-3 text-center">No players assigned to Green yet.</p>
+                            <p className="text-xs text-slate-500 py-3 text-center">{language === 'ar' ? 'لا يوجد لاعبون في الفريق الأخضر بعد.' : 'No players assigned to Green yet.'}</p>
                           ) : (
                             greenTeam.map((player) => {
                               const isPaid = paidPlayerIds.includes(player.userId);
@@ -745,13 +746,13 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                                         <span className="text-xs font-semibold text-white truncate">{player.name}</span>
                                         {player.isHost && (
                                           <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300">
-                                            Host
+                                            {language === 'ar' ? 'المنظم' : 'Host'}
                                           </span>
                                         )}
                                       </div>
                                       <div className="flex items-center gap-1.5 mt-0.5">
                                         <span className="text-[10px] text-emerald-400 font-bold">
-                                          {reliability}% Rel.
+                                          {reliability}% {language === 'ar' ? 'موثوقية' : 'Rel.'}
                                         </span>
                                         <span className="text-[10px] text-slate-500">•</span>
                                         <button
@@ -766,7 +767,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                                           title={canManage ? 'Click to toggle payment' : undefined}
                                         >
                                           <CheckCircle2 className={`w-2.5 h-2.5 ${isPaid ? 'text-emerald-400' : 'text-rose-400'}`} />
-                                          {isPaid ? 'Paid (MAD)' : 'Unpaid'}
+                                          <span>{isPaid ? (language === 'ar' ? 'تم الدفع (درهم)' : 'Paid (MAD)') : (language === 'ar' ? 'لم يدفع' : 'Unpaid')}</span>
                                         </button>
                                       </div>
                                     </div>
@@ -788,7 +789,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                                         onClick={() => assignPlayerTeam(match.id, player.userId, 'blue')}
                                         className="px-2 py-1 text-[10px] font-medium rounded bg-blue-600/20 text-blue-300 hover:bg-blue-600/40 transition-colors cursor-pointer"
                                       >
-                                        ➔ Blue
+                                        ➔ {t('matches.blueTeam')}
                                       </button>
                                     )}
 
@@ -815,16 +816,16 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                         <div className="flex items-center justify-between pb-2 border-b border-blue-500/20">
                           <div className="flex items-center gap-2">
                             <div className="w-3 h-3 rounded-full bg-blue-400 shadow-sm" />
-                            <span className="text-sm font-bold text-blue-400">Team Blue Bibs</span>
+                            <span className="text-sm font-bold text-blue-400">{t('matches.blueTeam')}</span>
                           </div>
                           <span className="text-xs font-semibold text-blue-300 bg-blue-950/60 px-2 py-0.5 rounded border border-blue-500/20">
-                            {blueTeam.length} Players
+                            {blueTeam.length} {language === 'ar' ? 'لاعبين' : 'Players'}
                           </span>
                         </div>
 
                         <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                           {blueTeam.length === 0 ? (
-                            <p className="text-xs text-slate-500 py-3 text-center">No players assigned to Blue yet.</p>
+                            <p className="text-xs text-slate-500 py-3 text-center">{language === 'ar' ? 'لا يوجد لاعبون في الفريق الأزرق بعد.' : 'No players assigned to Blue yet.'}</p>
                           ) : (
                             blueTeam.map((player) => {
                               const isPaid = paidPlayerIds.includes(player.userId);
@@ -846,13 +847,13 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                                         <span className="text-xs font-semibold text-white truncate">{player.name}</span>
                                         {player.isHost && (
                                           <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300">
-                                            Host
+                                            {language === 'ar' ? 'المنظم' : 'Host'}
                                           </span>
                                         )}
                                       </div>
                                       <div className="flex items-center gap-1.5 mt-0.5">
                                         <span className="text-[10px] text-blue-400 font-bold">
-                                          {reliability}% Rel.
+                                          {reliability}% {language === 'ar' ? 'موثوقية' : 'Rel.'}
                                         </span>
                                         <span className="text-[10px] text-slate-500">•</span>
                                         <button
@@ -867,7 +868,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                                           title={canManage ? 'Click to toggle payment' : undefined}
                                         >
                                           <CheckCircle2 className={`w-2.5 h-2.5 ${isPaid ? 'text-emerald-400' : 'text-rose-400'}`} />
-                                          {isPaid ? 'Paid (MAD)' : 'Unpaid'}
+                                          <span>{isPaid ? (language === 'ar' ? 'تم الدفع (درهم)' : 'Paid (MAD)') : (language === 'ar' ? 'لم يدفع' : 'Unpaid')}</span>
                                         </button>
                                       </div>
                                     </div>
@@ -889,7 +890,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                                         onClick={() => assignPlayerTeam(match.id, player.userId, 'green')}
                                         className="px-2 py-1 text-[10px] font-medium rounded bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/40 transition-colors cursor-pointer"
                                       >
-                                        ➔ Green
+                                        ➔ {t('matches.greenTeam')}
                                       </button>
                                     )}
 
@@ -918,15 +919,15 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   <div className="flex items-center justify-between pb-2 border-b border-[#1E293B]">
                     <div className="flex items-center gap-2">
                       <MessageSquare className="w-4 h-4 text-blue-400" />
-                      <h3 className="text-sm font-bold text-white">Match Discussion & Voice Notes</h3>
+                      <h3 className="text-sm font-bold text-white">{language === 'ar' ? 'نقاش المباراة والرسائل الصوتية' : 'Match Discussion & Voice Notes'}</h3>
                     </div>
-                    <span className="text-xs text-slate-400">{matchComments.length} messages</span>
+                    <span className="text-xs text-slate-400">{matchComments.length} {language === 'ar' ? 'رسالة' : 'messages'}</span>
                   </div>
 
                   <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
                     {matchComments.length === 0 ? (
                       <div className="text-center py-6 text-slate-500 text-xs">
-                        No discussion yet. Coordinate bibs, balls, or carpools here!
+                        {language === 'ar' ? 'لا يوجد نقاش حتى الآن. نسق مع الفريق هنا!' : 'No discussion yet. Coordinate bibs, balls, or carpools here!'}
                       </div>
                     ) : (
                       matchComments.map((comment) => (
@@ -942,7 +943,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                               <span className="text-xs font-semibold text-white">{comment.userName}</span>
                               {isSuperAdminEmail(comment.userEmail) && (
                                 <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300">
-                                  Admin
+                                  {language === 'ar' ? 'مشرف' : 'Admin'}
                                 </span>
                               )}
                             </div>
@@ -951,10 +952,10 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                             </span>
                           </div>
 
-                          {comment.text && <p className="text-xs text-slate-300 pl-8 leading-relaxed">{comment.text}</p>}
+                          {comment.text && <p className="text-xs text-slate-300 pl-8 rtl:pr-8 rtl:pl-0 leading-relaxed">{comment.text}</p>}
 
                           {comment.audioUrl && (
-                            <div className="pl-8 pt-1">
+                            <div className="pl-8 rtl:pr-8 rtl:pl-0 pt-1">
                               <VoiceNotePlayer
                                 audioUrl={comment.audioUrl}
                                 durationSeconds={comment.audioDuration}
@@ -971,7 +972,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                       <input
                         id="match-comment-input"
                         type="text"
-                        placeholder="Post an update for the squad..."
+                        placeholder={language === 'ar' ? 'اكتب رسالة للاعبين في التشكيلة...' : 'Post an update for the squad...'}
                         value={commentText}
                         onChange={(e) => setCommentText(e.target.value)}
                         className="flex-1 bg-[#0E1526] border border-[#1E293B] focus:border-blue-500 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none transition-colors"
@@ -986,7 +987,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                     </form>
 
                     <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
-                      <span className="text-[11px]">Or record a voice message:</span>
+                      <span className="text-[11px]">{language === 'ar' ? 'أو سجل رسالة صوتية للمباراة:' : 'Or record a voice message:'}</span>
                       <VoiceNoteRecorder onSendAudio={handleSendVoiceNote} />
                     </div>
                   </div>
@@ -1024,9 +1025,9 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
             {activeModalTab === 'attendance' && (
               <div className="bg-[#090D16] border border-[#1E293B] rounded-2xl p-5 space-y-4">
                 <div>
-                  <h3 className="font-bold text-white text-base">Attendance & Reliability Tracking</h3>
+                  <h3 className="font-bold text-white text-base">{language === 'ar' ? 'تسجيل الحضور ومؤشر الموثوقية' : 'Attendance & Reliability Tracking'}</h3>
                   <p className="text-xs text-slate-400">
-                    Record player attendance to update player reliability and fair play scores.
+                    {language === 'ar' ? 'سجل حضور اللاعبين لتحديث مؤشرات الالتزام والموثوقية واللعب النظيف.' : 'Record player attendance to update player reliability and fair play scores.'}
                   </p>
                 </div>
 
@@ -1055,7 +1056,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                           />
                           <div>
                             <div className="text-xs font-bold text-white">{player.name}</div>
-                            <div className="text-[11px] text-slate-400">Team {player.team === 'green' ? 'Green' : 'Blue'}</div>
+                            <div className="text-[11px] text-slate-400">{player.team === 'green' ? t('matches.greenTeam') : t('matches.blueTeam')}</div>
                           </div>
                         </div>
 
@@ -1065,8 +1066,8 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                             onClick={() => {
                               setAttendedIds((prev) =>
                                 prev.includes(player.userId)
-                                  ? prev.filter((id) => id !== player.userId)
-                                  : [...prev, player.userId]
+                                ? prev.filter((id) => id !== player.userId)
+                                : [...prev, player.userId]
                               );
                               setNoShowIds((prev) => prev.filter((id) => id !== player.userId));
                             }}
@@ -1076,7 +1077,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                                 : 'bg-slate-800 text-slate-400 hover:text-emerald-300'
                             }`}
                           >
-                            Attended
+                            {language === 'ar' ? 'حضر' : 'Attended'}
                           </button>
 
                           <button
@@ -1084,8 +1085,8 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                             onClick={() => {
                               setNoShowIds((prev) =>
                                 prev.includes(player.userId)
-                                  ? prev.filter((id) => id !== player.userId)
-                                  : [...prev, player.userId]
+                                ? prev.filter((id) => id !== player.userId)
+                                : [...prev, player.userId]
                               );
                               setAttendedIds((prev) => prev.filter((id) => id !== player.userId));
                             }}
@@ -1095,7 +1096,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                                 : 'bg-slate-800 text-slate-400 hover:text-rose-300'
                             }`}
                           >
-                            No Show
+                            {language === 'ar' ? 'غائب (No Show)' : 'No Show'}
                           </button>
                         </div>
                       </div>
@@ -1110,7 +1111,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                     disabled={isSavingAttendance || (attendedIds.length === 0 && noShowIds.length === 0)}
                     className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer disabled:opacity-50"
                   >
-                    {isSavingAttendance ? 'Saving...' : 'Record Attendance & Update Scores'}
+                    {isSavingAttendance ? t('common.loading') : (language === 'ar' ? 'حفظ الحضور وتحديث النقاط' : 'Record Attendance & Update Scores')}
                   </button>
                 </div>
               </div>
@@ -1119,19 +1120,19 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
 
           {/* Sticky Footer */}
           <div className="p-4 sm:p-5 border-t border-[#1E293B] bg-[#090D16]/95 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="text-xs text-slate-400 text-center sm:text-left">
+            <div className="text-xs text-slate-400 text-center sm:text-start">
               {isUserInRoster ? (
                 <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                  <Check className="w-4 h-4" /> You are on the confirmed roster!
+                  <Check className="w-4 h-4" /> {language === 'ar' ? 'أنت مسجل في التشكيلة الأساسية المؤكدة!' : 'You are on the confirmed roster!'}
                 </span>
               ) : isUserInWaitlist ? (
                 <span className="text-amber-300 font-semibold">
-                  In waitlist queue. Auto-promoted if a player drops out.
+                  {language === 'ar' ? 'أنت في قائمة الانتظار، سيتم ترقيتك تلقائياً عند انسحاب لاعب.' : 'In waitlist queue. Auto-promoted if a player drops out.'}
                 </span>
               ) : spotsLeft > 0 ? (
-                <span>{spotsLeft} spots available. Join Green or Blue team!</span>
+                <span>{spotsLeft} {t('matches.spotsRemaining')}. {language === 'ar' ? 'انضم للفريق الأخضر أو الأزرق!' : 'Join Green or Blue team!'}</span>
               ) : (
-                <span className="text-amber-400">Match is full. Join waitlist.</span>
+                <span className="text-amber-400">{language === 'ar' ? 'المباراة ممتلئة. انضم لقائمة الانتظار.' : 'Match is full. Join waitlist.'}</span>
               )}
             </div>
 
@@ -1145,7 +1146,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 transition-all cursor-pointer"
                 >
                   <UserX className="w-4 h-4" />
-                  Leave Match
+                  <span>{t('matches.leaveMatch')}</span>
                 </button>
               ) : isUserInWaitlist ? (
                 <button
@@ -1156,11 +1157,11 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 transition-all cursor-pointer"
                 >
                   <UserX className="w-4 h-4" />
-                  Leave Waitlist
+                  <span>{language === 'ar' ? 'مغادرة قائمة الانتظار' : 'Leave Waitlist'}</span>
                 </button>
               ) : match.isLocked ? (
                 <div className="text-xs font-bold text-slate-500 bg-slate-800 px-4 py-2 rounded-xl border border-slate-700">
-                  Roster Locked
+                  {language === 'ar' ? 'التشكيلة مغلقة' : 'Roster Locked'}
                 </div>
               ) : (
                 <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -1172,7 +1173,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                     className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-sm transition-all cursor-pointer"
                   >
                     <Shirt className="w-3.5 h-3.5" />
-                    Join Green
+                    <span>{language === 'ar' ? 'انضم للأخضر' : 'Join Green'}</span>
                   </button>
                   <button
                     id="modal-join-blue-btn"
@@ -1182,7 +1183,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                     className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 shadow-sm transition-all cursor-pointer"
                   >
                     <Shirt className="w-3.5 h-3.5" />
-                    Join Blue
+                    <span>{language === 'ar' ? 'انضم للأزرق' : 'Join Blue'}</span>
                   </button>
                 </div>
               )}
@@ -1199,3 +1200,4 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
     </>
   );
 };
+

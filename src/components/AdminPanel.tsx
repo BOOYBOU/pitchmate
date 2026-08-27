@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { SoccerMatch, UserProfile, SUPER_ADMIN_EMAIL, isSuperAdminEmail } from '../types';
 import { usePitchStore } from '../lib/usePitchStore';
+import { useLanguage } from '../lib/useLanguage';
 import { AdminOverview } from './admin/AdminOverview';
 import { AdminUsersTable } from './admin/AdminUsersTable';
 import { AdminMatchesTable } from './admin/AdminMatchesTable';
@@ -43,6 +44,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onOpenMatchDetails, onOp
     autoBalanceTeams,
   } = usePitchStore();
 
+  const { t, language } = useLanguage();
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'matches' | 'announcements'>('overview');
   const [isResetting, setIsResetting] = useState(false);
 
@@ -75,13 +77,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onOpenMatchDetails, onOp
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-bold text-white font-display">Admin Command Center</h1>
+                <h1 className="text-xl sm:text-2xl font-bold text-white font-display">
+                  {t('admin.title', 'مركز القيادة والإدارة العامة')}
+                </h1>
                 <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 text-xs font-bold border border-purple-500/30">
-                  SUPER ADMIN
+                  {language === 'ar' ? 'المشرف العام' : 'SUPER ADMIN'}
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-slate-400 mt-1">
-                Real-time player approvals, match oversight, tactical lineups, and league broadcasts.
+                {t('admin.subtitle', 'إدارة مجتمع اللاعبين، مراجعة طلبات الانضمام، مراقبة المباريات، ونشر الإعلانات')}
               </p>
             </div>
           </div>
@@ -91,10 +95,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onOpenMatchDetails, onOp
               onClick={handleResetData}
               disabled={isResetting}
               className="px-3 py-2 bg-slate-800/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-xs font-semibold rounded-lg border border-slate-700/60 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-              title="Reset Database to Default Fixtures"
+              title={language === 'ar' ? 'إعادة ضبط المباريات الافتراضية' : 'Reset Database to Default Fixtures'}
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin' : ''}`} />
-              Reset Fixtures
+              <span>{language === 'ar' ? 'استعادة الافتراضي' : 'Reset Fixtures'}</span>
             </button>
 
             <button
@@ -102,7 +106,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onOpenMatchDetails, onOp
               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
             >
               <Trophy className="w-3.5 h-3.5" />
-              Create Fixture
+              <span>{t('nav.createMatch', 'تنظيم مباراة')}</span>
             </button>
           </div>
         </div>
@@ -118,7 +122,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onOpenMatchDetails, onOp
             }`}
           >
             <BarChart3 className="w-4 h-4" />
-            Overview
+            <span>{t('admin.tabOverview', 'نظرة عامة')}</span>
           </button>
 
           <button
@@ -130,7 +134,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onOpenMatchDetails, onOp
             }`}
           >
             <Users className="w-4 h-4" />
-            Player Management
+            <span>{t('admin.tabAllUsers', 'إدارة اللاعبين')}</span>
             {pendingUsersCount > 0 && (
               <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950 font-bold text-[10px]">
                 {pendingUsersCount}
@@ -147,7 +151,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onOpenMatchDetails, onOp
             }`}
           >
             <Trophy className="w-4 h-4" />
-            Matches & Rosters ({matches.length})
+            <span>{t('admin.tabAllMatches', 'المباريات والتشكيلات')} ({matches.length})</span>
           </button>
 
           <button
@@ -159,7 +163,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onOpenMatchDetails, onOp
             }`}
           >
             <Megaphone className="w-4 h-4" />
-            Announcements ({announcements.length})
+            <span>{t('admin.tabAnnouncements', 'الإعلانات والتعميمات')} ({announcements.length})</span>
           </button>
         </div>
       </div>
@@ -209,3 +213,4 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onOpenMatchDetails, onOp
     </div>
   );
 };
+

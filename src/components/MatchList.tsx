@@ -3,6 +3,7 @@ import { Search, Plus, Calendar, Flame, Sparkles, Info, X, Trophy, Activity } fr
 import { SoccerMatch } from '../types';
 import { MatchCard } from './MatchCard';
 import { usePitchStore } from '../lib/usePitchStore';
+import { useLanguage } from '../lib/useLanguage';
 
 interface MatchListProps {
   onOpenCreate: () => void;
@@ -11,6 +12,7 @@ interface MatchListProps {
 
 export const MatchList: React.FC<MatchListProps> = ({ onOpenCreate, onOpenDetails }) => {
   const { matches, currentUser, announcements, deleteAnnouncement } = usePitchStore();
+  const { t, isRTL, language } = useLanguage();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [onlyMyMatches, setOnlyMyMatches] = useState(false);
@@ -78,7 +80,7 @@ export const MatchList: React.FC<MatchListProps> = ({ onOpenCreate, onOpenDetail
               <button
                 onClick={() => deleteAnnouncement(ann.id)}
                 className="text-slate-400 hover:text-slate-200 p-1 cursor-pointer"
-                title="Dismiss"
+                title={t('common.close')}
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -103,7 +105,7 @@ export const MatchList: React.FC<MatchListProps> = ({ onOpenCreate, onOpenDetail
             
             {/* Modern Gradient Headline */}
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold font-display tracking-tight leading-tight bg-gradient-to-r from-white via-slate-100 to-emerald-400 bg-clip-text text-transparent">
-              Find Your Match &amp; Hit The Pitch
+              {language === 'ar' ? 'اعثر على مباراتك وانزل للملعب الآن' : 'Find Your Match & Hit The Pitch'}
             </h1>
           </div>
 
@@ -114,26 +116,26 @@ export const MatchList: React.FC<MatchListProps> = ({ onOpenCreate, onOpenDetail
               className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              Create Match
+              <span>{t('matches.createMatch')}</span>
             </button>
           </div>
         </div>
 
         {/* Quick Numbers Bar */}
-        <div className="relative z-10 grid grid-cols-3 gap-3 pt-6 mt-6 border-t border-[#1E293B]/80">
+        <div className="relative z-10 grid grid-cols-3 gap-3 pt-6 mt-6 border-t border-[#1E293B]/80 text-center sm:text-start">
           <div>
             <div className="text-xl sm:text-2xl font-black font-display text-emerald-400">{matches.length}</div>
-            <div className="text-xs text-slate-400">Total Matches</div>
+            <div className="text-xs text-slate-400">{t('admin.totalMatches')}</div>
           </div>
           <div>
             <div className="text-xl sm:text-2xl font-black font-display text-blue-400">
               {matches.reduce((acc, m) => acc + m.roster.length, 0)}
             </div>
-            <div className="text-xs text-slate-400">Players Active</div>
+            <div className="text-xs text-slate-400">{t('stats.activePlayers')}</div>
           </div>
           <div>
             <div className="text-xl sm:text-2xl font-black font-display text-slate-200">{myJoinedCount}</div>
-            <div className="text-xs text-slate-400">My Matches</div>
+            <div className="text-xs text-slate-400">{t('matches.myMatches')}</div>
           </div>
         </div>
       </div>
@@ -143,14 +145,14 @@ export const MatchList: React.FC<MatchListProps> = ({ onOpenCreate, onOpenDetail
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           {/* Search box */}
           <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400" />
+            <Search className={`absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400`} />
             <input
               id="matches-search-input"
               type="text"
-              placeholder="Search matches by title, venue, city, or neighborhood..."
+              placeholder={t('matches.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-[#040813]/90 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none transition-all shadow-inner"
+              className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-2.5 bg-[#040813]/90 border border-white/[0.08] focus:border-emerald-500/60 rounded-xl text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none transition-all shadow-inner`}
             />
           </div>
 
@@ -169,7 +171,7 @@ export const MatchList: React.FC<MatchListProps> = ({ onOpenCreate, onOpenDetail
                   : 'bg-[#040813] border border-white/[0.08] text-slate-400 hover:text-white hover:bg-white/[0.04]'
               }`}
             >
-              All Matches
+              {t('matches.allMatches')}
             </button>
 
             {/* Format quick filters */}
@@ -199,7 +201,7 @@ export const MatchList: React.FC<MatchListProps> = ({ onOpenCreate, onOpenDetail
               }`}
             >
               <Flame className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-              My Games ({myJoinedCount})
+              <span>{t('matches.myMatches')} ({myJoinedCount})</span>
             </button>
 
             <button
@@ -212,7 +214,7 @@ export const MatchList: React.FC<MatchListProps> = ({ onOpenCreate, onOpenDetail
               }`}
             >
               <Calendar className="w-3.5 h-3.5 text-emerald-400" />
-              Today
+              <span>{t('matches.today')}</span>
             </button>
           </div>
         </div>
@@ -225,9 +227,9 @@ export const MatchList: React.FC<MatchListProps> = ({ onOpenCreate, onOpenDetail
             <Calendar className="w-7 h-7" />
           </div>
           <div>
-            <h3 className="text-lg font-black text-white font-display">No Matches Found</h3>
+            <h3 className="text-lg font-black text-white font-display">{t('matches.noMatchesFound')}</h3>
             <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-              No active games match your current filter settings. Adjust filters or host your own match!
+              {t('matches.noMatchesDesc')}
             </p>
           </div>
           <button
@@ -235,7 +237,7 @@ export const MatchList: React.FC<MatchListProps> = ({ onOpenCreate, onOpenDetail
             className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black text-slate-950 bg-gradient-to-r from-emerald-400 to-teal-400 hover:from-emerald-300 hover:to-teal-300 shadow-lg shadow-emerald-950 transition-all cursor-pointer hover:scale-105"
           >
             <Plus className="w-4 h-4" />
-            Create A Match
+            <span>{t('matches.createMatch')}</span>
           </button>
         </div>
       ) : (
@@ -248,3 +250,4 @@ export const MatchList: React.FC<MatchListProps> = ({ onOpenCreate, onOpenDetail
     </div>
   );
 };
+

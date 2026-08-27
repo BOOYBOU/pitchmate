@@ -13,6 +13,7 @@ import {
 import confetti from 'canvas-confetti';
 import { SoccerMatch, PlayerRosterItem } from '../types';
 import { usePitchStore } from '../lib/usePitchStore';
+import { useLanguage } from '../lib/useLanguage';
 import { SoundEffects } from '../lib/audioService';
 
 interface MotmPostMatchVotingProps {
@@ -21,6 +22,7 @@ interface MotmPostMatchVotingProps {
 
 export const MotmPostMatchVoting: React.FC<MotmPostMatchVotingProps> = ({ match }) => {
   const { currentUser, voteMatchMvp } = usePitchStore();
+  const { t, language, isRTL } = useLanguage();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Extract votes and winner
@@ -110,15 +112,19 @@ export const MotmPostMatchVoting: React.FC<MotmPostMatchVotingProps> = ({ match 
             <div>
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[10px] font-black uppercase tracking-wider border border-amber-400/30">
                 <Star className="w-3 h-3 fill-amber-300" />
-                <span>Man of the Match (MOTM)</span>
+                <span>{language === 'ar' ? 'نجم ورجل المباراة (MOTM)' : 'Man of the Match (MOTM)'}</span>
               </div>
               <h3 className="text-lg md:text-xl font-black text-white mt-1">
-                {topNomineePlayer ? topNomineePlayer.name : 'Voting in Progress...'}
+                {topNomineePlayer ? topNomineePlayer.name : (language === 'ar' ? 'التصويت جارٍ الآن...' : 'Voting in Progress...')}
               </h3>
               <p className="text-xs text-slate-300 mt-0.5">
                 {topNomineePlayer
-                  ? `${maxVotes} ${maxVotes === 1 ? 'vote' : 'votes'} received from players and supporters`
-                  : 'Cast your vote for the standout player of this fixture!'}
+                  ? (language === 'ar'
+                      ? `حصل على ${maxVotes} ${maxVotes === 1 ? 'صوت' : 'أصوات'} من اللاعبين والجمهور`
+                      : `${maxVotes} ${maxVotes === 1 ? 'vote' : 'votes'} received from players and supporters`)
+                  : (language === 'ar'
+                      ? 'صوّت للاعب الأكثر تميزاً وتأثيراً في أرضية الملعب!'
+                      : 'Cast your vote for the standout player of this fixture!')}
               </p>
             </div>
           </div>
@@ -126,12 +132,16 @@ export const MotmPostMatchVoting: React.FC<MotmPostMatchVotingProps> = ({ match 
           <div className="bg-slate-900/90 rounded-2xl px-4 py-3 border border-slate-800 flex items-center gap-4 self-start sm:self-auto">
             <div className="text-center">
               <div className="text-lg font-black text-amber-400">{totalVotesCount}</div>
-              <div className="text-[10px] font-bold uppercase text-slate-400">Total Votes</div>
+              <div className="text-[10px] font-bold uppercase text-slate-400">
+                {language === 'ar' ? 'إجمالي الأصوات' : 'Total Votes'}
+              </div>
             </div>
             <div className="h-8 w-px bg-slate-800" />
             <div className="text-center">
               <div className="text-lg font-black text-emerald-400">{match.roster.length}</div>
-              <div className="text-[10px] font-bold uppercase text-slate-400">Nominees</div>
+              <div className="text-[10px] font-bold uppercase text-slate-400">
+                {language === 'ar' ? 'المرشحون' : 'Nominees'}
+              </div>
             </div>
           </div>
         </div>
@@ -145,14 +155,16 @@ export const MotmPostMatchVoting: React.FC<MotmPostMatchVotingProps> = ({ match 
           </div>
           <div>
             <div className="text-xs font-bold text-white">
-              Who made the biggest impact on the pitch?
+              {language === 'ar' ? 'من هو اللاعب الذي صنع الفارق في المباراة؟' : 'Who made the biggest impact on the pitch?'}
             </div>
             <div className="text-[11px] text-slate-400">
               {myVote
-                ? `You voted for ${
-                    match.roster.find((p) => p.userId === myVote)?.name || 'a player'
-                  }. You can change your pick anytime.`
-                : 'Click "Vote MOTM" next to your chosen nominee below.'}
+                ? (language === 'ar'
+                    ? `لقد صوتت لصالح ${match.roster.find((p) => p.userId === myVote)?.name || 'لاعب'}. يمكنك تغيير اختيارك في أي وقت.`
+                    : `You voted for ${match.roster.find((p) => p.userId === myVote)?.name || 'a player'}. You can change your pick anytime.`)
+                : (language === 'ar'
+                    ? 'اضغط على زر "صوّت لرجل المباراة" بجانب مرشحك المفضل أدناه.'
+                    : 'Click "Vote MOTM" next to your chosen nominee below.')}
             </div>
           </div>
         </div>
@@ -160,7 +172,7 @@ export const MotmPostMatchVoting: React.FC<MotmPostMatchVotingProps> = ({ match 
         {myVote && (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/20 text-emerald-300 text-xs font-black rounded-xl border border-emerald-500/40 shrink-0">
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            <span>Vote Recorded</span>
+            <span>{language === 'ar' ? 'تم تسجيل صوتك' : 'Vote Recorded'}</span>
           </span>
         )}
       </div>
@@ -215,16 +227,16 @@ export const MotmPostMatchVoting: React.FC<MotmPostMatchVotingProps> = ({ match 
                             : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
                         }`}
                       >
-                        {player.team === 'green' ? 'Green' : 'Blue'}
+                        {player.team === 'green' ? (language === 'ar' ? 'الأخضر' : 'Green') : (language === 'ar' ? 'الأزرق' : 'Blue')}
                       </span>
                     </div>
 
                     <div className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-2">
-                      <span>{player.position || 'Player'}</span>
+                      <span>{player.position || (language === 'ar' ? 'لاعب' : 'Player')}</span>
                       {goalsScored > 0 && (
                         <span className="text-rose-400 font-bold flex items-center gap-0.5">
                           <Flame className="w-3 h-3 fill-rose-400" />
-                          {goalsScored} {goalsScored === 1 ? 'Goal' : 'Goals'}
+                          {goalsScored} {language === 'ar' ? (goalsScored === 1 ? 'هدف' : 'أهداف') : (goalsScored === 1 ? 'Goal' : 'Goals')}
                         </span>
                       )}
                     </div>
@@ -247,7 +259,7 @@ export const MotmPostMatchVoting: React.FC<MotmPostMatchVotingProps> = ({ match 
                       isVotedByMe ? 'fill-slate-950 text-slate-950' : 'text-amber-400'
                     }`}
                   />
-                  <span>{isVotedByMe ? 'My Pick ✓' : 'Vote MOTM'}</span>
+                  <span>{isVotedByMe ? (language === 'ar' ? 'صوتي المسجل ✓' : 'My Pick ✓') : (language === 'ar' ? 'صوّت لرجل المباراة' : 'Vote MOTM')}</span>
                 </button>
               </div>
 
@@ -255,7 +267,7 @@ export const MotmPostMatchVoting: React.FC<MotmPostMatchVotingProps> = ({ match 
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="text-slate-400 font-medium">
-                    {voteCount} {voteCount === 1 ? 'Vote' : 'Votes'}
+                    {voteCount} {language === 'ar' ? (voteCount === 1 ? 'صوت' : 'أصوات') : (voteCount === 1 ? 'Vote' : 'Votes')}
                   </span>
                   <span className="font-bold text-amber-400">{percentage}%</span>
                 </div>
@@ -280,9 +292,11 @@ export const MotmPostMatchVoting: React.FC<MotmPostMatchVotingProps> = ({ match 
       {match.roster.length === 0 && (
         <div className="bg-[#0E1526] border border-slate-800 rounded-2xl p-8 text-center text-slate-400">
           <Users className="w-10 h-10 text-slate-600 mx-auto mb-2" />
-          <p className="font-bold text-slate-300">No players in this match roster yet</p>
+          <p className="font-bold text-slate-300">
+            {language === 'ar' ? 'لا يوجد لاعبون في تشكيلة هذه المباراة حتى الآن' : 'No players in this match roster yet'}
+          </p>
           <p className="text-xs text-slate-500 mt-1">
-            Players who join this match will be listed here for MOTM voting.
+            {language === 'ar' ? 'اللاعبون الذين ينضمون إلى هذه المباراة سيظهرون هنا للتصويت.' : 'Players who join this match will be listed here for MOTM voting.'}
           </p>
         </div>
       )}

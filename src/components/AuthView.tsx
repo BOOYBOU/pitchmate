@@ -5,6 +5,7 @@ import {
   Lock,
   User,
   ArrowRight,
+  ArrowLeft,
   Upload,
   Check,
   AlertCircle,
@@ -15,13 +16,16 @@ import {
   Activity,
   Clock,
   CheckCircle2,
-  ShieldAlert
+  ShieldAlert,
+  Globe
 } from 'lucide-react';
 import { usePitchStore } from '../lib/usePitchStore';
+import { useLanguage } from '../lib/useLanguage';
 import { SUPER_ADMIN_EMAIL, SUPER_ADMIN_PASSWORD, isSuperAdminEmail, UserProfile } from '../types';
 
 export const AuthView: React.FC = () => {
   const { loginWithCredentials, signupWithCredentials, resetPasswordWithEmail } = usePitchStore();
+  const { language, setLanguage, toggleLanguage, t, isRTL } = useLanguage();
   const [mode, setMode] = useState<'signin' | 'signup' | 'forgot' | 'pending'>('signin');
 
   // Sign In state
@@ -56,10 +60,10 @@ export const AuthView: React.FC = () => {
     try {
       const res = await loginWithCredentials(signInEmail, signInPassword);
       if (!res.success) {
-        setSignInError(res.error || 'Invalid email or password.');
+        setSignInError(res.error || t('auth.invalidCredentials'));
       }
     } catch {
-      setSignInError('An unexpected authentication error occurred.');
+      setSignInError(language === 'ar' ? 'حدث خطأ أثناء المصادقة. يرجى المحاولة لاحقاً.' : 'An unexpected authentication error occurred.');
     } finally {
       setIsSubmitting(false);
     }
@@ -78,7 +82,7 @@ export const AuthView: React.FC = () => {
         avatarPreview
       );
       if (!res.success) {
-        setSignUpError(res.error || 'Failed to create account.');
+        setSignUpError(res.error || (language === 'ar' ? 'فشل إنشاء الحساب.' : 'Failed to create account.'));
       } else if (res.pendingApproval) {
         setRegisteredUserName(signUpName);
         setRegisteredUserEmail(signUpEmail);
@@ -89,7 +93,7 @@ export const AuthView: React.FC = () => {
         setSignUpPassword('');
       }
     } catch {
-      setSignUpError('An error occurred during registration.');
+      setSignUpError(language === 'ar' ? 'حدث خطأ أثناء التسجيل.' : 'An error occurred during registration.');
     } finally {
       setIsSubmitting(false);
     }
@@ -101,12 +105,12 @@ export const AuthView: React.FC = () => {
     setForgotSuccess('');
 
     if (forgotNewPassword.length < 6) {
-      setForgotError('New password must be at least 6 characters.');
+      setForgotError(t('auth.passwordLengthError'));
       return;
     }
 
     if (forgotNewPassword !== forgotConfirmPassword) {
-      setForgotError('Passwords do not match.');
+      setForgotError(t('auth.passwordMismatch'));
       return;
     }
 
@@ -114,12 +118,12 @@ export const AuthView: React.FC = () => {
     try {
       const res = await resetPasswordWithEmail(forgotEmail, forgotNewPassword);
       if (res.success) {
-        setForgotSuccess('Password updated successfully! Logging you in...');
+        setForgotSuccess(language === 'ar' ? 'تم تحديث كلمة المرور بنجاح! جاري تسجيل الدخول...' : 'Password updated successfully! Logging you in...');
       } else {
-        setForgotError(res.error || 'Failed to reset password.');
+        setForgotError(res.error || (language === 'ar' ? 'فشل إعادة تعيين كلمة المرور.' : 'Failed to reset password.'));
       }
     } catch {
-      setForgotError('An error occurred while resetting password.');
+      setForgotError(language === 'ar' ? 'حدث خطأ أثناء إعادة التعيين.' : 'An error occurred while resetting password.');
     } finally {
       setIsSubmitting(false);
     }
@@ -130,11 +134,11 @@ export const AuthView: React.FC = () => {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      setSignUpError('Please select a valid image file (PNG, JPG, WebP)');
+      setSignUpError(language === 'ar' ? 'يرجى اختيار ملف صورة صالح (PNG, JPG, WebP)' : 'Please select a valid image file (PNG, JPG, WebP)');
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setSignUpError('Image size should be under 5MB');
+      setSignUpError(language === 'ar' ? 'حجم الصورة يجب أن لا يتجاوز 5 ميجابايت' : 'Image size should be under 5MB');
       return;
     }
 
@@ -148,7 +152,7 @@ export const AuthView: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
-  const isPendingError = signInError.toLowerCase().includes('admin approves') || signInError.toLowerCase().includes('wait until');
+  const isPendingError = signInError.toLowerCase().includes('admin approves') || signInError.toLowerCase().includes('wait until') || signInError.includes('المشرف');
 
   return (
     <div className="min-h-screen w-full bg-[#040711] text-white flex flex-col justify-between relative overflow-hidden font-sans select-none">
@@ -173,13 +177,26 @@ export const AuthView: React.FC = () => {
                 PRO
               </span>
             </span>
-            <p className="text-[11px] text-slate-400 font-medium">Soccer Match Organizer & Community</p>
+            <p className="text-[11px] text-slate-400 font-medium">{t('brand.tagline')}</p>
           </div>
         </div>
 
-        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#0B1120] border border-[#1E293B] text-xs text-slate-300">
-          <Shield className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Admin Approved Access</span>
+        <div className="flex items-center gap-3">
+          {/* Language Switcher in Auth view */}
+          <button
+            type="button"
+            onClick={toggleLanguage}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#0B1120] border border-[#1E293B] hover:border-emerald-500/40 text-xs text-slate-200 hover:text-white transition-all cursor-pointer"
+            title={t('nav.switchLanguage')}
+          >
+            <Globe className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="font-bold">{language === 'ar' ? 'English' : 'العربية'}</span>
+          </button>
+
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#0B1120] border border-[#1E293B] text-xs text-slate-300">
+            <Shield className="w-3.5 h-3.5 text-emerald-400" />
+            <span>{t('auth.verifiedAccess')}</span>
+          </div>
         </div>
       </header>
 
@@ -190,16 +207,16 @@ export const AuthView: React.FC = () => {
           {/* Header section inside card */}
           <div className="text-center space-y-1.5">
             <h1 className="text-2xl font-black tracking-tight text-white font-display">
-              {mode === 'signin' && 'Welcome Back'}
-              {mode === 'signup' && 'Create Player Account'}
-              {mode === 'forgot' && 'Reset Your Password'}
-              {mode === 'pending' && 'Account Pending Approval'}
+              {mode === 'signin' && t('auth.welcomeBack')}
+              {mode === 'signup' && t('auth.createAccount')}
+              {mode === 'forgot' && t('auth.resetPassword')}
+              {mode === 'pending' && t('auth.accountPending')}
             </h1>
             <p className="text-xs text-slate-400">
-              {mode === 'signin' && 'Sign in with your verified credentials to access matches'}
-              {mode === 'signup' && 'Register your profile to join matches and team rosters'}
-              {mode === 'forgot' && 'Recover and restore access to your player profile'}
-              {mode === 'pending' && 'Your account was registered and submitted for review'}
+              {mode === 'signin' && t('auth.signInSubtitle')}
+              {mode === 'signup' && t('auth.signUpSubtitle')}
+              {mode === 'forgot' && t('auth.resetSubtitle')}
+              {mode === 'pending' && t('auth.pendingNotice')}
             </p>
           </div>
 
@@ -219,7 +236,7 @@ export const AuthView: React.FC = () => {
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                Sign In
+                {t('auth.signInButton')}
               </button>
 
               <button
@@ -235,12 +252,12 @@ export const AuthView: React.FC = () => {
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                Sign Up
+                {t('auth.signUpButton')}
               </button>
             </div>
           ) : mode === 'forgot' ? (
             <div className="flex items-center justify-between px-1">
-              <span className="text-xs font-bold text-amber-400">Password Recovery</span>
+              <span className="text-xs font-bold text-amber-400">{t('auth.resetPassword')}</span>
               <button
                 type="button"
                 onClick={() => {
@@ -248,9 +265,10 @@ export const AuthView: React.FC = () => {
                   setForgotError('');
                   setForgotSuccess('');
                 }}
-                className="text-xs text-slate-400 hover:text-blue-400 font-semibold cursor-pointer"
+                className="text-xs text-slate-400 hover:text-blue-400 font-semibold cursor-pointer flex items-center gap-1"
               >
-                ← Back to Sign In
+                {isRTL ? <ArrowRight className="w-3.5 h-3.5" /> : <ArrowLeft className="w-3.5 h-3.5" />}
+                <span>{t('auth.backToSignIn')}</span>
               </button>
             </div>
           ) : null}
@@ -264,33 +282,33 @@ export const AuthView: React.FC = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <h2 className="text-base font-bold text-amber-300">Registration Complete</h2>
+                  <h2 className="text-base font-bold text-amber-300">{t('auth.accountPending')}</h2>
                   <p className="text-sm font-semibold text-white leading-relaxed">
-                    "Your account has been created. Please wait until the Admin approves your account."
+                    {t('auth.pendingNotice')}
                   </p>
                 </div>
               </div>
 
               <div className="p-4 rounded-2xl bg-[#090D16] border border-[#1E293B] space-y-2 text-xs">
                 <div className="flex items-center justify-between text-slate-300">
-                  <span className="text-slate-400">Player Name:</span>
+                  <span className="text-slate-400">{t('auth.fullName')}:</span>
                   <span className="font-bold text-white">{registeredUserName}</span>
                 </div>
                 <div className="flex items-center justify-between text-slate-300">
-                  <span className="text-slate-400">Account Email:</span>
+                  <span className="text-slate-400">{t('auth.email')}:</span>
                   <span className="font-mono text-emerald-400">{registeredUserEmail}</span>
                 </div>
                 <div className="flex items-center justify-between text-slate-300">
-                  <span className="text-slate-400">Approval Status:</span>
+                  <span className="text-slate-400">{t('profile.position')}:</span>
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold text-[11px]">
                     <Clock className="w-3 h-3" />
-                    Pending Admin Approval
+                    {language === 'ar' ? 'قيد المراجعة الإدارية' : 'Pending Admin Approval'}
                   </span>
                 </div>
               </div>
 
               <p className="text-[11px] text-slate-400 text-center leading-relaxed">
-                For pitch safety, all player registrations are reviewed by the Admin before match access is activated. Once approved, you will be able to log in immediately with your password.
+                {t('auth.pendingRefreshHint')}
               </p>
 
               <button
@@ -302,8 +320,8 @@ export const AuthView: React.FC = () => {
                 }}
                 className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 active:scale-[0.99] text-white rounded-xl font-bold shadow-lg shadow-blue-900/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-sm"
               >
-                <span>Return to Sign In</span>
-                <ArrowRight className="w-4 h-4" />
+                <span>{t('auth.backToSignIn')}</span>
+                {isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
               </button>
             </div>
           )}
@@ -325,36 +343,36 @@ export const AuthView: React.FC = () => {
                   ) : (
                     <AlertCircle className="w-5 h-5 shrink-0 text-rose-400 mt-0.5" />
                   )}
-                  <div className="space-y-0.5">
+                  <div className="space-y-0.5 text-start">
                     <span className="font-semibold block leading-snug">{signInError}</span>
                     {isPendingError && (
                       <span className="text-[11px] text-amber-300/80 block">
-                        The administrator has been notified and will review your pending account shortly.
+                        {language === 'ar' ? 'تم إشعار المشرف وسيقوم بمراجعة حسابك وتفعيله في أقرب وقت.' : 'The administrator has been notified and will review your pending account shortly.'}
                       </span>
                     )}
                   </div>
                 </div>
               )}
 
-              <div className="space-y-1.5">
-                <label className="block text-slate-300 font-semibold">Email Address</label>
+              <div className="space-y-1.5 text-start">
+                <label className="block text-slate-300 font-semibold">{t('auth.email')}</label>
                 <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Mail className={`absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400`} />
                   <input
                     id="auth-signin-email"
                     type="email"
                     required
                     value={signInEmail}
                     onChange={(e) => setSignInEmail(e.target.value)}
-                    placeholder="e.g. player@example.com"
-                    className="w-full pl-10 pr-3.5 py-3 bg-[#090D16] border border-[#1E293B] rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:border-emerald-500 transition-colors"
+                    placeholder={t('auth.emailPlaceholder')}
+                    className={`w-full ${isRTL ? 'pr-10 pl-3.5' : 'pl-10 pr-3.5'} py-3 bg-[#090D16] border border-[#1E293B] rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:border-emerald-500 transition-colors`}
                   />
                 </div>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 text-start">
                 <div className="flex items-center justify-between">
-                  <label className="block text-slate-300 font-semibold">Password</label>
+                  <label className="block text-slate-300 font-semibold">{t('auth.password')}</label>
                   <button
                     type="button"
                     onClick={() => {
@@ -365,19 +383,19 @@ export const AuthView: React.FC = () => {
                     }}
                     className="text-[11px] text-blue-400 hover:text-blue-300 font-semibold cursor-pointer"
                   >
-                    Forgot Password?
+                    {t('auth.forgotPasswordLink')}
                   </button>
                 </div>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Lock className={`absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400`} />
                   <input
                     id="auth-signin-password"
                     type="password"
                     required
                     value={signInPassword}
                     onChange={(e) => setSignInPassword(e.target.value)}
-                    placeholder="Enter your account password"
-                    className="w-full pl-10 pr-3.5 py-3 bg-[#090D16] border border-[#1E293B] rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:border-emerald-500 transition-colors"
+                    placeholder={t('auth.passwordPlaceholder')}
+                    className={`w-full ${isRTL ? 'pr-10 pl-3.5' : 'pl-10 pr-3.5'} py-3 bg-[#090D16] border border-[#1E293B] rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:border-emerald-500 transition-colors`}
                   />
                 </div>
               </div>
@@ -388,9 +406,38 @@ export const AuthView: React.FC = () => {
                 disabled={isSubmitting}
                 className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 active:scale-[0.99] disabled:opacity-50 text-white rounded-xl font-bold shadow-lg shadow-blue-900/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-sm"
               >
-                <span>{isSubmitting ? 'Authenticating...' : 'Sign In to PitchMate'}</span>
-                <ArrowRight className="w-4 h-4" />
+                <span>{isSubmitting ? t('common.loading') : t('auth.signInButton')}</span>
+                {isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
               </button>
+
+              {/* Quick Demo Access Bar */}
+              <div className="pt-3 border-t border-[#1E293B] space-y-2">
+                <span className="text-[11px] text-slate-400 font-semibold block text-center">
+                  {t('auth.quickDemoLogins')}
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSignInEmail('bouhbousmustapha@gmail.com');
+                      setSignInPassword('AZRouww@#$&&$#@9934');
+                    }}
+                    className="p-2 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-900/60 text-[11px] font-bold text-center cursor-pointer transition-colors"
+                  >
+                    👑 {language === 'ar' ? 'المشرف مصطفى' : 'Admin Mustapha'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSignInEmail('yassine.bounou@pitchmate.ma');
+                      setSignInPassword('password123');
+                    }}
+                    className="p-2 rounded-xl bg-blue-950/40 border border-blue-500/40 text-blue-300 hover:bg-blue-900/60 text-[11px] font-bold text-center cursor-pointer transition-colors"
+                  >
+                    ⚽ {language === 'ar' ? 'اللاعب ياسين بونو' : 'Player Yassine'}
+                  </button>
+                </div>
+              </div>
             </form>
           )}
 
@@ -400,7 +447,7 @@ export const AuthView: React.FC = () => {
               {signUpError && (
                 <div
                   id="signup-error-banner"
-                  className="p-3 rounded-2xl bg-rose-950/60 border border-rose-500/40 text-rose-200 flex items-start gap-2 animate-in fade-in"
+                  className="p-3 rounded-2xl bg-rose-950/60 border border-rose-500/40 text-rose-200 flex items-start gap-2 animate-in fade-in text-start"
                 >
                   <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
                   <span>{signUpError}</span>
@@ -408,9 +455,9 @@ export const AuthView: React.FC = () => {
               )}
 
               {/* Notice about admin approval */}
-              <div className="p-3 rounded-xl bg-blue-950/40 border border-blue-500/30 text-blue-200 flex items-center gap-2 text-[11px]">
+              <div className="p-3 rounded-xl bg-blue-950/40 border border-blue-500/30 text-blue-200 flex items-center gap-2 text-[11px] text-start">
                 <Shield className="w-4 h-4 text-blue-400 shrink-0" />
-                <span>New player registrations require Admin approval before accessing matches.</span>
+                <span>{language === 'ar' ? 'تخضع الحسابات الجديدة لمراجعة المشرف العام قبل تفعيل الدخول.' : 'New player registrations require Admin approval before accessing matches.'}</span>
               </div>
 
               {/* Avatar Selection */}
@@ -420,8 +467,8 @@ export const AuthView: React.FC = () => {
                   alt="Avatar"
                   className="w-12 h-12 rounded-xl object-cover border-2 border-emerald-500 shrink-0"
                 />
-                <div className="space-y-1">
-                  <span className="text-xs font-bold text-white block">Profile Picture</span>
+                <div className="space-y-1 text-start">
+                  <span className="text-xs font-bold text-white block">{t('auth.avatarUpload')}</span>
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -435,50 +482,50 @@ export const AuthView: React.FC = () => {
                     className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-[11px] font-semibold flex items-center gap-1 cursor-pointer"
                   >
                     <Upload className="w-3 h-3 text-emerald-400" />
-                    Upload Photo
+                    <span>{t('auth.avatarUpload')}</span>
                   </button>
                 </div>
               </div>
 
               {/* Full Name */}
-              <div className="space-y-1.5">
-                <label className="block text-slate-300 font-semibold">Full Name</label>
+              <div className="space-y-1.5 text-start">
+                <label className="block text-slate-300 font-semibold">{t('auth.fullName')}</label>
                 <div className="relative">
-                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <User className={`absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400`} />
                   <input
                     id="auth-signup-name"
                     type="text"
                     required
                     value={signUpName}
                     onChange={(e) => setSignUpName(e.target.value)}
-                    placeholder="e.g. Leo Messi"
-                    className="w-full pl-10 pr-3.5 py-2.5 bg-[#090D16] border border-[#1E293B] rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:border-emerald-500 transition-colors"
+                    placeholder={t('auth.fullNamePlaceholder')}
+                    className={`w-full ${isRTL ? 'pr-10 pl-3.5' : 'pl-10 pr-3.5'} py-2.5 bg-[#090D16] border border-[#1E293B] rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:border-emerald-500 transition-colors`}
                   />
                 </div>
               </div>
 
               {/* Email Address */}
-              <div className="space-y-1.5">
-                <label className="block text-slate-300 font-semibold">Email Address</label>
+              <div className="space-y-1.5 text-start">
+                <label className="block text-slate-300 font-semibold">{t('auth.email')}</label>
                 <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Mail className={`absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400`} />
                   <input
                     id="auth-signup-email"
                     type="email"
                     required
                     value={signUpEmail}
                     onChange={(e) => setSignUpEmail(e.target.value)}
-                    placeholder="name@example.com"
-                    className="w-full pl-10 pr-3.5 py-2.5 bg-[#090D16] border border-[#1E293B] rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:border-emerald-500 transition-colors"
+                    placeholder={t('auth.emailPlaceholder')}
+                    className={`w-full ${isRTL ? 'pr-10 pl-3.5' : 'pl-10 pr-3.5'} py-2.5 bg-[#090D16] border border-[#1E293B] rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:border-emerald-500 transition-colors`}
                   />
                 </div>
               </div>
 
               {/* Password */}
-              <div className="space-y-1.5">
-                <label className="block text-slate-300 font-semibold">Password (min 6 chars)</label>
+              <div className="space-y-1.5 text-start">
+                <label className="block text-slate-300 font-semibold">{t('auth.password')}</label>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Lock className={`absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400`} />
                   <input
                     id="auth-signup-password"
                     type="password"
@@ -486,8 +533,8 @@ export const AuthView: React.FC = () => {
                     minLength={6}
                     value={signUpPassword}
                     onChange={(e) => setSignUpPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full pl-10 pr-3.5 py-2.5 bg-[#090D16] border border-[#1E293B] rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:border-emerald-500 transition-colors"
+                    placeholder={t('auth.passwordPlaceholder')}
+                    className={`w-full ${isRTL ? 'pr-10 pl-3.5' : 'pl-10 pr-3.5'} py-2.5 bg-[#090D16] border border-[#1E293B] rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:border-emerald-500 transition-colors`}
                   />
                 </div>
               </div>
@@ -498,8 +545,8 @@ export const AuthView: React.FC = () => {
                 disabled={isSubmitting}
                 className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 active:scale-[0.99] disabled:opacity-50 text-white rounded-xl font-bold shadow-lg shadow-blue-900/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-sm"
               >
-                <span>{isSubmitting ? 'Submitting Registration...' : 'Register & Request Approval'}</span>
-                <ArrowRight className="w-4 h-4" />
+                <span>{isSubmitting ? t('common.loading') : t('auth.signUpButton')}</span>
+                {isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
               </button>
             </form>
           )}
@@ -510,7 +557,7 @@ export const AuthView: React.FC = () => {
               {forgotError && (
                 <div
                   id="forgot-error-banner"
-                  className="p-3 rounded-2xl bg-rose-950/60 border border-rose-500/40 text-rose-200 flex items-start gap-2 animate-in fade-in"
+                  className="p-3 rounded-2xl bg-rose-950/60 border border-rose-500/40 text-rose-200 flex items-start gap-2 animate-in fade-in text-start"
                 >
                   <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
                   <span>{forgotError}</span>
@@ -520,37 +567,37 @@ export const AuthView: React.FC = () => {
               {forgotSuccess && (
                 <div
                   id="forgot-success-banner"
-                  className="p-3 rounded-2xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-200 flex items-start gap-2 animate-in fade-in"
+                  className="p-3 rounded-2xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-200 flex items-start gap-2 animate-in fade-in text-start"
                 >
                   <Check className="w-4 h-4 shrink-0 text-emerald-400 mt-0.5" />
                   <span>{forgotSuccess}</span>
                 </div>
               )}
 
-              <p className="text-slate-400 text-[11px]">
-                Enter your registered account email and specify a new password.
+              <p className="text-slate-400 text-[11px] text-start">
+                {t('auth.resetSubtitle')}
               </p>
 
-              <div className="space-y-1.5">
-                <label className="block text-slate-300 font-semibold">Registered Email</label>
+              <div className="space-y-1.5 text-start">
+                <label className="block text-slate-300 font-semibold">{t('auth.email')}</label>
                 <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Mail className={`absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400`} />
                   <input
                     id="auth-forgot-email"
                     type="email"
                     required
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
-                    placeholder="name@example.com"
-                    className="w-full pl-10 pr-3.5 py-2.5 bg-[#090D16] border border-[#1E293B] rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:border-emerald-500 transition-colors"
+                    placeholder={t('auth.emailPlaceholder')}
+                    className={`w-full ${isRTL ? 'pr-10 pl-3.5' : 'pl-10 pr-3.5'} py-2.5 bg-[#090D16] border border-[#1E293B] rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:border-emerald-500 transition-colors`}
                   />
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="block text-slate-300 font-semibold">New Password (min 6 chars)</label>
+              <div className="space-y-1.5 text-start">
+                <label className="block text-slate-300 font-semibold">{t('auth.newPassword')}</label>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Lock className={`absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400`} />
                   <input
                     id="auth-forgot-new-password"
                     type="password"
@@ -558,16 +605,16 @@ export const AuthView: React.FC = () => {
                     minLength={6}
                     value={forgotNewPassword}
                     onChange={(e) => setForgotNewPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full pl-10 pr-3.5 py-2.5 bg-[#090D16] border border-[#1E293B] rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:border-emerald-500 transition-colors"
+                    placeholder={t('auth.passwordPlaceholder')}
+                    className={`w-full ${isRTL ? 'pr-10 pl-3.5' : 'pl-10 pr-3.5'} py-2.5 bg-[#090D16] border border-[#1E293B] rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:border-emerald-500 transition-colors`}
                   />
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="block text-slate-300 font-semibold">Confirm New Password</label>
+              <div className="space-y-1.5 text-start">
+                <label className="block text-slate-300 font-semibold">{t('auth.confirmPassword')}</label>
                 <div className="relative">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Lock className={`absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400`} />
                   <input
                     id="auth-forgot-confirm-password"
                     type="password"
@@ -575,8 +622,8 @@ export const AuthView: React.FC = () => {
                     minLength={6}
                     value={forgotConfirmPassword}
                     onChange={(e) => setForgotConfirmPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full pl-10 pr-3.5 py-2.5 bg-[#090D16] border border-[#1E293B] rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:border-emerald-500 transition-colors"
+                    placeholder={t('auth.passwordPlaceholder')}
+                    className={`w-full ${isRTL ? 'pr-10 pl-3.5' : 'pl-10 pr-3.5'} py-2.5 bg-[#090D16] border border-[#1E293B] rounded-xl text-white placeholder-slate-500 text-xs focus:outline-none focus:border-emerald-500 transition-colors`}
                   />
                 </div>
               </div>
@@ -587,8 +634,8 @@ export const AuthView: React.FC = () => {
                 disabled={isSubmitting}
                 className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] disabled:opacity-50 text-white rounded-xl font-bold shadow-lg shadow-emerald-900/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-sm"
               >
-                <span>{isSubmitting ? 'Updating...' : 'Reset Password & Sign In'}</span>
-                <ArrowRight className="w-4 h-4" />
+                <span>{isSubmitting ? t('common.loading') : t('auth.resetButton')}</span>
+                {isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
               </button>
             </form>
           )}
@@ -596,7 +643,7 @@ export const AuthView: React.FC = () => {
           {/* Security Guarantee */}
           <div className="pt-2 border-t border-[#1E293B] text-center text-[11px] text-slate-400 flex items-center justify-center gap-1.5">
             <Shield className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Strict Admin Verification & Security Enforcement Active</span>
+            <span>{t('auth.verifiedAccess')}</span>
           </div>
         </div>
       </main>
@@ -606,22 +653,23 @@ export const AuthView: React.FC = () => {
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1.5">
             <Activity className="w-3.5 h-3.5 text-emerald-400" />
-            Live Rosters & Waitlists
+            {language === 'ar' ? 'تشكيلات وتكتيكات مباشرة' : 'Live Rosters & Waitlists'}
           </span>
           <span className="flex items-center gap-1.5">
             <Mic className="w-3.5 h-3.5 text-emerald-400" />
-            Voice Notes Chat
+            {language === 'ar' ? 'ملاحظات ورسائل صوتية' : 'Voice Notes Chat'}
           </span>
           <span className="flex items-center gap-1.5">
-            <Phone className="w-3.5 h-3.5 text-emerald-400" />
-            Live Voice Calling
+            <Shield className="w-3.5 h-3.5 text-emerald-400" />
+            {language === 'ar' ? 'أداء بالدرهم المغربي (CIH Bank)' : 'Morocco Dirham (MAD) Fees'}
           </span>
         </div>
 
         <div>
-          <span>PitchMate Soccer Organizer &bull; Powered by Mustapha Bouhbous</span>
+          <span>PitchMate Soccer Organizer &bull; Super Admin: Mustapha Bouhbous</span>
         </div>
       </footer>
     </div>
   );
 };
+
