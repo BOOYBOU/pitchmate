@@ -274,27 +274,27 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
     <>
       <div
         id="match-detail-modal-overlay"
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200"
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200"
         onClick={onClose}
       >
         <div
           id="match-detail-modal-card"
-          className="relative w-full max-w-4xl bg-[#0E1526] border border-[#1E293B] rounded-3xl shadow-2xl overflow-hidden my-6 max-h-[92vh] flex flex-col"
+          className="relative w-full max-w-4xl bg-[#081813] border border-[#E5B869]/35 rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.9)] overflow-hidden my-6 max-h-[92vh] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Modal Header Bar */}
-          <div className="p-4 sm:p-5 border-b border-[#1E293B] flex items-center justify-between bg-[#090D16]/90">
+          <div className="p-4 sm:p-5 border-b border-[#E5B869]/25 flex items-center justify-between bg-[#06140F]/95">
             <div className="flex items-center gap-2">
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#0A3A2A] text-[#F5D794] border border-[#E5B869]">
                 {match.format || '7v7'} {t('matches.matchLabel')}
               </span>
               {match.isLocked ? (
-                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                  <Lock className="w-3.5 h-3.5" /> {language === 'ar' ? 'مغلقة' : 'Locked'}
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#0A2B20] text-slate-300 border border-[#E5B869]/30">
+                  <Lock className="w-3.5 h-3.5 text-[#E5B869]" /> {language === 'ar' ? 'مغلقة' : 'Locked'}
                 </span>
               ) : (
-                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  <Unlock className="w-3.5 h-3.5" /> {language === 'ar' ? 'متاحة' : 'Open'}
+                <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#0A3A2A] text-[#F5D794] border border-[#E5B869]">
+                  <Unlock className="w-3.5 h-3.5 text-[#E5B869]" /> {language === 'ar' ? 'متاحة' : 'Open'}
                 </span>
               )}
             </div>
@@ -305,10 +305,10 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                 id="match-detail-calendar-btn"
                 type="button"
                 onClick={() => downloadIcsFile(match)}
-                className="p-2 text-slate-300 hover:text-emerald-400 rounded-xl bg-slate-800 hover:bg-slate-700 transition-colors flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
+                className="p-2 text-slate-300 hover:text-[#F5D794] rounded-xl bg-[#0A2B20] hover:bg-[#0E4836] border border-[#E5B869]/25 transition-colors flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
                 title={t('matches.addToCalendar')}
               >
-                <CalendarPlus className="w-4 h-4 text-emerald-400" />
+                <CalendarPlus className="w-4 h-4 text-[#E5B869]" />
                 <span className="hidden sm:inline">{t('matches.addToCalendar')}</span>
               </button>
 
@@ -316,10 +316,10 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                 id="match-detail-share-btn"
                 type="button"
                 onClick={() => setIsShareModalOpen(true)}
-                className="p-2 text-slate-300 hover:text-white rounded-xl bg-slate-800 hover:bg-slate-700 transition-colors flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
+                className="p-2 text-slate-300 hover:text-[#F5D794] rounded-xl bg-[#0A2B20] hover:bg-[#0E4836] border border-[#E5B869]/25 transition-colors flex items-center gap-1.5 text-xs font-semibold cursor-pointer"
                 title={t('matches.shareMatch')}
               >
-                <Share2 className="w-4 h-4 text-emerald-400" />
+                <Share2 className="w-4 h-4 text-[#E5B869]" />
                 <span className="hidden sm:inline">{t('matches.shareMatch')}</span>
               </button>
 
@@ -328,10 +328,10 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   id="match-detail-duplicate-btn"
                   type="button"
                   onClick={handleDuplicateNextWeek}
-                  className="p-2 text-slate-400 hover:text-indigo-300 rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
+                  className="p-2 text-slate-400 hover:text-[#F5D794] rounded-xl hover:bg-[#0A2B20] transition-colors cursor-pointer"
                   title={language === 'ar' ? 'تكرار للأسبوع القادم' : "Schedule Next Week's Match"}
                 >
-                  <Repeat className="w-4 h-4 text-indigo-400" />
+                  <Repeat className="w-4 h-4 text-[#E5B869]" />
                 </button>
               )}
 
@@ -340,7 +340,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   id="match-detail-lock-toggle-btn"
                   type="button"
                   onClick={() => toggleMatchLock(match.id)}
-                  className="p-2 text-slate-400 hover:text-amber-300 rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
+                  className="p-2 text-slate-400 hover:text-[#F5D794] rounded-xl hover:bg-[#0A2B20] transition-colors cursor-pointer"
                   title={match.isLocked ? (language === 'ar' ? 'إلغاء قفل المباراة' : 'Unlock match') : (language === 'ar' ? 'قفل تشكيلة المباراة' : 'Lock match roster')}
                 >
                   {match.isLocked ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
@@ -363,7 +363,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setConfirmDeleteModal(false)}
-                      className="px-2 py-1.5 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl text-xs cursor-pointer"
+                      className="px-2 py-1.5 text-slate-300 hover:text-white bg-[#0A2B20] hover:bg-[#0E4836] border border-[#E5B869]/20 rounded-xl text-xs cursor-pointer"
                     >
                       {t('common.cancel')}
                     </button>
@@ -386,7 +386,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                 id="match-detail-close-btn"
                 type="button"
                 onClick={onClose}
-                className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
+                className="p-2 text-slate-300 hover:text-[#F5D794] rounded-xl hover:bg-[#0A2B20] transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -394,13 +394,13 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
           </div>
 
           {/* Modal Tab Navigator */}
-          <div className="flex items-center gap-1.5 px-4 sm:px-5 py-2.5 bg-[#090D16] border-b border-[#1E293B] overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-1.5 px-4 sm:px-5 py-2.5 bg-[#06140F] border-b border-[#E5B869]/25 overflow-x-auto no-scrollbar">
             <button
               onClick={() => setActiveModalTab('overview')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                 activeModalTab === 'overview'
-                  ? 'bg-emerald-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                  ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 font-black shadow-md'
+                  : 'text-slate-300 hover:text-white hover:bg-[#0A2B20]'
               }`}
             >
               <Users className="w-3.5 h-3.5" />
@@ -411,11 +411,11 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
               onClick={() => setActiveModalTab('live')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                 activeModalTab === 'live'
-                  ? 'bg-emerald-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                  ? 'bg-[#0A3A2A] text-[#F5D794] font-black border border-[#E5B869] shadow-md'
+                  : 'text-slate-300 hover:text-white hover:bg-[#0A2B20]'
               }`}
             >
-              <Clock className="w-3.5 h-3.5 text-emerald-400" />
+              <Clock className="w-3.5 h-3.5 text-[#E5B869]" />
               <span>{language === 'ar' ? 'توقيت المباراة والتبديلات' : 'Live Clock & Subs'}</span>
             </button>
 
@@ -423,11 +423,11 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
               onClick={() => setActiveModalTab('payments')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                 activeModalTab === 'payments'
-                  ? 'bg-emerald-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                  ? 'bg-gradient-to-r from-[#F5D794] to-[#E5B869] text-slate-950 font-black shadow-md'
+                  : 'text-slate-300 hover:text-white hover:bg-[#0A2B20]'
               }`}
             >
-              <Coins className="w-3.5 h-3.5 text-amber-400" />
+              <Coins className="w-3.5 h-3.5 text-[#E5B869]" />
               <span>{language === 'ar' ? 'تتبع مدفوعات CIH' : 'CIH Payments (MAD)'}</span>
             </button>
 
@@ -436,11 +436,11 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
               onClick={() => setActiveModalTab('motm')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                 activeModalTab === 'motm'
-                  ? 'bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 shadow-md font-black'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                  ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 shadow-md font-black'
+                  : 'text-slate-300 hover:text-white hover:bg-[#0A2B20]'
               }`}
             >
-              <Trophy className={`w-3.5 h-3.5 ${activeModalTab === 'motm' ? 'fill-slate-950 text-slate-950' : 'text-amber-400'}`} />
+              <Trophy className={`w-3.5 h-3.5 ${activeModalTab === 'motm' ? 'fill-slate-950 text-slate-950' : 'text-[#E5B869]'}`} />
               <span>{t('motm.title')}</span>
             </button>
 
@@ -449,11 +449,11 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
               onClick={() => setActiveModalTab('tactical')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                 activeModalTab === 'tactical'
-                  ? 'bg-emerald-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                  ? 'bg-[#0A3A2A] text-[#F5D794] border border-[#E5B869] shadow-md font-black'
+                  : 'text-slate-300 hover:text-white hover:bg-[#0A2B20]'
               }`}
             >
-              <Activity className="w-3.5 h-3.5 text-emerald-400" />
+              <Activity className="w-3.5 h-3.5 text-[#E5B869]" />
               <span>{language === 'ar' ? 'الرسم التكتيكي' : 'Tactical Pitch'}</span>
             </button>
 
@@ -462,11 +462,11 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                 onClick={() => setActiveModalTab('attendance')}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                   activeModalTab === 'attendance'
-                    ? 'bg-emerald-600 text-white shadow-md'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                    ? 'bg-[#0A3A2A] text-[#F5D794] border border-[#E5B869] shadow-md font-black'
+                    : 'text-slate-300 hover:text-white hover:bg-[#0A2B20]'
                 }`}
               >
-                <ClipboardList className="w-3.5 h-3.5 text-blue-400" />
+                <ClipboardList className="w-3.5 h-3.5 text-[#E5B869]" />
                 <span>{language === 'ar' ? 'تسجيل الحضور' : 'Attendance'}</span>
               </button>
             )}
@@ -484,8 +484,8 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                       <span>{language === 'ar' ? 'المنظم:' : 'Organized by'}</span> <strong className="text-slate-200">{match.creatorName}</strong>
                     </span>
                     {isSuperAdminEmail(match.creatorEmail) && (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                        <Shield className="w-3 h-3 text-emerald-400" /> {language === 'ar' ? 'المشرف العام مصطفى' : 'Super Admin Mustapha'}
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#0A3A2A] text-[#F5D794] border border-[#E5B869] flex items-center gap-1">
+                        <Shield className="w-3 h-3 text-[#E5B869]" /> {language === 'ar' ? 'المشرف العام مصطفى' : 'Super Admin Mustapha'}
                       </span>
                     )}
                   </div>
@@ -493,37 +493,37 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
 
                 {/* Key Stats Grid */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="p-3 bg-[#090D16] border border-[#1E293B] rounded-xl flex items-center gap-3">
-                    <Calendar className="w-5 h-5 text-emerald-400 shrink-0" />
+                  <div className="p-3 bg-[#0A2B20] border border-[#E5B869]/25 rounded-xl flex items-center gap-3">
+                    <Calendar className="w-5 h-5 text-[#E5B869] shrink-0" />
                     <div>
-                      <div className="text-[11px] text-slate-400">{language === 'ar' ? 'التاريخ (المغرب)' : 'Date (Morocco)'}</div>
-                      <div className="text-xs font-bold text-slate-200">{formattedDate}</div>
+                      <div className="text-[11px] text-slate-300">{language === 'ar' ? 'التاريخ (المغرب)' : 'Date (Morocco)'}</div>
+                      <div className="text-xs font-bold text-slate-100">{formattedDate}</div>
                     </div>
                   </div>
 
-                  <div className="p-3 bg-[#090D16] border border-[#1E293B] rounded-xl flex items-center gap-3">
-                    <Clock className="w-5 h-5 text-blue-400 shrink-0" />
+                  <div className="p-3 bg-[#0A2B20] border border-[#E5B869]/25 rounded-xl flex items-center gap-3">
+                    <Clock className="w-5 h-5 text-[#F5D794] shrink-0" />
                     <div>
-                      <div className="text-[11px] text-slate-400">{relativeTime}</div>
-                      <div className="text-xs font-bold text-slate-200">{formattedTime} (GMT+1)</div>
+                      <div className="text-[11px] text-slate-300">{relativeTime}</div>
+                      <div className="text-xs font-bold text-slate-100">{formattedTime} (GMT+1)</div>
                     </div>
                   </div>
 
-                  <div className="p-3 bg-[#090D16] border border-[#1E293B] rounded-xl flex items-center gap-3">
-                    <Users className="w-5 h-5 text-purple-400 shrink-0" />
+                  <div className="p-3 bg-[#0A2B20] border border-[#E5B869]/25 rounded-xl flex items-center gap-3">
+                    <Users className="w-5 h-5 text-[#E5B869] shrink-0" />
                     <div>
-                      <div className="text-[11px] text-slate-400">{t('createMatch.maxPlayers')}</div>
-                      <div className="text-xs font-bold text-slate-200">
+                      <div className="text-[11px] text-slate-300">{t('createMatch.maxPlayers')}</div>
+                      <div className="text-xs font-bold text-slate-100">
                         {match.roster.length} / {match.maxPlayers} {language === 'ar' ? 'لاعبين' : 'Players'}
                       </div>
                     </div>
                   </div>
 
-                  <div className="p-3 bg-[#090D16] border border-[#1E293B] rounded-xl flex items-center gap-3">
-                    <Coins className="w-5 h-5 text-emerald-400 shrink-0" />
+                  <div className="p-3 bg-[#0A2B20] border border-[#E5B869]/25 rounded-xl flex items-center gap-3">
+                    <Coins className="w-5 h-5 text-[#E5B869] shrink-0" />
                     <div>
-                      <div className="text-[11px] text-slate-400">{language === 'ar' ? 'رسوم المشاركة' : 'Match Fee'}</div>
-                      <div className="text-xs font-bold text-emerald-300">
+                      <div className="text-[11px] text-slate-300">{language === 'ar' ? 'رسوم المشاركة' : 'Match Fee'}</div>
+                      <div className="text-xs font-bold text-[#F5D794]">
                         {formatMAD(match.pricePerPlayer, { showZeroAsFree: true })}
                       </div>
                     </div>
@@ -531,17 +531,17 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                 </div>
 
                 {/* Moroccan Dirham Cost Split Tracker */}
-                <div className="bg-[#090D16] border border-[#1E293B] rounded-2xl p-4 sm:p-5 space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#1E293B]">
+                <div className="bg-[#0A2B20] border border-[#E5B869]/25 rounded-2xl p-4 sm:p-5 space-y-4 shadow-lg">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-[#E5B869]/20">
                     <div className="flex items-center gap-2">
-                      <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
+                      <div className="p-2 rounded-xl bg-[#0A3A2A] border border-[#E5B869] text-[#E5B869]">
                         <Coins className="w-5 h-5" />
                       </div>
                       <div>
                         <h3 className="text-sm font-bold text-white flex items-center gap-2">
                           {language === 'ar' ? 'تقسيم تكلفة إيجار الملعب (درهم)' : 'Moroccan Pitch Cost Split (MAD)'}
                         </h3>
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-slate-300">
                           {language === 'ar' ? 'تتبع الدفع نقداً بالملعب أو عبر CIH Bank أو التجاري وفا بنك أو كاش بلس' : 'Track cash on pitch, CIH Bank, Attijariwafa, or Wafacash payments'}
                         </p>
                       </div>
@@ -555,7 +555,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                           setEditPricePerPlayer(pricePerPlayer);
                           setIsEditingCost(!isEditingCost);
                         }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition-colors cursor-pointer"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[#06140F] hover:bg-[#0A3A2A] text-[#F5D794] border border-[#E5B869]/30 transition-colors cursor-pointer"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                         <span>{isEditingCost ? t('common.cancel') : (language === 'ar' ? 'تعديل الرسوم' : 'Edit Fee (MAD)')}</span>
@@ -564,11 +564,11 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   </div>
 
                   {isEditingCost && (
-                    <div className="p-4 rounded-xl bg-[#0E1526] border border-blue-500/30 space-y-3">
-                      <h4 className="text-xs font-bold text-blue-300 uppercase tracking-wider">{language === 'ar' ? 'تعديل رسوم وتكاليف الملعب' : 'Update Pitch Fees (MAD)'}</h4>
+                    <div className="p-4 rounded-xl bg-[#06140F] border border-[#E5B869]/40 space-y-3">
+                      <h4 className="text-xs font-bold text-[#F5D794] uppercase tracking-wider">{language === 'ar' ? 'تعديل رسوم وتكاليف الملعب' : 'Update Pitch Fees (MAD)'}</h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="text-[11px] text-slate-400 block mb-1">{language === 'ar' ? 'إجمالي إيجار الملعب (درهم)' : 'Total Pitch Rental (MAD)'}</label>
+                          <label className="text-[11px] text-slate-300 block mb-1">{language === 'ar' ? 'إجمالي إيجار الملعب (درهم)' : 'Total Pitch Rental (MAD)'}</label>
                           <input
                             type="number"
                             min={0}
@@ -576,11 +576,11 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                             placeholder="e.g. 30, 600, 700"
                             value={editTotalCost}
                             onChange={(e) => setEditTotalCost(e.target.value === '' ? '' : Number(e.target.value))}
-                            className="w-full bg-[#090D16] border border-[#1E293B] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                            className="w-full bg-[#081813] border border-[#E5B869]/30 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#E5B869]"
                           />
                         </div>
                         <div>
-                          <label className="text-[11px] text-slate-400 block mb-1">{language === 'ar' ? 'رسوم كل لاعب (درهم)' : 'Player Fee (MAD)'}</label>
+                          <label className="text-[11px] text-slate-300 block mb-1">{language === 'ar' ? 'رسوم كل لاعب (درهم)' : 'Player Fee (MAD)'}</label>
                           <input
                             type="number"
                             min={0}
@@ -588,14 +588,14 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                             placeholder="e.g. 2, 3, 50, 75"
                             value={editPricePerPlayer}
                             onChange={(e) => setEditPricePerPlayer(e.target.value === '' ? '' : Number(e.target.value))}
-                            className="w-full bg-[#090D16] border border-[#1E293B] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                            className="w-full bg-[#081813] border border-[#E5B869]/30 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-[#E5B869]"
                           />
                         </div>
                       </div>
                       <button
                         type="button"
                         onClick={handleSaveCost}
-                        className="px-4 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer"
+                        className="px-4 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 hover:brightness-110 transition-colors cursor-pointer"
                       >
                         {t('common.save')}
                       </button>
@@ -603,19 +603,19 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   )}
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="p-3 bg-[#0E1526] rounded-xl border border-[#1E293B]">
+                    <div className="p-3 bg-[#06140F] rounded-xl border border-[#E5B869]/20">
                       <span className="text-[10px] text-slate-400 block">{language === 'ar' ? 'إجمالي إيجار الملعب' : 'Total Pitch Cost'}</span>
                       <span className="text-base font-bold text-white">{formatMAD(totalCost)}</span>
                     </div>
-                    <div className="p-3 bg-[#0E1526] rounded-xl border border-[#1E293B]">
+                    <div className="p-3 bg-[#06140F] rounded-xl border border-[#E5B869]/20">
                       <span className="text-[10px] text-slate-400 block">{language === 'ar' ? 'سعر اللاعب' : 'Per Player'}</span>
                       <span className="text-base font-bold text-slate-200">{formatMAD(pricePerPlayer)}</span>
                     </div>
-                    <div className="p-3 bg-[#0E1526] rounded-xl border border-emerald-500/30">
-                      <span className="text-[10px] text-emerald-400 block">{language === 'ar' ? 'المبلغ المحصل' : 'Collected So Far'}</span>
-                      <span className="text-base font-bold text-emerald-400">{formatMAD(collectedAmount)} ({paidCount} {language === 'ar' ? 'دفعوا' : 'Paid'})</span>
+                    <div className="p-3 bg-[#06140F] rounded-xl border border-[#E5B869]/40">
+                      <span className="text-[10px] text-[#F5D794] block">{language === 'ar' ? 'المبلغ المحصل' : 'Collected So Far'}</span>
+                      <span className="text-base font-bold text-[#F5D794]">{formatMAD(collectedAmount)} ({paidCount} {language === 'ar' ? 'دفعوا' : 'Paid'})</span>
                     </div>
-                    <div className="p-3 bg-[#0E1526] rounded-xl border border-amber-500/30">
+                    <div className="p-3 bg-[#06140F] rounded-xl border border-amber-500/30">
                       <span className="text-[10px] text-amber-400 block">{language === 'ar' ? 'المتبقي لتحصيله' : 'Uncollected Balance'}</span>
                       <span className="text-base font-bold text-amber-400">{formatMAD(remainingCost)}</span>
                     </div>
@@ -623,19 +623,19 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                 </div>
 
                 {/* Location Card */}
-                <div className="bg-[#090D16] border border-[#1E293B] rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="bg-[#0A2B20] border border-[#E5B869]/25 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-[#0A3A2A] border border-[#E5B869] flex items-center justify-center text-[#E5B869] shrink-0">
                       <MapPin className="w-5 h-5" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="text-sm font-bold text-white">{match.location.venueName}</h3>
-                        <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-800 text-emerald-400 border border-emerald-500/20">
+                        <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-[#06140F] text-[#F5D794] border border-[#E5B869]/30">
                           {match.location.city || 'الدار البيضاء'}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-400 mt-0.5">{match.location.address}</p>
+                      <p className="text-xs text-slate-300 mt-0.5">{match.location.address}</p>
                     </div>
                   </div>
 
@@ -644,7 +644,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                     href={getMatchMapUrl(match.location)}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 border border-blue-400/30 transition-all shrink-0 cursor-pointer shadow-sm"
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-slate-950 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 transition-all shrink-0 cursor-pointer shadow-md"
                   >
                     <Navigation className="w-3.5 h-3.5" />
                     <span>{t('matches.viewOnMap')}</span>
@@ -656,7 +656,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                 <div className="space-y-4">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2">
-                      <Shirt className="w-4 h-4 text-emerald-400" />
+                      <Shirt className="w-4 h-4 text-[#E5B869]" />
                       <h3 className="text-sm font-bold text-white">{language === 'ar' ? 'تشكيلة الفريقين المؤكدة' : 'Confirmed Match Rosters'}</h3>
                     </div>
 
@@ -667,21 +667,21 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                             type="button"
                             onClick={() => handleAutoBalance('balanced')}
                             disabled={isActionLoading || match.roster.length < 2}
-                            className="px-2.5 py-1 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-40"
+                            className="px-2.5 py-1 bg-[#0A3A2A] hover:bg-[#0E4836] text-[#F5D794] border border-[#E5B869] text-xs font-semibold rounded-lg transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-40"
                             title="Auto-Balance Teams (Skill Snake Draft)"
                           >
-                            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                            <Sparkles className="w-3.5 h-3.5 text-[#E5B869]" />
                             <span>{language === 'ar' ? 'توزيع ذكي متوازن' : 'Skill Snake Draft'}</span>
                           </button>
                         </div>
                       )}
 
-                      <div className="flex items-center gap-1 bg-[#090D16] p-1 rounded-lg border border-[#1E293B] text-xs">
+                      <div className="flex items-center gap-1 bg-[#06140F] p-1 rounded-lg border border-[#E5B869]/25 text-xs">
                         <button
                           type="button"
                           onClick={() => setSelectedBibFilter('all')}
                           className={`px-2.5 py-1 rounded font-medium transition-colors cursor-pointer ${
-                            selectedBibFilter === 'all' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'
+                            selectedBibFilter === 'all' ? 'bg-gradient-to-r from-[#F5D794] to-[#E5B869] text-slate-950 font-bold' : 'text-slate-300 hover:text-white'
                           }`}
                         >
                           {language === 'ar' ? 'الكل' : 'All'} ({match.roster.length})
@@ -690,7 +690,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                           type="button"
                           onClick={() => setSelectedBibFilter('green')}
                           className={`px-2.5 py-1 rounded font-medium transition-colors cursor-pointer ${
-                            selectedBibFilter === 'green' ? 'bg-emerald-600 text-white' : 'text-emerald-400'
+                            selectedBibFilter === 'green' ? 'bg-[#0A3A2A] text-[#F5D794] border border-[#E5B869]' : 'text-slate-300'
                           }`}
                         >
                           {t('matches.greenTeam')} ({greenTeam.length})
@@ -711,20 +711,20 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   {/* Green vs Blue Grid */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {(selectedBibFilter === 'all' || selectedBibFilter === 'green') && (
-                      <div className="bg-[#090D16] border border-emerald-500/30 rounded-2xl p-4 space-y-3">
-                        <div className="flex items-center justify-between pb-2 border-b border-emerald-500/20">
+                      <div className="bg-[#0A2B20] border border-[#E5B869]/35 rounded-2xl p-4 space-y-3 shadow-md">
+                        <div className="flex items-center justify-between pb-2 border-b border-[#E5B869]/25">
                           <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-emerald-400 shadow-sm" />
-                            <span className="text-sm font-bold text-emerald-400">{t('matches.greenTeam')}</span>
+                            <div className="w-3 h-3 rounded-full bg-[#E5B869] shadow-sm" />
+                            <span className="text-sm font-bold text-[#F5D794]">{t('matches.greenTeam')}</span>
                           </div>
-                          <span className="text-xs font-semibold text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/20">
+                          <span className="text-xs font-semibold text-[#F5D794] bg-[#0A3A2A] px-2 py-0.5 rounded border border-[#E5B869]">
                             {greenTeam.length} {language === 'ar' ? 'لاعبين' : 'Players'}
                           </span>
                         </div>
 
                         <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                           {greenTeam.length === 0 ? (
-                            <p className="text-xs text-slate-500 py-3 text-center">{language === 'ar' ? 'لا يوجد لاعبون في الفريق الأخضر بعد.' : 'No players assigned to Green yet.'}</p>
+                            <p className="text-xs text-slate-400 py-3 text-center">{language === 'ar' ? 'لا يوجد لاعبون في الفريق الأخضر بعد.' : 'No players assigned to Green yet.'}</p>
                           ) : (
                             greenTeam.map((player) => {
                               const isPaid = paidPlayerIds.includes(player.userId);
@@ -732,26 +732,26 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                               return (
                                 <div
                                   key={player.userId}
-                                  className="flex items-center justify-between p-2.5 rounded-xl bg-[#0E1526] border border-[#1E293B] hover:border-emerald-500/30 transition-colors"
+                                  className="flex items-center justify-between p-2.5 rounded-xl bg-[#06140F] border border-[#E5B869]/25 hover:border-[#E5B869]/50 transition-colors"
                                 >
                                   <div className="flex items-center gap-2.5 min-w-0">
                                     <img
                                       src={player.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${player.name}`}
                                       alt={player.name}
-                                      className="w-8 h-8 rounded-full object-cover border border-emerald-500/40 shrink-0"
+                                      className="w-8 h-8 rounded-full object-cover border border-[#E5B869]/50 shrink-0"
                                       referrerPolicy="no-referrer"
                                     />
                                     <div className="min-w-0">
                                       <div className="flex items-center gap-1.5">
                                         <span className="text-xs font-semibold text-white truncate">{player.name}</span>
                                         {player.isHost && (
-                                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300">
+                                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-[#E5B869]/20 text-[#F5D794] border border-[#E5B869]/40">
                                             {language === 'ar' ? 'المنظم' : 'Host'}
                                           </span>
                                         )}
                                       </div>
                                       <div className="flex items-center gap-1.5 mt-0.5">
-                                        <span className="text-[10px] text-emerald-400 font-bold">
+                                        <span className="text-[10px] text-[#E5B869] font-bold">
                                           {reliability}% {language === 'ar' ? 'موثوقية' : 'Rel.'}
                                         </span>
                                         <span className="text-[10px] text-slate-500">•</span>
@@ -761,12 +761,12 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                                           disabled={!canManage}
                                           className={`px-1.5 py-0.2 rounded text-[9px] font-bold flex items-center gap-1 transition-all ${
                                             isPaid
-                                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                              ? 'bg-[#0A3A2A] text-[#F5D794] border border-[#E5B869]'
                                               : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                                           } ${canManage ? 'cursor-pointer hover:scale-105' : ''}`}
                                           title={canManage ? 'Click to toggle payment' : undefined}
                                         >
-                                          <CheckCircle2 className={`w-2.5 h-2.5 ${isPaid ? 'text-emerald-400' : 'text-rose-400'}`} />
+                                          <CheckCircle2 className={`w-2.5 h-2.5 ${isPaid ? 'text-[#E5B869]' : 'text-rose-400'}`} />
                                           <span>{isPaid ? (language === 'ar' ? 'تم الدفع (درهم)' : 'Paid (MAD)') : (language === 'ar' ? 'لم يدفع' : 'Unpaid')}</span>
                                         </button>
                                       </div>
@@ -777,7 +777,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                                     {player.userId !== currentUser.id && onOpenDirectMessage && (
                                       <button
                                         onClick={() => onOpenDirectMessage(player.userId)}
-                                        className="p-1 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded transition-colors cursor-pointer"
+                                        className="p-1 text-slate-400 hover:text-[#F5D794] hover:bg-[#0A2B20] rounded transition-colors cursor-pointer"
                                         title={`Message ${player.name}`}
                                       >
                                         <MessageCircle className="w-3.5 h-3.5" />
@@ -812,7 +812,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                     )}
 
                     {(selectedBibFilter === 'all' || selectedBibFilter === 'blue') && (
-                      <div className="bg-[#090D16] border border-blue-500/30 rounded-2xl p-4 space-y-3">
+                      <div className="bg-[#0A2B20] border border-blue-500/35 rounded-2xl p-4 space-y-3 shadow-md">
                         <div className="flex items-center justify-between pb-2 border-b border-blue-500/20">
                           <div className="flex items-center gap-2">
                             <div className="w-3 h-3 rounded-full bg-blue-400 shadow-sm" />
@@ -825,7 +825,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
 
                         <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                           {blueTeam.length === 0 ? (
-                            <p className="text-xs text-slate-500 py-3 text-center">{language === 'ar' ? 'لا يوجد لاعبون في الفريق الأزرق بعد.' : 'No players assigned to Blue yet.'}</p>
+                            <p className="text-xs text-slate-400 py-3 text-center">{language === 'ar' ? 'لا يوجد لاعبون في الفريق الأزرق بعد.' : 'No players assigned to Blue yet.'}</p>
                           ) : (
                             blueTeam.map((player) => {
                               const isPaid = paidPlayerIds.includes(player.userId);
@@ -833,7 +833,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                               return (
                                 <div
                                   key={player.userId}
-                                  className="flex items-center justify-between p-2.5 rounded-xl bg-[#0E1526] border border-[#1E293B] hover:border-blue-500/30 transition-colors"
+                                  className="flex items-center justify-between p-2.5 rounded-xl bg-[#06140F] border border-[#1E293B] hover:border-blue-500/30 transition-colors"
                                 >
                                   <div className="flex items-center gap-2.5 min-w-0">
                                     <img
@@ -846,7 +846,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                                       <div className="flex items-center gap-1.5">
                                         <span className="text-xs font-semibold text-white truncate">{player.name}</span>
                                         {player.isHost && (
-                                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300">
+                                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-[#E5B869]/20 text-[#F5D794]">
                                             {language === 'ar' ? 'المنظم' : 'Host'}
                                           </span>
                                         )}
@@ -862,12 +862,12 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                                           disabled={!canManage}
                                           className={`px-1.5 py-0.2 rounded text-[9px] font-bold flex items-center gap-1 transition-all ${
                                             isPaid
-                                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                              ? 'bg-[#0A3A2A] text-[#F5D794] border border-[#E5B869]'
                                               : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                                           } ${canManage ? 'cursor-pointer hover:scale-105' : ''}`}
                                           title={canManage ? 'Click to toggle payment' : undefined}
                                         >
-                                          <CheckCircle2 className={`w-2.5 h-2.5 ${isPaid ? 'text-emerald-400' : 'text-rose-400'}`} />
+                                          <CheckCircle2 className={`w-2.5 h-2.5 ${isPaid ? 'text-[#E5B869]' : 'text-rose-400'}`} />
                                           <span>{isPaid ? (language === 'ar' ? 'تم الدفع (درهم)' : 'Paid (MAD)') : (language === 'ar' ? 'لم يدفع' : 'Unpaid')}</span>
                                         </button>
                                       </div>
@@ -878,7 +878,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                                     {player.userId !== currentUser.id && onOpenDirectMessage && (
                                       <button
                                         onClick={() => onOpenDirectMessage(player.userId)}
-                                        className="p-1 text-slate-400 hover:text-blue-400 hover:bg-slate-800 rounded transition-colors cursor-pointer"
+                                        className="p-1 text-slate-400 hover:text-blue-400 hover:bg-[#0A2B20] rounded transition-colors cursor-pointer"
                                         title={`Message ${player.name}`}
                                       >
                                         <MessageCircle className="w-3.5 h-3.5" />
@@ -888,7 +888,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                                     {canManage && (
                                       <button
                                         onClick={() => assignPlayerTeam(match.id, player.userId, 'green')}
-                                        className="px-2 py-1 text-[10px] font-medium rounded bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/40 transition-colors cursor-pointer"
+                                        className="px-2 py-1 text-[10px] font-medium rounded bg-[#0A3A2A] text-[#F5D794] hover:bg-[#0E4836] border border-[#E5B869]/40 transition-colors cursor-pointer"
                                       >
                                         ➔ {t('matches.greenTeam')}
                                       </button>
@@ -915,44 +915,44 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                 </div>
 
                 {/* Match Chat & Voice Board */}
-                <div className="bg-[#090D16] border border-[#1E293B] rounded-2xl p-4 space-y-4">
-                  <div className="flex items-center justify-between pb-2 border-b border-[#1E293B]">
+                <div className="bg-[#0A2B20] border border-[#E5B869]/25 rounded-2xl p-4 space-y-4 shadow-lg">
+                  <div className="flex items-center justify-between pb-2 border-b border-[#E5B869]/20">
                     <div className="flex items-center gap-2">
-                      <MessageSquare className="w-4 h-4 text-blue-400" />
+                      <MessageSquare className="w-4 h-4 text-[#E5B869]" />
                       <h3 className="text-sm font-bold text-white">{language === 'ar' ? 'نقاش المباراة والرسائل الصوتية' : 'Match Discussion & Voice Notes'}</h3>
                     </div>
-                    <span className="text-xs text-slate-400">{matchComments.length} {language === 'ar' ? 'رسالة' : 'messages'}</span>
+                    <span className="text-xs text-slate-300">{matchComments.length} {language === 'ar' ? 'رسالة' : 'messages'}</span>
                   </div>
 
                   <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
                     {matchComments.length === 0 ? (
-                      <div className="text-center py-6 text-slate-500 text-xs">
+                      <div className="text-center py-6 text-slate-400 text-xs">
                         {language === 'ar' ? 'لا يوجد نقاش حتى الآن. نسق مع الفريق هنا!' : 'No discussion yet. Coordinate bibs, balls, or carpools here!'}
                       </div>
                     ) : (
                       matchComments.map((comment) => (
-                        <div key={comment.id} className="p-3 rounded-xl bg-[#0E1526] border border-[#1E293B] space-y-1.5">
+                        <div key={comment.id} className="p-3 rounded-xl bg-[#06140F] border border-[#E5B869]/20 space-y-1.5">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <img
                                 src={comment.userAvatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${comment.userName}`}
                                 alt={comment.userName}
-                                className="w-6 h-6 rounded-full object-cover"
+                                className="w-6 h-6 rounded-full object-cover border border-[#E5B869]/30"
                                 referrerPolicy="no-referrer"
                               />
                               <span className="text-xs font-semibold text-white">{comment.userName}</span>
                               {isSuperAdminEmail(comment.userEmail) && (
-                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300">
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-[#0A3A2A] text-[#F5D794] border border-[#E5B869]">
                                   {language === 'ar' ? 'مشرف' : 'Admin'}
                                 </span>
                               )}
                             </div>
-                            <span className="text-[10px] text-slate-500 font-mono">
+                            <span className="text-[10px] text-slate-400 font-mono">
                               {new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
 
-                          {comment.text && <p className="text-xs text-slate-300 pl-8 rtl:pr-8 rtl:pl-0 leading-relaxed">{comment.text}</p>}
+                          {comment.text && <p className="text-xs text-slate-200 pl-8 rtl:pr-8 rtl:pl-0 leading-relaxed">{comment.text}</p>}
 
                           {comment.audioUrl && (
                             <div className="pl-8 rtl:pr-8 rtl:pl-0 pt-1">
@@ -967,7 +967,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                     )}
                   </div>
 
-                  <div className="pt-2 border-t border-[#1E293B] space-y-2">
+                  <div className="pt-2 border-t border-[#E5B869]/20 space-y-2">
                     <form onSubmit={handlePostComment} className="flex items-center gap-2">
                       <input
                         id="match-comment-input"
@@ -975,18 +975,18 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                         placeholder={language === 'ar' ? 'اكتب رسالة للاعبين في التشكيلة...' : 'Post an update for the squad...'}
                         value={commentText}
                         onChange={(e) => setCommentText(e.target.value)}
-                        className="flex-1 bg-[#0E1526] border border-[#1E293B] focus:border-blue-500 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none transition-colors"
+                        className="flex-1 bg-[#06140F] border border-[#E5B869]/30 focus:border-[#E5B869] rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-400 focus:outline-none transition-colors"
                       />
                       <button
                         type="submit"
                         disabled={!commentText.trim()}
-                        className="p-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white transition-colors cursor-pointer"
+                        className="p-2 rounded-xl bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 text-slate-950 font-black disabled:opacity-40 transition-colors cursor-pointer shadow-md"
                       >
                         <Send className="w-4 h-4" />
                       </button>
                     </form>
 
-                    <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
+                    <div className="flex items-center justify-between text-xs text-slate-300 pt-1">
                       <span className="text-[11px]">{language === 'ar' ? 'أو سجل رسالة صوتية للمباراة:' : 'Or record a voice message:'}</span>
                       <VoiceNoteRecorder onSendAudio={handleSendVoiceNote} />
                     </div>
@@ -1023,17 +1023,17 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
 
             {/* TAB 4: ATTENDANCE */}
             {activeModalTab === 'attendance' && (
-              <div className="bg-[#090D16] border border-[#1E293B] rounded-2xl p-5 space-y-4">
+              <div className="bg-[#0A2B20] border border-[#E5B869]/25 rounded-2xl p-5 space-y-4 shadow-lg">
                 <div>
                   <h3 className="font-bold text-white text-base">{language === 'ar' ? 'تسجيل الحضور ومؤشر الموثوقية' : 'Attendance & Reliability Tracking'}</h3>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-300">
                     {language === 'ar' ? 'سجل حضور اللاعبين لتحديث مؤشرات الالتزام والموثوقية واللعب النظيف.' : 'Record player attendance to update player reliability and fair play scores.'}
                   </p>
                 </div>
 
                 {attendanceSuccessMessage && (
-                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
-                    <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <div className="p-3 rounded-xl bg-[#0A3A2A] border border-[#E5B869] text-[#F5D794] text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+                    <CheckCircle className="w-4 h-4 text-[#E5B869] shrink-0" />
                     {attendanceSuccessMessage}
                   </div>
                 )}
@@ -1046,17 +1046,17 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                     return (
                       <div
                         key={player.userId}
-                        className="flex items-center justify-between p-3 bg-[#0E1526] border border-[#1E293B] rounded-xl"
+                        className="flex items-center justify-between p-3 bg-[#06140F] border border-[#E5B869]/20 rounded-xl"
                       >
                         <div className="flex items-center gap-3">
                           <img
                             src={player.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${player.name}`}
                             alt={player.name}
-                            className="w-8 h-8 rounded-full object-cover"
+                            className="w-8 h-8 rounded-full object-cover border border-[#E5B869]/30"
                           />
                           <div>
                             <div className="text-xs font-bold text-white">{player.name}</div>
-                            <div className="text-[11px] text-slate-400">{player.team === 'green' ? t('matches.greenTeam') : t('matches.blueTeam')}</div>
+                            <div className="text-[11px] text-slate-300">{player.team === 'green' ? t('matches.greenTeam') : t('matches.blueTeam')}</div>
                           </div>
                         </div>
 
@@ -1073,8 +1073,8 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                             }}
                             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                               isAttended
-                                ? 'bg-emerald-600 text-white'
-                                : 'bg-slate-800 text-slate-400 hover:text-emerald-300'
+                                ? 'bg-[#0A3A2A] text-[#F5D794] border border-[#E5B869] font-bold'
+                                : 'bg-[#081813] text-slate-300 hover:text-white border border-[#E5B869]/20'
                             }`}
                           >
                             {language === 'ar' ? 'حضر' : 'Attended'}
@@ -1093,7 +1093,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
                               isNoShow
                                 ? 'bg-rose-600 text-white'
-                                : 'bg-slate-800 text-slate-400 hover:text-rose-300'
+                                : 'bg-[#081813] text-slate-400 hover:text-rose-300 border border-[#E5B869]/20'
                             }`}
                           >
                             {language === 'ar' ? 'غائب (No Show)' : 'No Show'}
@@ -1104,12 +1104,12 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   })}
                 </div>
 
-                <div className="pt-3 border-t border-[#1E293B] flex justify-end">
+                <div className="pt-3 border-t border-[#E5B869]/20 flex justify-end">
                   <button
                     type="button"
                     onClick={handleSaveAttendance}
                     disabled={isSavingAttendance || (attendedIds.length === 0 && noShowIds.length === 0)}
-                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition-colors cursor-pointer disabled:opacity-50"
+                    className="px-5 py-2.5 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 hover:brightness-110 font-black text-xs rounded-xl transition-colors cursor-pointer disabled:opacity-50 shadow-md"
                   >
                     {isSavingAttendance ? t('common.loading') : (language === 'ar' ? 'حفظ الحضور وتحديث النقاط' : 'Record Attendance & Update Scores')}
                   </button>
@@ -1119,11 +1119,11 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
           </div>
 
           {/* Sticky Footer */}
-          <div className="p-4 sm:p-5 border-t border-[#1E293B] bg-[#090D16]/95 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="text-xs text-slate-400 text-center sm:text-start">
+          <div className="p-4 sm:p-5 border-t border-[#E5B869]/25 bg-[#06140F]/95 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="text-xs text-slate-300 text-center sm:text-start">
               {isUserInRoster ? (
-                <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                  <Check className="w-4 h-4" /> {language === 'ar' ? 'أنت مسجل في التشكيلة الأساسية المؤكدة!' : 'You are on the confirmed roster!'}
+                <span className="text-[#F5D794] font-semibold flex items-center gap-1">
+                  <Check className="w-4 h-4 text-[#E5B869]" /> {language === 'ar' ? 'أنت مسجل في التشكيلة الأساسية المؤكدة!' : 'You are on the confirmed roster!'}
                 </span>
               ) : isUserInWaitlist ? (
                 <span className="text-amber-300 font-semibold">
@@ -1160,7 +1160,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   <span>{language === 'ar' ? 'مغادرة قائمة الانتظار' : 'Leave Waitlist'}</span>
                 </button>
               ) : match.isLocked ? (
-                <div className="text-xs font-bold text-slate-500 bg-slate-800 px-4 py-2 rounded-xl border border-slate-700">
+                <div className="text-xs font-bold text-slate-400 bg-[#0A2B20] px-4 py-2 rounded-xl border border-[#E5B869]/30">
                   {language === 'ar' ? 'التشكيلة مغلقة' : 'Roster Locked'}
                 </div>
               ) : (
@@ -1170,9 +1170,9 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                     type="button"
                     onClick={() => handleJoin('green')}
                     disabled={isActionLoading}
-                    className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-sm transition-all cursor-pointer"
+                    className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-[#F5D794] bg-[#0A3A2A] hover:bg-[#0E4836] border border-[#E5B869] shadow-md transition-all cursor-pointer hover:scale-105"
                   >
-                    <Shirt className="w-3.5 h-3.5" />
+                    <Shirt className="w-3.5 h-3.5 text-[#E5B869]" />
                     <span>{language === 'ar' ? 'انضم للأخضر' : 'Join Green'}</span>
                   </button>
                   <button
@@ -1180,7 +1180,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                     type="button"
                     onClick={() => handleJoin('blue')}
                     disabled={isActionLoading}
-                    className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 shadow-sm transition-all cursor-pointer"
+                    className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 shadow-md transition-all cursor-pointer hover:scale-105"
                   >
                     <Shirt className="w-3.5 h-3.5" />
                     <span>{language === 'ar' ? 'انضم للأزرق' : 'Join Blue'}</span>

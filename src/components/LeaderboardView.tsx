@@ -157,42 +157,42 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
   return (
     <div id="leaderboard-view" className="space-y-6 animate-in fade-in duration-300 pb-12">
       {/* Header Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0F172A] via-[#1E293B] to-[#0A0F1D] border border-amber-500/30 p-6 md:p-8 shadow-2xl">
-        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/3 -mb-10 w-48 h-48 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#081813] via-[#0A3A2A] to-[#081813] border border-[#E5B869]/35 p-6 md:p-8 shadow-2xl">
+        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-[#E5B869]/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-1/3 -mb-10 w-48 h-48 bg-[#0E4836]/40 rounded-full blur-2xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-black uppercase tracking-wider mb-2">
-              <Trophy className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0E4836] border border-[#E5B869]/40 text-[#F5D794] text-xs font-black uppercase tracking-wider mb-2">
+              <Trophy className="w-3.5 h-3.5 text-[#E5B869]" />
               <span>{language === 'ar' ? 'لوحة الشرف وتصنيف اللاعبين' : 'Hall of Fame & Player Rankings'}</span>
             </div>
             <h1 className="text-2xl md:text-4xl font-black text-white tracking-tight flex items-center gap-3">
               <span>{t('leaderboard.title')}</span>
-              <span className="text-xs md:text-sm font-bold px-2.5 py-1 bg-amber-400/20 text-amber-300 rounded-xl border border-amber-400/40">
+              <span className="text-xs md:text-sm font-bold px-2.5 py-1 bg-[#0E4836] text-[#F5D794] rounded-xl border border-[#E5B869]/40">
                 {language === 'ar' ? 'المغرب 🇲🇦' : 'Morocco 🇲🇦'}
               </span>
             </h1>
-            <p className="text-slate-300 text-sm md:text-base mt-1.5 max-w-2xl">
+            <p className="text-emerald-200/90 text-sm md:text-base mt-1.5 max-w-2xl">
               {t('leaderboard.subtitle')}
             </p>
           </div>
 
           {/* Quick Stat Highlights */}
-          <div className="flex items-center gap-3 self-start md:self-auto bg-slate-900/80 backdrop-blur-md p-3.5 rounded-2xl border border-slate-800">
-            <div className="text-center px-3 border-r rtl:border-r-0 rtl:border-l border-slate-800">
-              <div className="text-lg md:text-xl font-black text-amber-400">{enrichedUsers.length}</div>
-              <div className="text-[10px] font-bold uppercase text-slate-400">{t('common.players')}</div>
+          <div className="flex items-center gap-3 self-start md:self-auto bg-[#081813]/90 backdrop-blur-md p-3.5 rounded-2xl border border-[#E5B869]/25">
+            <div className="text-center px-3 border-r rtl:border-r-0 rtl:border-l border-[#E5B869]/20">
+              <div className="text-lg md:text-xl font-black text-[#F5D794]">{enrichedUsers.length}</div>
+              <div className="text-[10px] font-bold uppercase text-emerald-300/70">{t('common.players')}</div>
             </div>
-            <div className="text-center px-3 border-r rtl:border-r-0 rtl:border-l border-slate-800">
-              <div className="text-lg md:text-xl font-black text-emerald-400">{matches.length}</div>
-              <div className="text-[10px] font-bold uppercase text-slate-400">{language === 'ar' ? 'مباراة' : 'Matches'}</div>
+            <div className="text-center px-3 border-r rtl:border-r-0 rtl:border-l border-[#E5B869]/20">
+              <div className="text-lg md:text-xl font-black text-[#E5B869]">{matches.length}</div>
+              <div className="text-[10px] font-bold uppercase text-emerald-300/70">{language === 'ar' ? 'مباراة' : 'Matches'}</div>
             </div>
             <div className="text-center px-3">
-              <div className="text-lg md:text-xl font-black text-rose-400">
+              <div className="text-lg md:text-xl font-black text-[#F5D794]">
                 {enrichedUsers.reduce((acc, u) => acc + (u.totalGoals || 0), 0)}
               </div>
-              <div className="text-[10px] font-bold uppercase text-slate-400">{language === 'ar' ? 'هدف مسجل' : 'Goals Scored'}</div>
+              <div className="text-[10px] font-bold uppercase text-emerald-300/70">{language === 'ar' ? 'هدف مسجل' : 'Goals Scored'}</div>
             </div>
           </div>
         </div>
@@ -200,18 +200,18 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
 
       {/* Category Tab Selector */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-        <div className="grid grid-cols-3 gap-2 bg-[#0E1526] p-1.5 rounded-2xl border border-slate-800/80">
+        <div className="grid grid-cols-3 gap-2 bg-[#0A3A2A]/90 p-1.5 rounded-2xl border border-[#E5B869]/25 shadow-md">
           <button
             id="tab-motm-stars"
             type="button"
             onClick={() => setActiveCategory('motm')}
             className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs md:text-sm font-black transition-all cursor-pointer ${
               activeCategory === 'motm'
-                ? 'bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 shadow-lg shadow-amber-500/20'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+                ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 shadow-lg shadow-amber-950/30'
+                : 'text-emerald-200/80 hover:text-white hover:bg-[#0E4836]'
             }`}
           >
-            <Star className={`w-4 h-4 ${activeCategory === 'motm' ? 'fill-slate-950 text-slate-950' : 'text-amber-400'}`} />
+            <Star className={`w-4 h-4 ${activeCategory === 'motm' ? 'fill-slate-950 text-slate-950' : 'text-[#E5B869]'}`} />
             <span>{t('leaderboard.tabTopMotm')}</span>
           </button>
 
@@ -221,11 +221,11 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
             onClick={() => setActiveCategory('scorers')}
             className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs md:text-sm font-black transition-all cursor-pointer ${
               activeCategory === 'scorers'
-                ? 'bg-gradient-to-r from-rose-500 to-rose-400 text-white shadow-lg shadow-rose-500/20'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+                ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 shadow-lg shadow-amber-950/30'
+                : 'text-emerald-200/80 hover:text-white hover:bg-[#0E4836]'
             }`}
           >
-            <Flame className={`w-4 h-4 ${activeCategory === 'scorers' ? 'fill-white text-white' : 'text-rose-400'}`} />
+            <Flame className={`w-4 h-4 ${activeCategory === 'scorers' ? 'fill-slate-950 text-slate-950' : 'text-[#E5B869]'}`} />
             <span>{t('leaderboard.tabTopScorers')}</span>
           </button>
 
@@ -235,11 +235,11 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
             onClick={() => setActiveCategory('fairplay')}
             className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs md:text-sm font-black transition-all cursor-pointer ${
               activeCategory === 'fairplay'
-                ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
+                ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 shadow-lg shadow-amber-950/30'
+                : 'text-emerald-200/80 hover:text-white hover:bg-[#0E4836]'
             }`}
           >
-            <ShieldCheck className={`w-4 h-4 ${activeCategory === 'fairplay' ? 'text-slate-950' : 'text-emerald-400'}`} />
+            <ShieldCheck className={`w-4 h-4 ${activeCategory === 'fairplay' ? 'text-slate-950' : 'text-[#E5B869]'}`} />
             <span>{t('leaderboard.tabMostReliable')}</span>
           </button>
         </div>
@@ -248,13 +248,13 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           {/* Search Box */}
           <div className="relative flex-1 sm:w-56">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-emerald-400/60 absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder={language === 'ar' ? 'ابحث بالاسم أو المدينة...' : 'Search player or city...'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#0E1526] border border-slate-800 rounded-xl pl-9 rtl:pl-3 rtl:pr-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-colors"
+              className="w-full bg-[#0A3A2A] border border-[#E5B869]/25 rounded-xl pl-9 rtl:pl-3 rtl:pr-9 pr-3 py-2 text-xs text-white placeholder-emerald-400/40 focus:outline-none focus:border-[#E5B869] transition-colors"
             />
           </div>
 
@@ -263,7 +263,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
             <select
               value={selectedCity}
               onChange={(e) => setSelectedCity(e.target.value)}
-              className="bg-[#0E1526] border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-500 cursor-pointer"
+              className="bg-[#0A3A2A] border border-[#E5B869]/25 rounded-xl px-3 py-2 text-xs text-emerald-100 focus:outline-none focus:border-[#E5B869] cursor-pointer"
             >
               <option value="all">{language === 'ar' ? 'كافة المدن 🇲🇦' : 'All Cities 🇲🇦'}</option>
               {availableCities.map((c) => (
@@ -278,7 +278,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
           <select
             value={selectedPosition}
             onChange={(e) => setSelectedPosition(e.target.value)}
-            className="bg-[#0E1526] border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-amber-500 cursor-pointer"
+            className="bg-[#0A3A2A] border border-[#E5B869]/25 rounded-xl px-3 py-2 text-xs text-emerald-100 focus:outline-none focus:border-[#E5B869] cursor-pointer"
           >
             <option value="all">{language === 'ar' ? 'كافة المراكز' : 'All Positions'}</option>
             <option value="GK">{language === 'ar' ? 'حارس مرمى (GK)' : 'Goalkeeper (GK)'}</option>
@@ -294,8 +294,8 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
           {/* 2nd Place (Silver) */}
           {topThree[1] && (
-            <div className="md:order-1 bg-gradient-to-b from-slate-800/50 to-[#0E1526] border-2 border-slate-500/40 rounded-3xl p-5 shadow-xl relative overflow-hidden flex flex-col justify-between">
-              <div className="absolute top-3 right-3 rtl:right-auto rtl:left-3 w-8 h-8 rounded-full bg-slate-300/20 border border-slate-300/40 flex items-center justify-center font-black text-slate-200 text-sm">
+            <div className="md:order-1 bg-gradient-to-b from-[#0A3A2A] to-[#081813] border-2 border-emerald-400/40 rounded-3xl p-5 shadow-xl relative overflow-hidden flex flex-col justify-between">
+              <div className="absolute top-3 right-3 rtl:right-auto rtl:left-3 w-8 h-8 rounded-full bg-[#0E4836] border border-[#E5B869]/40 flex items-center justify-center font-black text-slate-200 text-sm">
                 🥈 2
               </div>
 
@@ -304,22 +304,22 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
                   src={topThree[1].avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${topThree[1].id}`}
                   alt={topThree[1].name}
                   referrerPolicy="no-referrer"
-                  className="w-14 h-14 rounded-2xl object-cover border-2 border-slate-400/50 shadow-md"
+                  className="w-14 h-14 rounded-2xl object-cover border-2 border-emerald-400/50 shadow-md"
                 />
                 <div>
                   <div className="flex items-center gap-1.5">
                     <span className="font-black text-white text-base">{topThree[1].name}</span>
                     {renderPositionBadge(topThree[1].preferredPosition)}
                   </div>
-                  <div className="text-xs text-slate-400">
+                  <div className="text-xs text-emerald-300/70">
                     {topThree[1].preferredCity || topThree[1].city || (language === 'ar' ? 'المغرب' : 'Morocco')} • #{topThree[1].jerseyNumber || '10'}
                   </div>
                 </div>
               </div>
 
-              <div className="bg-slate-900/90 rounded-2xl p-3 border border-slate-800 flex items-center justify-between">
+              <div className="bg-[#081813] rounded-2xl p-3 border border-[#E5B869]/20 flex items-center justify-between">
                 <div>
-                  <div className="text-[10px] uppercase font-bold text-slate-400">
+                  <div className="text-[10px] uppercase font-bold text-emerald-300/70">
                     {activeCategory === 'motm' ? t('leaderboard.motmCount') : activeCategory === 'scorers' ? t('leaderboard.goalsCount') : t('leaderboard.reliabilityScore')}
                   </div>
                   <div className="text-xl font-black text-slate-200">
@@ -330,9 +330,9 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
                       : `${topThree[1].reliability}% 🛡️`}
                   </div>
                 </div>
-                <div className="text-right rtl:text-left text-xs text-slate-400">
+                <div className="text-right rtl:text-left text-xs text-emerald-300/70">
                   <div>{topThree[1].matchesPlayed} {language === 'ar' ? 'مباراة' : 'Matches'}</div>
-                  <div className="text-emerald-400 font-bold">{topThree[1].reliability}% {language === 'ar' ? 'حضور' : 'Attended'}</div>
+                  <div className="text-[#F5D794] font-bold">{topThree[1].reliability}% {language === 'ar' ? 'حضور' : 'Attended'}</div>
                 </div>
               </div>
             </div>
@@ -340,8 +340,8 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
 
           {/* 1st Place (Gold Champion) */}
           {topThree[0] && (
-            <div className="md:order-2 bg-gradient-to-b from-amber-950/40 via-[#0F172A] to-[#0A0F1D] border-2 border-amber-400/80 rounded-3xl p-6 shadow-2xl relative overflow-hidden flex flex-col justify-between -mt-2 md:-mt-4">
-              <div className="absolute top-0 right-0 rtl:right-auto rtl:left-0 bg-gradient-to-l rtl:bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 text-xs font-black px-4 py-1.5 rounded-bl-2xl rtl:rounded-bl-none rtl:rounded-br-2xl shadow-lg flex items-center gap-1">
+            <div className="md:order-2 bg-gradient-to-b from-[#0E4836] via-[#0A3A2A] to-[#081813] border-2 border-[#E5B869] rounded-3xl p-6 shadow-2xl relative overflow-hidden flex flex-col justify-between -mt-2 md:-mt-4">
+              <div className="absolute top-0 right-0 rtl:right-auto rtl:left-0 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 text-xs font-black px-4 py-1.5 rounded-bl-2xl rtl:rounded-bl-none rtl:rounded-br-2xl shadow-lg flex items-center gap-1">
                 <CrownIcon className="w-3.5 h-3.5 fill-slate-950" />
                 <span>{language === 'ar' ? 'المتصدر الأول 👑' : 'LEADER #1'}</span>
               </div>
@@ -352,9 +352,9 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
                     src={topThree[0].avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${topThree[0].id}`}
                     alt={topThree[0].name}
                     referrerPolicy="no-referrer"
-                    className="w-18 h-18 rounded-2xl object-cover border-2 border-amber-400 shadow-xl shadow-amber-500/20"
+                    className="w-18 h-18 rounded-2xl object-cover border-2 border-[#E5B869] shadow-xl shadow-black/40"
                   />
-                  <div className="absolute -bottom-2 -right-2 rtl:-right-auto rtl:-left-2 w-7 h-7 rounded-xl bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center shadow-md">
+                  <div className="absolute -bottom-2 -right-2 rtl:-right-auto rtl:-left-2 w-7 h-7 rounded-xl bg-[#E5B869] text-slate-950 font-black text-xs flex items-center justify-center shadow-md">
                     👑
                   </div>
                 </div>
@@ -363,23 +363,23 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
                     <span className="font-black text-white text-lg md:text-xl">{topThree[0].name}</span>
                     {renderPositionBadge(topThree[0].preferredPosition)}
                   </div>
-                  <div className="text-xs text-amber-300/80 font-medium">
+                  <div className="text-xs text-[#F5D794] font-medium">
                     {topThree[0].preferredCity || topThree[0].city || (language === 'ar' ? 'المغرب' : 'Morocco')} • #{topThree[0].jerseyNumber || '10'}
                   </div>
                   <div className="mt-1 flex items-center gap-2">
-                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#0E4836] text-[#F5D794] font-bold border border-[#E5B869]/40">
                       🏆 {language === 'ar' ? 'لوحة الشرف' : 'Hall of Fame'}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-gradient-to-r from-amber-950/60 to-slate-900 rounded-2xl p-4 border border-amber-500/40 flex items-center justify-between">
+              <div className="bg-gradient-to-r from-[#0E4836] to-[#0A3A2A] rounded-2xl p-4 border border-[#E5B869]/40 flex items-center justify-between">
                 <div>
-                  <div className="text-[10px] uppercase font-bold text-amber-400">
+                  <div className="text-[10px] uppercase font-bold text-[#E5B869]">
                     {activeCategory === 'motm' ? t('leaderboard.motmCount') : activeCategory === 'scorers' ? t('leaderboard.goalsCount') : t('leaderboard.reliabilityScore')}
                   </div>
-                  <div className="text-2xl md:text-3xl font-black text-amber-300">
+                  <div className="text-2xl md:text-3xl font-black text-[#F5D794]">
                     {activeCategory === 'motm'
                       ? `${topThree[0].totalMotm} ⭐`
                       : activeCategory === 'scorers'
@@ -387,9 +387,9 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
                       : `${topThree[0].reliability}% 🛡️`}
                   </div>
                 </div>
-                <div className="text-right rtl:text-left text-xs text-slate-300">
+                <div className="text-right rtl:text-left text-xs text-emerald-200">
                   <div className="font-bold">{topThree[0].matchesPlayed} {language === 'ar' ? 'مباراة ملعوبة' : 'Matches Played'}</div>
-                  <div className="text-emerald-400 font-bold">{topThree[0].reliability}% {t('leaderboard.reliabilityScore')}</div>
+                  <div className="text-[#F5D794] font-bold">{topThree[0].reliability}% {t('leaderboard.reliabilityScore')}</div>
                 </div>
               </div>
             </div>
@@ -397,8 +397,8 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
 
           {/* 3rd Place (Bronze) */}
           {topThree[2] && (
-            <div className="md:order-3 bg-gradient-to-b from-amber-950/20 to-[#0E1526] border-2 border-amber-700/40 rounded-3xl p-5 shadow-xl relative overflow-hidden flex flex-col justify-between">
-              <div className="absolute top-3 right-3 rtl:right-auto rtl:left-3 w-8 h-8 rounded-full bg-amber-700/20 border border-amber-700/40 flex items-center justify-center font-black text-amber-300 text-sm">
+            <div className="md:order-3 bg-gradient-to-b from-[#0A3A2A] to-[#081813] border-2 border-[#E5B869]/40 rounded-3xl p-5 shadow-xl relative overflow-hidden flex flex-col justify-between">
+              <div className="absolute top-3 right-3 rtl:right-auto rtl:left-3 w-8 h-8 rounded-full bg-[#0E4836] border border-[#E5B869]/40 flex items-center justify-center font-black text-[#F5D794] text-sm">
                 🥉 3
               </div>
 
@@ -407,25 +407,25 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
                   src={topThree[2].avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${topThree[2].id}`}
                   alt={topThree[2].name}
                   referrerPolicy="no-referrer"
-                  className="w-14 h-14 rounded-2xl object-cover border-2 border-amber-700/50 shadow-md"
+                  className="w-14 h-14 rounded-2xl object-cover border-2 border-[#E5B869]/40 shadow-md"
                 />
                 <div>
                   <div className="flex items-center gap-1.5">
                     <span className="font-black text-white text-base">{topThree[2].name}</span>
                     {renderPositionBadge(topThree[2].preferredPosition)}
                   </div>
-                  <div className="text-xs text-slate-400">
+                  <div className="text-xs text-emerald-300/70">
                     {topThree[2].preferredCity || topThree[2].city || (language === 'ar' ? 'المغرب' : 'Morocco')} • #{topThree[2].jerseyNumber || '10'}
                   </div>
                 </div>
               </div>
 
-              <div className="bg-slate-900/90 rounded-2xl p-3 border border-slate-800 flex items-center justify-between">
+              <div className="bg-[#081813] rounded-2xl p-3 border border-[#E5B869]/20 flex items-center justify-between">
                 <div>
-                  <div className="text-[10px] uppercase font-bold text-slate-400">
+                  <div className="text-[10px] uppercase font-bold text-emerald-300/70">
                     {activeCategory === 'motm' ? t('leaderboard.motmCount') : activeCategory === 'scorers' ? t('leaderboard.goalsCount') : t('leaderboard.reliabilityScore')}
                   </div>
-                  <div className="text-xl font-black text-amber-200">
+                  <div className="text-xl font-black text-[#F5D794]">
                     {activeCategory === 'motm'
                       ? `${topThree[2].totalMotm} ⭐`
                       : activeCategory === 'scorers'
@@ -433,9 +433,9 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
                       : `${topThree[2].reliability}% 🛡️`}
                   </div>
                 </div>
-                <div className="text-right rtl:text-left text-xs text-slate-400">
+                <div className="text-right rtl:text-left text-xs text-emerald-300/70">
                   <div>{topThree[2].matchesPlayed} {language === 'ar' ? 'مباراة' : 'Matches'}</div>
-                  <div className="text-emerald-400 font-bold">{topThree[2].reliability}% {language === 'ar' ? 'حضور' : 'Attended'}</div>
+                  <div className="text-[#F5D794] font-bold">{topThree[2].reliability}% {language === 'ar' ? 'حضور' : 'Attended'}</div>
                 </div>
               </div>
             </div>
@@ -444,30 +444,30 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
       )}
 
       {/* Full Standings Table */}
-      <div className="bg-[#0E1526] border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
-        <div className="p-4 md:p-5 border-b border-slate-800 flex items-center justify-between">
+      <div className="bg-[#0A3A2A]/95 border border-[#E5B869]/25 rounded-3xl overflow-hidden shadow-2xl">
+        <div className="p-4 md:p-5 border-b border-[#E5B869]/20 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-amber-400" />
+            <TrendingUp className="w-4 h-4 text-[#E5B869]" />
             <h3 className="font-black text-white text-sm md:text-base">
               {language === 'ar' ? `الترتيب الكامل (${filteredAndSortedUsers.length} لاعب)` : `Full Standings (${filteredAndSortedUsers.length} Players)`}
             </h3>
           </div>
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-emerald-300/70">
             {language === 'ar' ? 'محدّث لحظياً بنتائج وإحصائيات المباريات' : 'Updated in real-time with match outcomes'}
           </span>
         </div>
 
         {filteredAndSortedUsers.length === 0 ? (
-          <div className="p-12 text-center text-slate-400">
-            <Trophy className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-            <p className="font-bold text-slate-300">{language === 'ar' ? 'لا يوجد لاعبون مطابقون للبحث والتصفية' : 'No players match the selected filters'}</p>
-            <p className="text-xs text-slate-500 mt-1">{language === 'ar' ? 'جرب تغيير خيارات التصفية حسب المدينة أو المركز.' : 'Try resetting the city or position filter.'}</p>
+          <div className="p-12 text-center text-emerald-300/70">
+            <Trophy className="w-12 h-12 text-emerald-600/60 mx-auto mb-3" />
+            <p className="font-bold text-white">{language === 'ar' ? 'لا يوجد لاعبون مطابقون للبحث والتصفية' : 'No players match the selected filters'}</p>
+            <p className="text-xs text-emerald-400/50 mt-1">{language === 'ar' ? 'جرب تغيير خيارات التصفية حسب المدينة أو المركز.' : 'Try resetting the city or position filter.'}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-start border-collapse">
               <thead>
-                <tr className="bg-slate-900/60 text-[11px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                <tr className="bg-[#081813] text-[11px] font-black uppercase tracking-wider text-[#F5D794] border-b border-[#E5B869]/20">
                   <th className="py-3.5 px-4 text-center w-16">{t('leaderboard.rank')}</th>
                   <th className="py-3.5 px-4 text-start">{t('leaderboard.player')}</th>
                   <th className="py-3.5 px-4 text-start">{t('profile.position')}</th>
@@ -479,7 +479,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
                   <th className="py-3.5 px-4 text-end">{language === 'ar' ? 'إجراءات' : 'Actions'}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 text-xs">
+              <tbody className="divide-y divide-[#E5B869]/15 text-xs">
                 {filteredAndSortedUsers.map((user, idx) => {
                   const rank = idx + 1;
                   const isCurrent = user.id === currentUser.id;
@@ -488,25 +488,25 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
                   return (
                     <tr
                       key={user.id}
-                      className={`hover:bg-slate-800/40 transition-colors ${
-                        isCurrent ? 'bg-amber-500/10' : ''
+                      className={`hover:bg-[#0E4836] transition-colors ${
+                        isCurrent ? 'bg-[#0E4836]/60' : ''
                       }`}
                     >
                       <td className="py-3.5 px-4 text-center font-black">
                         {rank === 1 ? (
-                          <span className="inline-flex w-7 h-7 rounded-xl bg-amber-400 text-slate-950 items-center justify-center shadow-md">
+                          <span className="inline-flex w-7 h-7 rounded-xl bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 items-center justify-center shadow-md">
                             🥇
                           </span>
                         ) : rank === 2 ? (
-                          <span className="inline-flex w-7 h-7 rounded-xl bg-slate-300 text-slate-950 items-center justify-center shadow-md">
+                          <span className="inline-flex w-7 h-7 rounded-xl bg-[#0E4836] text-[#F5D794] border border-[#E5B869]/40 items-center justify-center shadow-md">
                             🥈
                           </span>
                         ) : rank === 3 ? (
-                          <span className="inline-flex w-7 h-7 rounded-xl bg-amber-700 text-white items-center justify-center shadow-md">
+                          <span className="inline-flex w-7 h-7 rounded-xl bg-[#081813] text-[#F5D794] border border-[#E5B869]/40 items-center justify-center shadow-md">
                             🥉
                           </span>
                         ) : (
-                          <span className="text-slate-400">#{rank}</span>
+                          <span className="text-emerald-300/70 font-semibold">#{rank}</span>
                         )}
                       </td>
 
@@ -516,18 +516,18 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
                             src={user.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${user.id}`}
                             alt={user.name}
                             referrerPolicy="no-referrer"
-                            className="w-9 h-9 rounded-xl object-cover border border-slate-700"
+                            className="w-9 h-9 rounded-xl object-cover border border-[#E5B869]/30"
                           />
                           <div>
                             <div className="font-bold text-white flex items-center gap-1.5">
                               <span>{user.name}</span>
                               {isCurrent && (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-500 text-slate-950">
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-[#E5B869] text-slate-950">
                                   {language === 'ar' ? 'أنت' : 'YOU'}
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] text-slate-400">
+                            <div className="text-[11px] text-emerald-300/70">
                               #{user.jerseyNumber || '10'} • {tier.label}
                             </div>
                           </div>
@@ -538,27 +538,27 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
                         {renderPositionBadge(user.preferredPosition)}
                       </td>
 
-                      <td className="py-3.5 px-4 text-slate-300 font-medium">
+                      <td className="py-3.5 px-4 text-emerald-200 font-medium">
                         {user.preferredCity || user.city || (language === 'ar' ? 'المغرب' : 'Morocco')}
                       </td>
 
-                      <td className="py-3.5 px-4 text-center font-bold text-slate-300">
+                      <td className="py-3.5 px-4 text-center font-bold text-emerald-200">
                         {user.matchesPlayed}
                       </td>
 
                       <td className="py-3.5 px-4 text-center font-black">
                         {activeCategory === 'motm' ? (
-                          <span className="text-amber-400 text-sm font-black flex items-center justify-center gap-1">
-                            <Star className="w-3.5 h-3.5 fill-amber-400" />
+                          <span className="text-[#F5D794] text-sm font-black flex items-center justify-center gap-1">
+                            <Star className="w-3.5 h-3.5 fill-[#E5B869] text-[#E5B869]" />
                             <span>{user.totalMotm || 0}</span>
                           </span>
                         ) : activeCategory === 'scorers' ? (
-                          <span className="text-rose-400 text-sm font-black flex items-center justify-center gap-1">
-                            <Flame className="w-3.5 h-3.5 fill-rose-400" />
+                          <span className="text-[#F5D794] text-sm font-black flex items-center justify-center gap-1">
+                            <Flame className="w-3.5 h-3.5 fill-[#E5B869] text-[#E5B869]" />
                             <span>{user.totalGoals || 0}</span>
                           </span>
                         ) : (
-                          <span className="text-emerald-400 text-sm font-black">
+                          <span className="text-[#F5D794] text-sm font-black">
                             {user.reliability}%
                           </span>
                         )}
@@ -569,10 +569,10 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onOpenDirectMe
                           <button
                             type="button"
                             onClick={() => onOpenDirectMessage(user.id)}
-                            className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-bold rounded-xl transition-all inline-flex items-center gap-1 cursor-pointer"
+                            className="px-2.5 py-1.5 bg-[#081813] hover:bg-[#0E4836] text-[#F5D794] text-[11px] font-bold rounded-xl transition-all inline-flex items-center gap-1 cursor-pointer border border-[#E5B869]/30"
                             title={`${language === 'ar' ? 'مراسلة' : 'Chat with'} ${user.name}`}
                           >
-                            <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
+                            <MessageSquare className="w-3.5 h-3.5 text-[#E5B869]" />
                             <span>{t('leaderboard.sendMessage')}</span>
                           </button>
                         )}

@@ -103,14 +103,14 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
       className="group relative broadcast-card rounded-2xl p-5 shadow-2xl transition-all duration-300 cursor-pointer flex flex-col justify-between overflow-hidden hover:-translate-y-1"
     >
       {/* Top accent glow line */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-blue-500 opacity-70 group-hover:opacity-100 transition-opacity" />
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] opacity-70 group-hover:opacity-100 transition-opacity" />
 
       {/* Card Header */}
       <div className="space-y-3.5">
         <div className="flex items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-1.5">
             {match.format && (
-              <span className="px-2.5 py-1 rounded-lg text-[11px] font-black tracking-wider uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shadow-sm">
+              <span className="px-2.5 py-1 rounded-lg text-[11px] font-black tracking-wider uppercase bg-[#0A3A2A] text-[#F5D794] border border-[#E5B869]/40 shadow-sm">
                 {match.format}
               </span>
             )}
@@ -122,30 +122,30 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
                 {t('matches.live')}
               </span>
             ) : match.status === 'completed' ? (
-              <span className="px-2.5 py-1 rounded-lg text-[11px] font-black text-slate-300 bg-slate-800/80 border border-slate-700">
+              <span className="px-2.5 py-1 rounded-lg text-[11px] font-black text-slate-300 bg-[#081813] border border-[#E5B869]/30">
                 {t('matches.finished')}
               </span>
             ) : spotsLeft === 0 ? (
-              <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-amber-300 bg-amber-950/50 border border-amber-500/30">
+              <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-amber-300 bg-[#28180A]/80 border border-[#E5B869]/40">
                 {t('matches.full')} ({match.maxPlayers})
               </span>
             ) : (
-              <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-emerald-300 bg-emerald-950/40 border border-emerald-500/30">
+              <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold text-[#F5D794] bg-[#0A3A2A] border border-[#E5B869]/40 shadow-sm">
                 {spotsLeft} {t('matches.spotsRemaining')}
               </span>
             )}
 
             {/* Price in MAD */}
-            <span className="px-2.5 py-1 rounded-lg text-[11px] font-extrabold text-amber-300 bg-amber-950/40 border border-amber-500/30 flex items-center gap-1">
+            <span className="px-2.5 py-1 rounded-lg text-[11px] font-extrabold text-[#F5D794] bg-[#082218] border border-[#E5B869]/40 flex items-center gap-1">
               <span>{formatMAD(match.pricePerPlayer, { showZeroAsFree: true })}</span>
               {match.roster.length > 0 && match.pricePerPlayer > 0 && (
-                <span className="text-[10px] text-amber-400/80 font-mono">({paidCount}/{match.roster.length})</span>
+                <span className="text-[10px] text-[#E5B869] font-mono">({paidCount}/{match.roster.length})</span>
               )}
             </span>
 
             {match.isLocked && (
-              <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
-                <Lock className="w-2.5 h-2.5" /> {language === 'ar' ? 'مغلقة' : 'Locked'}
+              <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-[#0A241C] text-slate-400 border border-[#E5B869]/20 flex items-center gap-1">
+                <Lock className="w-2.5 h-2.5 text-[#E5B869]" /> {language === 'ar' ? 'مغلقة' : 'Locked'}
               </span>
             )}
           </div>
@@ -153,10 +153,10 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
           {/* Admin badge tag */}
           {isSuperAdminEmail(match.creatorEmail) && (
             <span
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-black bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 shrink-0 shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] font-black bg-[#0A3A2A] text-[#F5D794] border border-[#E5B869] shrink-0 shadow-md"
               title="Official match organized by Administrator Mustapha"
             >
-              <Shield className="w-3 h-3 text-emerald-400" />
+              <Shield className="w-3.5 h-3.5 text-[#E5B869]" />
               <span>{language === 'ar' ? 'المشرف مصطفى' : 'Mustapha'}</span>
             </span>
           )}
@@ -165,53 +165,53 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
         {/* Title & Live Score Banner */}
         <div>
           <div className="flex items-center justify-between gap-2">
-            <h3 className="text-base sm:text-lg font-black font-display text-white group-hover:text-emerald-300 transition-colors line-clamp-1 tracking-tight">
+            <h3 className="text-base sm:text-lg font-black font-display text-white group-hover:text-[#F5D794] transition-colors line-clamp-1 tracking-tight">
               {match.title}
             </h3>
 
             {hasScore && (
-              <div className="flex items-center gap-2 px-3 py-1 bg-slate-950/90 rounded-xl border border-slate-800 shrink-0 shadow-inner">
-                <span className="text-xs font-black text-emerald-400 font-mono">{match.score?.green ?? 0}</span>
-                <span className="text-[10px] text-slate-500 font-bold">:</span>
+              <div className="flex items-center gap-2 px-3 py-1 bg-[#081813] rounded-xl border border-[#E5B869]/30 shrink-0 shadow-inner">
+                <span className="text-xs font-black text-[#F5D794] font-mono">{match.score?.green ?? 0}</span>
+                <span className="text-[10px] text-[#E5B869] font-bold">:</span>
                 <span className="text-xs font-black text-blue-400 font-mono">{match.score?.blue ?? 0}</span>
               </div>
             )}
           </div>
 
           <div className="flex items-center justify-between gap-2 mt-2">
-            <p className="text-xs text-slate-400 flex items-center gap-1.5 line-clamp-1 min-w-0 flex-1">
-              <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span className="truncate text-slate-300 font-medium">{match.location.venueName}</span>
-              <span className="text-slate-600">•</span>
-              <span className="text-slate-400 shrink-0 font-medium">{match.location.city || 'الدار البيضاء'}</span>
+            <p className="text-xs text-slate-300 flex items-center gap-1.5 line-clamp-1 min-w-0 flex-1">
+              <MapPin className="w-3.5 h-3.5 text-[#E5B869] shrink-0" />
+              <span className="truncate text-slate-100 font-medium">{match.location.venueName}</span>
+              <span className="text-[#E5B869]/40">•</span>
+              <span className="text-slate-300 shrink-0 font-medium">{match.location.city || 'الدار البيضاء'}</span>
             </p>
 
             <button
               id={`match-card-maps-btn-${match.id}`}
               type="button"
               onClick={handleOpenMaps}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-400/50 transition-all cursor-pointer shrink-0 shadow-sm"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold text-[#F5D794] bg-[#0A3A2A] hover:bg-[#0E4836] border border-[#E5B869]/40 hover:border-[#E5B869] transition-all cursor-pointer shrink-0 shadow-sm"
               title={`Open ${match.location.venueName} on Google Maps`}
             >
-              <Navigation className="w-3 h-3 text-emerald-400" />
+              <Navigation className="w-3 h-3 text-[#E5B869]" />
               <span>{t('matches.viewOnMap')}</span>
-              <ExternalLink className="w-2.5 h-2.5 text-emerald-400/80" />
+              <ExternalLink className="w-2.5 h-2.5 text-[#E5B869]" />
             </button>
           </div>
         </div>
 
         {/* Match Time (Morocco GMT+1) */}
         <div className="grid grid-cols-2 gap-2 pt-1">
-          <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-[#070B16]/80 border border-[#1E293B]/60 text-xs">
-            <Calendar className="w-4 h-4 text-emerald-400 shrink-0" />
+          <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-[#081813] border border-[#E5B869]/20 text-xs">
+            <Calendar className="w-4 h-4 text-[#E5B869] shrink-0" />
             <div className="truncate text-start">
               <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{t('createMatch.date')}</div>
               <div className="font-bold text-slate-100">{formattedDate}</div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-[#070B16]/80 border border-[#1E293B]/60 text-xs">
-            <Clock className="w-4 h-4 text-teal-400 shrink-0" />
+          <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-[#081813] border border-[#E5B869]/20 text-xs">
+            <Clock className="w-4 h-4 text-[#F5D794] shrink-0" />
             <div className="truncate text-start">
               <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{relativeTime}</div>
               <div className="font-bold text-slate-100">{formattedTime} (GMT+1)</div>
@@ -221,27 +221,27 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
 
         {/* MVP Winner Banner if Present */}
         {match.mvpWinnerName && (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl gold-motm-card text-amber-200 text-xs shadow-md">
-            <Trophy className="w-4 h-4 text-amber-400 fill-amber-400 shrink-0" />
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-[#0A3A2A] to-[#082218] border border-[#E5B869]/40 text-[#F5D794] text-xs shadow-md">
+            <Trophy className="w-4 h-4 text-[#E5B869] fill-[#E5B869] shrink-0" />
             <span className="truncate font-bold">
-              <span className="text-amber-400 font-extrabold uppercase tracking-wider">{t('motm.motmWinner')}:</span> {match.mvpWinnerName}
+              <span className="text-[#E5B869] font-extrabold uppercase tracking-wider">{t('motm.motmWinner')}:</span> {match.mvpWinnerName}
             </span>
           </div>
         )}
       </div>
 
       {/* Card Footer */}
-      <div className="mt-4 pt-3.5 border-t border-[#1E293B]/80 space-y-3">
+      <div className="mt-4 pt-3.5 border-t border-[#E5B869]/20 space-y-3">
         <div>
           <div className="flex items-center justify-between text-xs mb-1.5">
-            <span className="text-slate-400 flex items-center gap-1.5 text-[11px] font-medium">
-              <Users className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-slate-300 flex items-center gap-1.5 text-[11px] font-medium">
+              <Users className="w-3.5 h-3.5 text-[#E5B869]" />
               <span>{t('matches.rosterCount')}:</span>
-              <strong className="text-white font-bold">{match.roster.length} / {match.maxPlayers}</strong>
+              <strong className="text-[#F5D794] font-bold">{match.roster.length} / {match.maxPlayers}</strong>
             </span>
             <div className="flex items-center gap-2.5 text-[11px]">
-              <span className="text-emerald-400 font-bold flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" /> {greenCount} {t('matches.greenTeam')}
+              <span className="text-[#F5D794] font-bold flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-[#E5B869] inline-block" /> {greenCount} {t('matches.greenTeam')}
               </span>
               <span className="text-blue-400 font-bold flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full bg-blue-400 inline-block" /> {blueCount} {t('matches.blueTeam')}
@@ -249,14 +249,14 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
             </div>
           </div>
 
-          <div className="w-full h-2 bg-slate-900/90 rounded-full overflow-hidden p-0.5 border border-slate-800/80">
+          <div className="w-full h-2 bg-[#081813] rounded-full overflow-hidden p-0.5 border border-[#E5B869]/25">
             <div
               className={`h-full rounded-full transition-all duration-500 shadow-sm ${
                 percentFilled >= 100
-                  ? 'bg-gradient-to-r from-emerald-500 to-teal-400'
+                  ? 'bg-gradient-to-r from-red-500 via-amber-500 to-emerald-500'
                   : percentFilled >= 70
-                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500'
-                  : 'bg-gradient-to-r from-blue-500 to-teal-500'
+                  ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238]'
+                  : 'bg-gradient-to-r from-[#0E4836] to-[#E5B869]'
               }`}
               style={{ width: `${percentFilled}%` }}
             />
@@ -276,13 +276,13 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
                     ? 'border-emerald-400'
                     : player.team === 'blue'
                     ? 'border-blue-400'
-                    : 'border-slate-700'
+                    : 'border-slate-500'
                 }`}
                 referrerPolicy="no-referrer"
               />
             ))}
             {match.roster.length > 5 && (
-              <div className="w-7 h-7 rounded-full bg-slate-900 border-2 border-[#1E293B] text-[10px] font-extrabold text-slate-200 flex items-center justify-center shadow-md">
+              <div className="w-7 h-7 rounded-full bg-[#141A26] border-2 border-[#E5B869]/30 text-[10px] font-extrabold text-[#F5D794] flex items-center justify-center shadow-md">
                 +{match.roster.length - 5}
               </div>
             )}
@@ -302,7 +302,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
                   e.stopPropagation();
                   setShowCalendarMenu(!showCalendarMenu);
                 }}
-                className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-xl border border-transparent hover:border-emerald-500/30 transition-all cursor-pointer"
+                className="p-1.5 text-slate-400 hover:text-[#F5D794] hover:bg-[#E5B869]/10 rounded-xl border border-transparent hover:border-[#E5B869]/30 transition-all cursor-pointer"
                 title={t('matches.addToCalendar')}
               >
                 <CalendarPlus className="w-4 h-4" />
@@ -310,21 +310,21 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
 
               {showCalendarMenu && (
                 <div
-                  className={`absolute ${isRTL ? 'left-0' : 'right-0'} bottom-full mb-2 w-44 bg-[#111A30] border border-[#1E293B] rounded-xl shadow-2xl p-1 z-50 text-xs space-y-1`}
+                  className={`absolute ${isRTL ? 'left-0' : 'right-0'} bottom-full mb-2 w-44 bg-[#141A26] border border-[#E5B869]/30 rounded-xl shadow-2xl p-1 z-50 text-xs space-y-1`}
                   onClick={(e) => e.stopPropagation()}
                 >
                   <button
                     onClick={handleGoogleCalendar}
-                    className="w-full text-start px-2.5 py-1.5 rounded-lg text-slate-200 hover:bg-emerald-500/20 hover:text-emerald-300 transition-colors flex items-center gap-1.5 cursor-pointer"
+                    className="w-full text-start px-2.5 py-1.5 rounded-lg text-slate-200 hover:bg-[#0D503C]/30 hover:text-[#F5D794] transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+                    <Calendar className="w-3.5 h-3.5 text-[#E5B869]" />
                     <span>Google Calendar</span>
                   </button>
                   <button
                     onClick={handleDownloadIcs}
-                    className="w-full text-start px-2.5 py-1.5 rounded-lg text-slate-200 hover:bg-blue-500/20 hover:text-blue-300 transition-colors flex items-center gap-1.5 cursor-pointer"
+                    className="w-full text-start px-2.5 py-1.5 rounded-lg text-slate-200 hover:bg-[#0D503C]/30 hover:text-[#F5D794] transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
-                    <CalendarPlus className="w-3.5 h-3.5 text-blue-400" />
+                    <CalendarPlus className="w-3.5 h-3.5 text-[#E5B869]" />
                     <span>{language === 'ar' ? 'تحميل ملف (.ics)' : 'Download .ics file'}</span>
                   </button>
                 </div>
@@ -338,7 +338,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
                 e.stopPropagation();
                 setIsShareModalOpen(true);
               }}
-              className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-xl border border-transparent hover:border-emerald-500/30 transition-all cursor-pointer"
+              className="p-1.5 text-slate-400 hover:text-[#F5D794] hover:bg-[#E5B869]/10 rounded-xl border border-transparent hover:border-[#E5B869]/30 transition-all cursor-pointer"
               title={t('matches.shareMatch')}
             >
               <Share2 className="w-4 h-4" />
@@ -420,9 +420,9 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
                 type="button"
                 onClick={handleJoinClick}
                 disabled={isProcessing}
-                className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md shadow-emerald-900/30 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-black text-slate-950 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 shadow-md shadow-amber-950/60 transition-all cursor-pointer"
               >
-                <UserCheck className="w-3.5 h-3.5" />
+                <UserCheck className="w-3.5 h-3.5 stroke-[2.5]" />
                 <span>{spotsLeft === 0 ? t('matches.joinWaitlist') : t('matches.joinMatch')}</span>
               </button>
             )}

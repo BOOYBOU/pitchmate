@@ -40,16 +40,16 @@ export const PitchMateLogo: React.FC<PitchMateLogoProps> = ({
 
   return (
     <div className={`inline-flex items-center gap-3 select-none ${className}`}>
-      {/* High-Resolution Professional Vector Crest */}
+      {/* High-Resolution Royal Moroccan Gold Crest */}
       <div
-        className={`relative ${iconSizes[size]} rounded-2xl p-[1.5px] bg-gradient-to-br from-emerald-400 via-emerald-600 to-teal-800 shadow-xl shadow-emerald-950/60 shrink-0 group`}
+        className={`relative ${iconSizes[size]} rounded-2xl p-[1.5px] bg-gradient-to-br from-[#F5D794] via-[#E5B869] to-[#0D503C] shadow-xl shadow-black/80 shrink-0 group`}
       >
         {/* Inner Obsidian Pitch Badge */}
-        <div className="w-full h-full bg-[#090D16] rounded-[14px] flex items-center justify-center relative overflow-hidden">
-          {/* Subtle luminous ambient glow */}
-          <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/20 via-transparent to-teal-500/10 pointer-events-none" />
+        <div className="w-full h-full bg-[#080B10] rounded-[14px] flex items-center justify-center relative overflow-hidden">
+          {/* Subtle luminous ambient gold glow */}
+          <div className="absolute inset-0 bg-gradient-to-tr from-[#E5B869]/25 via-transparent to-[#0D503C]/30 pointer-events-none" />
 
-          {/* SVG Vector Artwork: Soccer Pitch Crest & Ball Geometry */}
+          {/* SVG Vector Artwork: Soccer Pitch Crest & Moroccan Gold Geometry */}
           <svg
             className="w-full h-full p-1.5"
             viewBox="0 0 100 100"
@@ -57,23 +57,23 @@ export const PitchMateLogo: React.FC<PitchMateLogoProps> = ({
             xmlns="http://www.w3.org/2000/svg"
           >
             <defs>
-              {/* Emerald Neon Gradient */}
-              <linearGradient id="pitchEmeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#34D399" />
-                <stop offset="50%" stopColor="#10B981" />
-                <stop offset="100%" stopColor="#059669" />
+              {/* Royal Moroccan Gold Gradient */}
+              <linearGradient id="pitchGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#F5D794" />
+                <stop offset="50%" stopColor="#E5B869" />
+                <stop offset="100%" stopColor="#C69238" />
               </linearGradient>
 
-              {/* Pitch Grass Grid Shimmer */}
+              {/* Crest Background */}
               <linearGradient id="shieldBg" x1="50" y1="0" x2="50" y2="100" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stopColor="#0E1726" />
-                <stop offset="100%" stopColor="#050B14" />
+                <stop offset="0%" stopColor="#141B26" />
+                <stop offset="100%" stopColor="#080B10" />
               </linearGradient>
 
-              {/* Gold/Emerald Glow Accent */}
+              {/* Gold Ball Glow Accent */}
               <radialGradient id="ballGlow" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#10B981" stopOpacity="0.4" />
-                <stop offset="100%" stopColor="#10B981" stopOpacity="0" />
+                <stop offset="0%" stopColor="#F5D794" stopOpacity="0.45" />
+                <stop offset="100%" stopColor="#C69238" stopOpacity="0" />
               </radialGradient>
             </defs>
 
@@ -81,17 +81,17 @@ export const PitchMateLogo: React.FC<PitchMateLogoProps> = ({
             <path
               d="M50 5 L88 18 C88 56 68 85 50 95 C32 85 12 56 12 18 Z"
               fill="url(#shieldBg)"
-              stroke="url(#pitchEmeraldGrad)"
+              stroke="url(#pitchGoldGrad)"
               strokeWidth="2.5"
               strokeLinejoin="round"
             />
 
             {/* Tactical Pitch Lines Inside Shield */}
             {/* Center Line */}
-            <line x1="20" y1="50" x2="80" y2="50" stroke="#10B981" strokeWidth="1.5" strokeOpacity="0.45" />
+            <line x1="20" y1="50" x2="80" y2="50" stroke="#E5B869" strokeWidth="1.5" strokeOpacity="0.5" />
 
             {/* Center Circle */}
-            <circle cx="50" cy="50" r="16" stroke="#10B981" strokeWidth="1.5" strokeOpacity="0.5" />
+            <circle cx="50" cy="50" r="16" stroke="#E5B869" strokeWidth="1.5" strokeOpacity="0.55" />
 
             {/* Penalty Box Top */}
             <rect
@@ -99,17 +99,17 @@ export const PitchMateLogo: React.FC<PitchMateLogoProps> = ({
               y="12"
               width="36"
               height="18"
-              stroke="#10B981"
+              stroke="#E5B869"
               strokeWidth="1.2"
-              strokeOpacity="0.35"
+              strokeOpacity="0.4"
               fill="none"
             />
             {/* Penalty Arc Top */}
             <path
               d="M40 30 C45 35 55 35 60 30"
-              stroke="#10B981"
+              stroke="#E5B869"
               strokeWidth="1.2"
-              strokeOpacity="0.35"
+              strokeOpacity="0.4"
               fill="none"
             />
 
@@ -119,33 +119,33 @@ export const PitchMateLogo: React.FC<PitchMateLogoProps> = ({
               y="70"
               width="36"
               height="18"
-              stroke="#10B981"
+              stroke="#E5B869"
               strokeWidth="1.2"
-              strokeOpacity="0.35"
+              strokeOpacity="0.4"
               fill="none"
             />
 
             {/* Central Precision Soccer Ball with Facets */}
-            <circle cx="50" cy="50" r="14" fill="#090D16" stroke="#FFFFFF" strokeWidth="1.5" />
+            <circle cx="50" cy="50" r="14" fill="#080B10" stroke="#E5B869" strokeWidth="1.5" />
             <circle cx="50" cy="50" r="14" fill="url(#ballGlow)" />
 
-            {/* Central Pentagon */}
+            {/* Central Pentagon in Moroccan Gold */}
             <polygon
               points="50,42 57,47 54,55 46,55 43,47"
-              fill="url(#pitchEmeraldGrad)"
+              fill="url(#pitchGoldGrad)"
             />
 
             {/* Seam Lines Radiating */}
-            <line x1="50" y1="42" x2="50" y2="36" stroke="#FFFFFF" strokeWidth="1.2" strokeLinecap="round" />
-            <line x1="57" y1="47" x2="63" y2="44" stroke="#FFFFFF" strokeWidth="1.2" strokeLinecap="round" />
-            <line x1="54" y1="55" x2="59" y2="60" stroke="#FFFFFF" strokeWidth="1.2" strokeLinecap="round" />
-            <line x1="46" y1="55" x2="41" y2="60" stroke="#FFFFFF" strokeWidth="1.2" strokeLinecap="round" />
-            <line x1="43" y1="47" x2="37" y2="44" stroke="#FFFFFF" strokeWidth="1.2" strokeLinecap="round" />
+            <line x1="50" y1="42" x2="50" y2="36" stroke="#F5D794" strokeWidth="1.2" strokeLinecap="round" />
+            <line x1="57" y1="47" x2="63" y2="44" stroke="#F5D794" strokeWidth="1.2" strokeLinecap="round" />
+            <line x1="54" y1="55" x2="59" y2="60" stroke="#F5D794" strokeWidth="1.2" strokeLinecap="round" />
+            <line x1="46" y1="55" x2="41" y2="60" stroke="#F5D794" strokeWidth="1.2" strokeLinecap="round" />
+            <line x1="43" y1="47" x2="37" y2="44" stroke="#F5D794" strokeWidth="1.2" strokeLinecap="round" />
 
             {/* Outer Speed Accent Arc */}
             <path
               d="M75 22 C84 32 86 46 82 60"
-              stroke="url(#pitchEmeraldGrad)"
+              stroke="url(#pitchGoldGrad)"
               strokeWidth="2"
               strokeLinecap="round"
             />
@@ -161,15 +161,15 @@ export const PitchMateLogo: React.FC<PitchMateLogoProps> = ({
               className={`font-black font-display tracking-tight text-white ${textSizes[size]}`}
             >
               PITCH
-              <span className="bg-gradient-to-r from-emerald-400 via-emerald-300 to-teal-300 bg-clip-text text-transparent ml-0.5">
+              <span className="bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] bg-clip-text text-transparent ml-0.5">
                 MATE
               </span>
             </span>
 
             {/* Dynamic Status Pill */}
             {size !== 'xs' && (
-              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 ml-1 shadow-sm">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-[#241A0B] text-[#F5D794] border border-[#E5B869]/40 ml-1 shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#E5B869] animate-pulse" />
                 FC
               </span>
             )}

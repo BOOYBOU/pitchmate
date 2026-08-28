@@ -83,8 +83,8 @@ export const MotmPostMatchVoting: React.FC<MotmPostMatchVotingProps> = ({ match 
   return (
     <div id="motm-post-match-voting" className="space-y-6 animate-in fade-in duration-200">
       {/* MOTM Leader / Winner Header Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-950/50 via-[#0F172A] to-[#0A0F1D] border-2 border-amber-400/80 p-5 md:p-6 shadow-2xl">
-        <div className="absolute top-0 right-0 -mt-6 -mr-6 w-48 h-48 bg-amber-400/15 rounded-full blur-3xl pointer-events-none" />
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#241A0B] via-[#141A26] to-[#080B10] border-2 border-[#E5B869]/80 p-5 md:p-6 shadow-2xl">
+        <div className="absolute top-0 right-0 -mt-6 -mr-6 w-48 h-48 bg-[#E5B869]/15 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -97,21 +97,21 @@ export const MotmPostMatchVoting: React.FC<MotmPostMatchVotingProps> = ({ match 
                   }
                   alt={topNomineePlayer.name}
                   referrerPolicy="no-referrer"
-                  className="w-16 h-16 rounded-2xl object-cover border-2 border-amber-400 shadow-xl shadow-amber-500/20"
+                  className="w-16 h-16 rounded-2xl object-cover border-2 border-[#E5B869] shadow-xl shadow-amber-950/40"
                 />
               ) : (
-                <div className="w-16 h-16 rounded-2xl bg-amber-500/20 border-2 border-amber-400/50 flex items-center justify-center text-amber-400">
+                <div className="w-16 h-16 rounded-2xl bg-[#E5B869]/20 border-2 border-[#E5B869]/50 flex items-center justify-center text-[#E5B869]">
                   <Trophy className="w-8 h-8" />
                 </div>
               )}
-              <div className="absolute -bottom-2 -right-2 w-6 h-6 rounded-lg bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center shadow-md">
+              <div className="absolute -bottom-2 -right-2 w-6 h-6 rounded-lg bg-[#E5B869] text-slate-950 font-black text-xs flex items-center justify-center shadow-md">
                 👑
               </div>
             </div>
 
             <div>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[10px] font-black uppercase tracking-wider border border-amber-400/30">
-                <Star className="w-3 h-3 fill-amber-300" />
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#E5B869]/20 text-[#F5D794] text-[10px] font-black uppercase tracking-wider border border-[#E5B869]/30">
+                <Star className="w-3 h-3 fill-[#F5D794]" />
                 <span>{language === 'ar' ? 'نجم ورجل المباراة (MOTM)' : 'Man of the Match (MOTM)'}</span>
               </div>
               <h3 className="text-lg md:text-xl font-black text-white mt-1">
@@ -129,16 +129,16 @@ export const MotmPostMatchVoting: React.FC<MotmPostMatchVotingProps> = ({ match 
             </div>
           </div>
 
-          <div className="bg-slate-900/90 rounded-2xl px-4 py-3 border border-slate-800 flex items-center gap-4 self-start sm:self-auto">
+          <div className="bg-[#080B10] rounded-2xl px-4 py-3 border border-[#E5B869]/20 flex items-center gap-4 self-start sm:self-auto">
             <div className="text-center">
-              <div className="text-lg font-black text-amber-400">{totalVotesCount}</div>
+              <div className="text-lg font-black text-[#F5D794]">{totalVotesCount}</div>
               <div className="text-[10px] font-bold uppercase text-slate-400">
                 {language === 'ar' ? 'إجمالي الأصوات' : 'Total Votes'}
               </div>
             </div>
             <div className="h-8 w-px bg-slate-800" />
             <div className="text-center">
-              <div className="text-lg font-black text-emerald-400">{match.roster.length}</div>
+              <div className="text-lg font-black text-[#E5B869]">{match.roster.length}</div>
               <div className="text-[10px] font-bold uppercase text-slate-400">
                 {language === 'ar' ? 'المرشحون' : 'Nominees'}
               </div>
@@ -148,9 +148,9 @@ export const MotmPostMatchVoting: React.FC<MotmPostMatchVotingProps> = ({ match 
       </div>
 
       {/* Voting Instruction Card */}
-      <div className="bg-[#0E1526] border border-slate-800/90 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="bg-[#141A26] border border-[#E5B869]/20 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-[#E5B869]/15 border border-[#E5B869]/30 flex items-center justify-center text-[#E5B869] shrink-0">
             <Vote className="w-5 h-5" />
           </div>
           <div>
@@ -170,8 +170,8 @@ export const MotmPostMatchVoting: React.FC<MotmPostMatchVotingProps> = ({ match 
         </div>
 
         {myVote && (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/20 text-emerald-300 text-xs font-black rounded-xl border border-emerald-500/40 shrink-0">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#0D503C]/40 text-[#F5D794] text-xs font-black rounded-xl border border-[#E5B869]/40 shrink-0">
+            <CheckCircle2 className="w-4 h-4 text-[#E5B869]" />
             <span>{language === 'ar' ? 'تم تسجيل صوتك' : 'Vote Recorded'}</span>
           </span>
         )}
@@ -192,10 +192,10 @@ export const MotmPostMatchVoting: React.FC<MotmPostMatchVotingProps> = ({ match 
               key={player.userId}
               className={`rounded-2xl p-4 transition-all border ${
                 isCurrentLeader
-                  ? 'bg-gradient-to-r from-[#0F172A] to-[#162035] border-amber-400/80 shadow-lg shadow-amber-500/10 ring-1 ring-amber-400/40'
+                  ? 'bg-gradient-to-r from-[#141A26] to-[#1F293D] border-[#E5B869]/80 shadow-lg shadow-amber-950/20 ring-1 ring-[#E5B869]/40'
                   : isVotedByMe
-                  ? 'bg-gradient-to-r from-emerald-950/30 to-[#0E1526] border-emerald-500/60'
-                  : 'bg-[#0E1526] border-slate-800/80 hover:border-slate-700'
+                  ? 'bg-gradient-to-r from-[#0D503C]/30 to-[#141A26] border-[#E5B869]/60'
+                  : 'bg-[#141A26] border-[#E5B869]/15 hover:border-[#E5B869]/30'
               }`}
             >
               <div className="flex items-center justify-between gap-3 mb-3">
@@ -211,7 +211,7 @@ export const MotmPostMatchVoting: React.FC<MotmPostMatchVotingProps> = ({ match 
                       className="w-12 h-12 rounded-xl object-cover border border-slate-700 shadow-md"
                     />
                     {isCurrentLeader && (
-                      <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-amber-400 text-slate-950 rounded-full flex items-center justify-center text-[10px] shadow">
+                      <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#E5B869] text-slate-950 rounded-full flex items-center justify-center text-[10px] shadow">
                         👑
                       </span>
                     )}
@@ -223,11 +223,11 @@ export const MotmPostMatchVoting: React.FC<MotmPostMatchVotingProps> = ({ match 
                       <span
                         className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
                           player.team === 'green'
-                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                            : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                            ? 'bg-[#0D503C]/40 text-[#F5D794] border border-[#E5B869]/30'
+                            : 'bg-[#241A0B] text-[#F5D794] border border-[#E5B869]/30'
                         }`}
                       >
-                        {player.team === 'green' ? (language === 'ar' ? 'الأخضر' : 'Green') : (language === 'ar' ? 'الأزرق' : 'Blue')}
+                        {player.team === 'green' ? (language === 'ar' ? 'الأخضر' : 'Green') : (language === 'ar' ? 'الذهبي' : 'Gold')}
                       </span>
                     </div>
 
@@ -250,13 +250,13 @@ export const MotmPostMatchVoting: React.FC<MotmPostMatchVotingProps> = ({ match 
                   onClick={() => handleCastVote(player.userId)}
                   className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 ${
                     isVotedByMe
-                      ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20 ring-1 ring-emerald-300'
-                      : 'bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-200 border border-slate-700'
+                      ? 'bg-[#E5B869] text-slate-950 shadow-md shadow-amber-950/30 ring-1 ring-[#F5D794]'
+                      : 'bg-[#080B10] hover:bg-[#E5B869] hover:text-slate-950 text-slate-200 border border-[#E5B869]/20'
                   }`}
                 >
                   <Star
                     className={`w-3.5 h-3.5 ${
-                      isVotedByMe ? 'fill-slate-950 text-slate-950' : 'text-amber-400'
+                      isVotedByMe ? 'fill-slate-950 text-slate-950' : 'text-[#E5B869]'
                     }`}
                   />
                   <span>{isVotedByMe ? (language === 'ar' ? 'صوتي المسجل ✓' : 'My Pick ✓') : (language === 'ar' ? 'صوّت لرجل المباراة' : 'Vote MOTM')}</span>
@@ -269,16 +269,16 @@ export const MotmPostMatchVoting: React.FC<MotmPostMatchVotingProps> = ({ match 
                   <span className="text-slate-400 font-medium">
                     {voteCount} {language === 'ar' ? (voteCount === 1 ? 'صوت' : 'أصوات') : (voteCount === 1 ? 'Vote' : 'Votes')}
                   </span>
-                  <span className="font-bold text-amber-400">{percentage}%</span>
+                  <span className="font-bold text-[#F5D794]">{percentage}%</span>
                 </div>
-                <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                <div className="w-full h-2 bg-[#080B10] rounded-full overflow-hidden border border-[#E5B869]/20">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${
                       isCurrentLeader
-                        ? 'bg-gradient-to-r from-amber-500 to-amber-300'
+                        ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238]'
                         : isVotedByMe
-                        ? 'bg-emerald-400'
-                        : 'bg-slate-600'
+                        ? 'bg-[#E5B869]'
+                        : 'bg-slate-700'
                     }`}
                     style={{ width: `${percentage}%` }}
                   />
@@ -290,7 +290,7 @@ export const MotmPostMatchVoting: React.FC<MotmPostMatchVotingProps> = ({ match 
       </div>
 
       {match.roster.length === 0 && (
-        <div className="bg-[#0E1526] border border-slate-800 rounded-2xl p-8 text-center text-slate-400">
+        <div className="bg-[#141A26] border border-[#E5B869]/20 rounded-2xl p-8 text-center text-slate-400">
           <Users className="w-10 h-10 text-slate-600 mx-auto mb-2" />
           <p className="font-bold text-slate-300">
             {language === 'ar' ? 'لا يوجد لاعبون في تشكيلة هذه المباراة حتى الآن' : 'No players in this match roster yet'}

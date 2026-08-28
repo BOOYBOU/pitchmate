@@ -23,6 +23,25 @@ import { INITIAL_MATCHES, INITIAL_USERS, INITIAL_DIRECT_MESSAGES, INITIAL_NOTIFI
 import { SoundEffects } from './audioService';
 import { hashPassword, verifyPassword, generateSalt, sanitizeInput } from './security';
 import { balanceTeams } from './teamBalancer';
+import {
+  seedInitialFirestoreData,
+  subscribeToMatches,
+  subscribeToUsers,
+  subscribeToAnnouncements,
+  subscribeToComments,
+  subscribeToDirectMessages,
+  subscribeToNotifications,
+  saveMatchToFirestore,
+  deleteMatchFromFirestore,
+  saveUserToFirestore,
+  deleteUserFromFirestore,
+  saveCommentToFirestore,
+  deleteCommentFromFirestore,
+  saveAnnouncementToFirestore,
+  deleteAnnouncementFromFirestore,
+  saveDirectMessageToFirestore,
+  saveNotificationToFirestore
+} from './firestoreService';
 
 const STORAGE_KEYS = {
   MATCHES: 'pitchmate_matches_v2',
@@ -82,6 +101,13 @@ interface PitchStoreContextType {
     password: string,
     avatarUrl?: string
   ) => Promise<{ success: boolean; pendingApproval?: boolean; error?: string }>;
+  loginWithGoogle: (action?: 'signin' | 'signup') => Promise<{
+    success: boolean;
+    pendingApproval?: boolean;
+    user?: UserProfile;
+    code?: string;
+    error?: string;
+  }>;
   resetPasswordWithEmail: (email: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
 
@@ -393,7 +419,59 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return () => window.removeEventListener('focus', handleFocus);
   }, [fetchGlobalState]);
 
-  // Setup Singleton Server-Sent Events (SSE) for realtime sync
+  // Realtime Cloud Firestore Synchronization
+  useEffect(() => {
+    // 1. Seed initial demo matches/users to Firestore if empty
+    seedInitialFirestoreData();
+
+    // 2. Subscribe in Realtime to Firestore collections
+    const unsubMatches = subscribeToMatches((cloudMatches) => {
+      if (cloudMatches && cloudMatches.length > 0) {
+        setMatches(cloudMatches);
+      }
+    });
+
+    const unsubUsers = subscribeToUsers((cloudUsers) => {
+      if (cloudUsers && cloudUsers.length > 0) {
+        setUsers(cloudUsers);
+      }
+    });
+
+    const unsubAnnouncements = subscribeToAnnouncements((cloudAnnouncements) => {
+      if (cloudAnnouncements) {
+        setAnnouncements(cloudAnnouncements);
+      }
+    });
+
+    const unsubComments = subscribeToComments((cloudComments) => {
+      if (cloudComments) {
+        setComments(cloudComments);
+      }
+    });
+
+    const unsubMessages = subscribeToDirectMessages((cloudMessages) => {
+      if (cloudMessages) {
+        setDirectMessages(cloudMessages);
+      }
+    });
+
+    const unsubNotifications = subscribeToNotifications((cloudNotifications) => {
+      if (cloudNotifications) {
+        setNotifications(cloudNotifications);
+      }
+    });
+
+    return () => {
+      unsubMatches();
+      unsubUsers();
+      unsubAnnouncements();
+      unsubComments();
+      unsubMessages();
+      unsubNotifications();
+    };
+  }, []);
+
+  // Setup Singleton Server-Sent Events (SSE) for realtime sync fallback
   useEffect(() => {
     let eventSource: EventSource | null = null;
     let reconnectTimeout: any = null;
@@ -677,6 +755,220 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return { success: true };
   }, [users]);
 
+  const loginWithGoogle = useCallback(async (action: 'signin' | 'signup' = 'signin'): Promise<{
+    success: boolean;
+    pendingApproval?: boolean;
+    user?: UserProfile;
+    code?: string;
+    error?: string;
+  }> => {
+    try {
+      const { GoogleAuthProvider, signInWithPopup } = await import('firebase/auth');
+      const { auth } = await import('./firebase');
+
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+
+      const result = await signInWithPopup(auth, provider);
+      const gUser = result.user;
+      const gEmail = (gUser.email || '').toLowerCase().trim();
+      const gName = gUser.displayName || 'Google Player';
+      const gPhoto = gUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(gName)}`;
+
+      if (!gEmail) {
+        return { success: false, error: 'Could not retrieve a valid email address from Google.' };
+      }
+
+      const isMustapha = isSuperAdminEmail(gEmail);
+      const existingUser = users.find((u) => u.email.toLowerCase() === gEmail);
+
+      // CASE 1: User is attempting to CREATE ACCOUNT (SIGN UP)
+      if (action === 'signup') {
+        if (existingUser && !isMustapha) {
+          return {
+            success: false,
+            code: 'USER_EXISTS',
+            user: existingUser,
+            error: 'هذا الحساب مسجل بالفعل مسبقاً، يرجى الانتقال إلى تسجيل الدخول مباشرة.',
+          };
+        }
+
+        if (existingUser && isMustapha) {
+          setCurrentUserId(existingUser.id);
+          setIsAuthenticated(true);
+          const token = `pitchmate_token_${existingUser.id}_${Date.now()}`;
+          localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+          localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, existingUser.id);
+          return { success: true, pendingApproval: false, user: existingUser };
+        }
+
+        // Create Brand New Google Player
+        const newGoogleUser: UserProfile = {
+          id: isMustapha ? 'user_mustapha' : `user_g_${gUser.uid}`,
+          name: gName,
+          email: gEmail,
+          avatarUrl: gPhoto,
+          city: 'Casablanca',
+          bio: 'Verified Google Player',
+          preferredPosition: 'MID',
+          skillRating: 4.5,
+          reliabilityScore: 100,
+          matchesAttended: 0,
+          noShowCount: 0,
+          mvpCount: 0,
+          goalsCount: 0,
+          badges: [
+            { id: 'b_welcome', key: 'welcome', title: 'New PitchMate', description: 'Joined the community', icon: '⚽', unlockedAt: new Date().toISOString() },
+            { id: 'b_verified', key: 'verified', title: 'Google Verified', description: 'Identity verified via Google', icon: '🔒', unlockedAt: new Date().toISOString() },
+          ],
+          isGoogleAuth: true,
+          emailVerified: true,
+          isAdmin: isMustapha,
+          status: isMustapha ? 'approved' : 'pending',
+          approvedAt: isMustapha ? new Date().toISOString() : undefined,
+          matchesPlayed: 0,
+          createdAt: new Date().toISOString(),
+        };
+
+        setUsers((prev) => [...prev, newGoogleUser]);
+        saveUserToFirestore(newGoogleUser);
+
+        fetch('/api/users/google-auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            uid: gUser.uid,
+            name: gName,
+            email: gEmail,
+            avatarUrl: gPhoto,
+            action: 'signup',
+          }),
+        }).catch(() => {});
+
+        if (isMustapha) {
+          setCurrentUserId(newGoogleUser.id);
+          setIsAuthenticated(true);
+          const token = `pitchmate_token_${newGoogleUser.id}_${Date.now()}`;
+          localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+          localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, newGoogleUser.id);
+          return { success: true, pendingApproval: false, user: newGoogleUser };
+        }
+
+        return { success: true, pendingApproval: true, user: newGoogleUser };
+      }
+
+      // CASE 2: User is attempting to SIGN IN
+      if (!existingUser && !isMustapha) {
+        return {
+          success: false,
+          code: 'USER_NOT_FOUND',
+          error: 'هذا الحساب غير مسجل بعد، يرجى إنشاء حساب جديد أولاً عبر Google.',
+        };
+      }
+
+      if (existingUser) {
+        if (existingUser.isBanned) {
+          return {
+            success: false,
+            error: `Account suspended: ${existingUser.banReason || 'Contact administrator'}`,
+          };
+        }
+
+        if (existingUser.status === 'rejected') {
+          return {
+            success: false,
+            error: 'Your registration was declined by the administrator.',
+          };
+        }
+
+        if (existingUser.status === 'pending' && !isMustapha) {
+          return {
+            success: true,
+            pendingApproval: true,
+            user: existingUser,
+            error: 'حسابك الموثق عبر Google مسجل وهو الآن بانتظار موافقة المشرف العام.',
+          };
+        }
+
+        const updatedUser: UserProfile = {
+          ...existingUser,
+          isGoogleAuth: true,
+          emailVerified: true,
+          isAdmin: isMustapha ? true : existingUser.isAdmin,
+          status: isMustapha ? 'approved' : existingUser.status,
+          avatarUrl: (!existingUser.avatarUrl || existingUser.avatarUrl.includes('dicebear')) ? gPhoto : existingUser.avatarUrl,
+        };
+
+        setUsers((prev) => prev.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
+        saveUserToFirestore(updatedUser);
+        setCurrentUserId(updatedUser.id);
+        setIsAuthenticated(true);
+        const token = `pitchmate_token_${updatedUser.id}_${Date.now()}`;
+        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+        localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, updatedUser.id);
+
+        fetch('/api/users/google-auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            uid: gUser.uid,
+            name: gName,
+            email: gEmail,
+            avatarUrl: gPhoto,
+            action: 'signin',
+          }),
+        }).catch(() => {});
+
+        return { success: true, pendingApproval: false, user: updatedUser };
+      }
+
+      // If mustapha signin for the very first time
+      const mustaphaUser: UserProfile = {
+        id: 'user_mustapha',
+        name: gName,
+        email: gEmail,
+        avatarUrl: gPhoto,
+        city: 'Casablanca',
+        bio: 'Platform Owner & Super Admin',
+        preferredPosition: 'MID',
+        skillRating: 5.0,
+        reliabilityScore: 100,
+        matchesAttended: 0,
+        noShowCount: 0,
+        mvpCount: 0,
+        goalsCount: 0,
+        badges: [
+          { id: 'b_welcome', key: 'welcome', title: 'New PitchMate', description: 'Joined the community', icon: '⚽', unlockedAt: new Date().toISOString() },
+        ],
+        isGoogleAuth: true,
+        emailVerified: true,
+        isAdmin: true,
+        status: 'approved',
+        approvedAt: new Date().toISOString(),
+        matchesPlayed: 0,
+        createdAt: new Date().toISOString(),
+      };
+
+      setUsers((prev) => [...prev, mustaphaUser]);
+      saveUserToFirestore(mustaphaUser);
+      setCurrentUserId(mustaphaUser.id);
+      setIsAuthenticated(true);
+      const token = `pitchmate_token_${mustaphaUser.id}_${Date.now()}`;
+      localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+      localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, mustaphaUser.id);
+
+      return { success: true, pendingApproval: false, user: mustaphaUser };
+    } catch (err: any) {
+      if (err.code === 'auth/popup-closed-by-user') {
+        return { success: false, error: 'تم إلغاء نافذة تسجيل الدخول بـ Google.' };
+      }
+      if (err.code === 'auth/cancelled-popup-request') {
+        return { success: false, error: 'تم إلغاء طلب تسجيل الدخول.' };
+      }
+      return { success: false, error: err.message || 'حدث خطأ أثناء الاتصال بـ Google.' };
+    }
+  }, [users]);
+
   const logout = useCallback(() => {
     localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
     setIsAuthenticated(false);
@@ -713,19 +1005,22 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         if (alreadyInRoster || alreadyInWaitlist) return m;
 
         const isFull = m.roster.length >= m.maxPlayers;
-        if (isFull) {
-          return {
-            ...m,
-            waitlist: [...m.waitlist, playerItem],
-            updatedAt: new Date().toISOString(),
-          };
-        } else {
-          return {
-            ...m,
-            roster: [...m.roster, playerItem],
-            updatedAt: new Date().toISOString(),
-          };
-        }
+        const updatedMatch: SoccerMatch = isFull
+          ? {
+              ...m,
+              waitlist: [...m.waitlist, playerItem],
+              updatedAt: new Date().toISOString(),
+            }
+          : {
+              ...m,
+              roster: [...m.roster, playerItem],
+              updatedAt: new Date().toISOString(),
+            };
+
+        // Realtime Firestore direct sync
+        saveMatchToFirestore(updatedMatch);
+
+        return updatedMatch;
       })
     );
 
@@ -733,7 +1028,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       confetti({ particleCount: 50, spread: 60, origin: { y: 0.8 } });
     } catch {}
 
-    // Background sync
+    // Background server sync
     fetch(`/api/matches/${matchId}/join`, {
       method: 'POST',
       headers: getAuthHeaders(),
@@ -744,6 +1039,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           const data = await res.json();
           if (data.match) {
             setMatches((prev) => prev.map((m) => (m.id === matchId ? data.match : m)));
+            saveMatchToFirestore(data.match);
           }
         }
       })
@@ -775,17 +1071,22 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           if (nextAssignments[key] === currentUser.id) delete nextAssignments[key];
         });
 
-        return {
+        const updatedMatch: SoccerMatch = {
           ...m,
           roster: nextRoster,
           waitlist: nextWaitlist,
           tacticalAssignments: nextAssignments,
           updatedAt: new Date().toISOString(),
         };
+
+        // Realtime Firestore direct sync
+        saveMatchToFirestore(updatedMatch);
+
+        return updatedMatch;
       })
     );
 
-    // Background sync
+    // Background server sync
     fetch(`/api/matches/${matchId}/leave`, {
       method: 'POST',
       headers: getAuthHeaders(),
@@ -796,6 +1097,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           const data = await res.json();
           if (data.match) {
             setMatches((prev) => prev.map((m) => (m.id === matchId ? data.match : m)));
+            saveMatchToFirestore(data.match);
           }
         }
       })
@@ -858,7 +1160,10 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     // Instant optimistic state update
     setMatches((prev) => [newMatch, ...prev]);
 
-    // Background sync
+    // Realtime Firestore direct sync
+    saveMatchToFirestore(newMatch);
+
+    // Background server sync
     fetch('/api/matches', {
       method: 'POST',
       headers: getAuthHeaders(),
@@ -869,6 +1174,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           const data = await res.json();
           if (data.match) {
             setMatches((prev) => [data.match, ...prev.filter((m) => m.id !== newId)]);
+            saveMatchToFirestore(data.match);
           }
         }
       })
@@ -880,7 +1186,14 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const updateMatch = useCallback(async (matchId: string, updates: Partial<SoccerMatch>): Promise<boolean> => {
     // Instant optimistic update
     setMatches((prev) =>
-      prev.map((m) => (m.id === matchId ? { ...m, ...updates, updatedAt: new Date().toISOString() } : m))
+      prev.map((m) => {
+        if (m.id === matchId) {
+          const updated = { ...m, ...updates, updatedAt: new Date().toISOString() };
+          saveMatchToFirestore(updated);
+          return updated;
+        }
+        return m;
+      })
     );
 
     // Background sync
@@ -894,6 +1207,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           const data = await res.json();
           if (data.match) {
             setMatches((prev) => prev.map((m) => (m.id === matchId ? data.match : m)));
+            saveMatchToFirestore(data.match);
           }
         }
       })
@@ -905,6 +1219,9 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const deleteMatch = useCallback(async (matchId: string): Promise<boolean> => {
     // Immediate optimistic state update
     setMatches((prev) => prev.filter((m) => m.id !== matchId));
+
+    // Realtime Firestore direct deletion
+    deleteMatchFromFirestore(matchId);
 
     fetch(`/api/matches/${matchId}`, {
       method: 'DELETE',
@@ -1490,6 +1807,9 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       [matchId]: [...(prev[matchId] || []), newComment],
     }));
 
+    // Realtime Firestore direct sync
+    saveCommentToFirestore(newComment);
+
     fetch('/api/comments', {
       method: 'POST',
       headers: getAuthHeaders(),
@@ -1517,6 +1837,9 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       [matchId]: [...(prev[matchId] || []), newComment],
     }));
 
+    // Realtime Firestore direct sync
+    saveCommentToFirestore(newComment);
+
     fetch('/api/comments', {
       method: 'POST',
       headers: getAuthHeaders(),
@@ -1531,6 +1854,9 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       ...prev,
       [matchId]: (prev[matchId] || []).filter((c) => c.id !== commentId),
     }));
+
+    // Realtime Firestore direct deletion
+    deleteCommentFromFirestore(commentId);
 
     fetch(`/api/comments/${matchId}/${commentId}`, { method: 'DELETE', headers: getAuthHeaders() }).catch(() => {});
     return true;
@@ -1554,6 +1880,9 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     setDirectMessages((prev) => [...prev, newMsg]);
+
+    // Realtime Firestore direct sync
+    saveDirectMessageToFirestore(newMsg);
 
     fetch('/api/messages', {
       method: 'POST',
@@ -1584,6 +1913,9 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     setDirectMessages((prev) => [...prev, newMsg]);
 
+    // Realtime Firestore direct sync
+    saveDirectMessageToFirestore(newMsg);
+
     fetch('/api/messages', {
       method: 'POST',
       headers: getAuthHeaders(),
@@ -1595,7 +1927,14 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const markConversationAsRead = useCallback((otherUserId: string) => {
     setDirectMessages((prev) =>
-      prev.map((m) => (m.senderId === otherUserId && m.receiverId === currentUser.id ? { ...m, read: true } : m))
+      prev.map((m) => {
+        if (m.senderId === otherUserId && m.receiverId === currentUser.id) {
+          const updated = { ...m, read: true };
+          saveDirectMessageToFirestore(updated);
+          return updated;
+        }
+        return m;
+      })
     );
 
     fetch('/api/messages/mark-read', {
@@ -1607,6 +1946,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const deleteDirectMessage = useCallback((messageId: string) => {
     setDirectMessages((prev) => prev.filter((m) => m.id !== messageId));
+    deleteCommentFromFirestore(messageId);
     fetch(`/api/messages/${messageId}`, { method: 'DELETE', headers: getAuthHeaders() }).catch(() => {});
   }, [getAuthHeaders]);
 
@@ -1645,7 +1985,14 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const updateUserProfile = useCallback(async (userId: string, updates: Partial<UserProfile>): Promise<boolean> => {
     setUsers((prev) =>
-      prev.map((u) => (u.id === userId ? { ...u, ...updates, isAdmin: isSuperAdminEmail(u.email) } : u))
+      prev.map((u) => {
+        if (u.id === userId) {
+          const updated = { ...u, ...updates, isAdmin: isSuperAdminEmail(u.email) };
+          saveUserToFirestore(updated);
+          return updated;
+        }
+        return u;
+      })
     );
 
     fetch(`/api/users/${userId}`, {
@@ -1670,12 +2017,20 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       createdAt: new Date().toISOString(),
     };
     setUsers((prev) => [...prev, newUser]);
+    saveUserToFirestore(newUser);
     return newUser;
   }, []);
 
   const approveUser = useCallback(async (userId: string): Promise<boolean> => {
     setUsers((prev) =>
-      prev.map((u) => (u.id === userId ? { ...u, status: 'approved', approvedAt: new Date().toISOString() } : u))
+      prev.map((u) => {
+        if (u.id === userId) {
+          const updated = { ...u, status: 'approved' as const, approvedAt: new Date().toISOString() };
+          saveUserToFirestore(updated);
+          return updated;
+        }
+        return u;
+      })
     );
 
     fetch('/api/users/approve', {
@@ -1688,7 +2043,16 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [currentUser.name, getAuthHeaders]);
 
   const rejectUser = useCallback(async (userId: string, reason: string = 'Declined by admin'): Promise<boolean> => {
-    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, status: 'rejected' } : u)));
+    setUsers((prev) =>
+      prev.map((u) => {
+        if (u.id === userId) {
+          const updated = { ...u, status: 'rejected' as const };
+          saveUserToFirestore(updated);
+          return updated;
+        }
+        return u;
+      })
+    );
 
     fetch('/api/users/reject', {
       method: 'POST',
@@ -1701,7 +2065,14 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const approveAllPendingUsers = useCallback(async (): Promise<boolean> => {
     setUsers((prev) =>
-      prev.map((u) => (u.status === 'pending' ? { ...u, status: 'approved', approvedAt: new Date().toISOString() } : u))
+      prev.map((u) => {
+        if (u.status === 'pending') {
+          const updated = { ...u, status: 'approved' as const, approvedAt: new Date().toISOString() };
+          saveUserToFirestore(updated);
+          return updated;
+        }
+        return u;
+      })
     );
 
     fetch('/api/users/approve-all', {
@@ -1715,7 +2086,14 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const banUser = useCallback(async (userId: string, reason: string = 'Violation of rules'): Promise<boolean> => {
     setUsers((prev) =>
-      prev.map((u) => (u.id === userId ? { ...u, isBanned: true, banReason: reason } : u))
+      prev.map((u) => {
+        if (u.id === userId) {
+          const updated = { ...u, isBanned: true, banReason: reason };
+          saveUserToFirestore(updated);
+          return updated;
+        }
+        return u;
+      })
     );
 
     fetch('/api/users/ban', {
@@ -1729,7 +2107,14 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const unbanUser = useCallback(async (userId: string): Promise<boolean> => {
     setUsers((prev) =>
-      prev.map((u) => (u.id === userId ? { ...u, isBanned: false, banReason: undefined } : u))
+      prev.map((u) => {
+        if (u.id === userId) {
+          const updated = { ...u, isBanned: false, banReason: undefined };
+          saveUserToFirestore(updated);
+          return updated;
+        }
+        return u;
+      })
     );
 
     fetch('/api/users/unban', {
@@ -1743,7 +2128,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const removeUserAccount = useCallback(async (userId: string): Promise<boolean> => {
     setUsers((prev) => prev.filter((u) => u.id !== userId));
-
+    deleteUserFromFirestore(userId);
     fetch(`/api/users/${userId}`, { method: 'DELETE', headers: getAuthHeaders() }).catch(() => {});
     return true;
   }, [getAuthHeaders]);
@@ -1759,6 +2144,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     setAnnouncements((prev) => [newAnn, ...prev]);
+    saveAnnouncementToFirestore(newAnn);
 
     fetch('/api/announcements', {
       method: 'POST',
@@ -1771,6 +2157,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const deleteAnnouncement = useCallback(async (id: string): Promise<boolean> => {
     setAnnouncements((prev) => prev.filter((a) => a.id !== id));
+    deleteAnnouncementFromFirestore(id);
     fetch(`/api/announcements/${id}`, { method: 'DELETE', headers: getAuthHeaders() }).catch(() => {});
     return true;
   }, [getAuthHeaders]);
@@ -1799,6 +2186,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     isLoading,
     loginWithCredentials,
     signupWithCredentials,
+    loginWithGoogle,
     resetPasswordWithEmail,
     logout,
     joinMatch,
@@ -1863,6 +2251,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     isLoading,
     loginWithCredentials,
     signupWithCredentials,
+    loginWithGoogle,
     resetPasswordWithEmail,
     logout,
     joinMatch,

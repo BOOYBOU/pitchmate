@@ -593,6 +593,111 @@ async function startServer() {
     res.json({ success: true, user: newUser });
   });
 
+  // Google Sign-In & Authentication Route
+  app.post('/api/users/google-auth', (req, res) => {
+    const { uid, name, email, avatarUrl, city, action } = req.body;
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanName = (name || '').trim() || 'Google Player';
+
+    if (!cleanEmail) {
+      return res.status(400).json({ success: false, error: 'Valid Google email is required.' });
+    }
+
+    const isMustapha = isSuperAdminEmail(cleanEmail);
+    let existingUser = db.users.find((u) => u.email.toLowerCase() === cleanEmail);
+
+    // If attempting to SIGN UP with an already existing account
+    if (action === 'signup' && existingUser && !isMustapha) {
+      return res.status(409).json({
+        success: false,
+        code: 'USER_EXISTS',
+        user: existingUser,
+        error: 'هذا الحساب مسجل بالفعل مسبقاً، يرجى الانتقال إلى تسجيل الدخول.',
+      });
+    }
+
+    // If attempting to SIGN IN with a non-existent account
+    if (action === 'signin' && !existingUser && !isMustapha) {
+      return res.status(404).json({
+        success: false,
+        code: 'USER_NOT_FOUND',
+        error: 'هذا الحساب غير مسجل بعد، يرجى إنشاء حساب جديد أولاً.',
+      });
+    }
+
+    if (existingUser) {
+      existingUser.isGoogleAuth = true;
+      existingUser.emailVerified = true;
+      if (avatarUrl && (!existingUser.avatarUrl || existingUser.avatarUrl.includes('dicebear'))) {
+        existingUser.avatarUrl = avatarUrl;
+      }
+      if (isMustapha) {
+        existingUser.isAdmin = true;
+        existingUser.status = 'approved';
+      }
+
+      broadcastSSE('SYNC_USERS', { users: db.users });
+      return res.json({ success: true, user: existingUser });
+    }
+
+    // Create New Verified Google User
+    const userId = isMustapha
+      ? 'user_mustapha'
+      : (uid ? `user_g_${uid}` : `user_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`);
+
+    const newUser: UserProfile = {
+      id: userId,
+      name: cleanName,
+      email: cleanEmail,
+      avatarUrl: avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(cleanName)}`,
+      city: city || 'Casablanca',
+      bio: 'Verified Google Player',
+      preferredPosition: 'MID',
+      skillRating: 4.5,
+      reliabilityScore: 100,
+      matchesAttended: 0,
+      noShowCount: 0,
+      mvpCount: 0,
+      goalsCount: 0,
+      badges: [
+        { id: 'b_welcome', key: 'welcome', title: 'New PitchMate', description: 'Joined the community', icon: '⚽', unlockedAt: new Date().toISOString() },
+        { id: 'b_verified', key: 'verified', title: 'Google Verified', description: 'Identity verified via Google', icon: '🔒', unlockedAt: new Date().toISOString() },
+      ],
+      isGoogleAuth: true,
+      emailVerified: true,
+      isAdmin: isMustapha,
+      status: isMustapha ? 'approved' : 'pending',
+      approvedAt: isMustapha ? new Date().toISOString() : undefined,
+      matchesPlayed: 0,
+      createdAt: new Date().toISOString(),
+    };
+
+    db.users.push(newUser);
+
+    if (!isMustapha) {
+      const mustaphaUser = db.users.find((u) => isSuperAdminEmail(u.email));
+      if (mustaphaUser) {
+        db.notifications.unshift({
+          id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          userId: mustaphaUser.id,
+          title: 'Google Player Registration',
+          message: `${cleanName} (${cleanEmail}) signed up via Google (Verified Account) and is awaiting your match approval.`,
+          type: 'approval',
+          linkId: newUser.id,
+          createdAt: new Date().toISOString(),
+          read: false,
+        });
+      }
+    }
+
+    broadcastSSE('SYNC_USERS_AND_NOTIFS', {
+      users: db.users,
+      notifications: db.notifications,
+    });
+
+    res.json({ success: true, user: newUser });
+  });
+
   // User Approval
   app.post('/api/users/approve', requireAdmin, (req: AuthenticatedRequest, res) => {
     const { userId, adminName } = req.body;

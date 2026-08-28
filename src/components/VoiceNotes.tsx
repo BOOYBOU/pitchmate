@@ -162,26 +162,11 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
     if (timerRef.current) clearInterval(timerRef.current);
     if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
 
-    mediaRecorderRef.current.onstop = () => {
+    mediaRecorderRef.current.onstop = async () => {
       const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
       const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
 
-      // Convert blob to base64 Data URL
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64Audio = reader.result as string;
-        if (base64Audio) {
-          SoundEffects.playSentSound();
-          if (onSendVoiceNote) {
-            onSendVoiceNote(base64Audio, finalDuration);
-          } else if (onSendAudio) {
-            onSendAudio(base64Audio, finalDuration);
-          }
-        }
-      };
-      reader.readAsDataURL(audioBlob);
-
-      // Stop tracks
+      // Clean stream tracks
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
@@ -189,6 +174,44 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
       setIsRecording(false);
       setRecordingSeconds(0);
       audioChunksRef.current = [];
+
+      try {
+        const { mediaStorage } = await import('../lib/mediaStorage');
+        const uploadRes = await mediaStorage.uploadAudio(audioBlob);
+        const finalAudioUrl = (uploadRes.success && uploadRes.audioUrl) ? uploadRes.audioUrl : null;
+
+        if (finalAudioUrl) {
+          SoundEffects.playSentSound();
+          if (onSendVoiceNote) {
+            onSendVoiceNote(finalAudioUrl, finalDuration);
+          } else if (onSendAudio) {
+            onSendAudio(finalAudioUrl, finalDuration);
+          }
+        } else {
+          // Fallback to data URL
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64Audio = reader.result as string;
+            if (base64Audio) {
+              SoundEffects.playSentSound();
+              if (onSendVoiceNote) {
+                onSendVoiceNote(base64Audio, finalDuration);
+              } else if (onSendAudio) {
+                onSendAudio(base64Audio, finalDuration);
+              }
+            }
+          };
+          reader.readAsDataURL(audioBlob);
+        }
+      } catch {
+        const fallbackUrl = URL.createObjectURL(audioBlob);
+        SoundEffects.playSentSound();
+        if (onSendVoiceNote) {
+          onSendVoiceNote(fallbackUrl, finalDuration);
+        } else if (onSendAudio) {
+          onSendAudio(fallbackUrl, finalDuration);
+        }
+      }
     };
 
     mediaRecorderRef.current.stop();
@@ -234,7 +257,7 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
           <button
             type="button"
             onClick={stopAndSendRecording}
-            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-950 transition-all cursor-pointer"
+            className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 text-xs font-bold shadow-md shadow-amber-950 transition-all cursor-pointer"
             title={language === 'ar' ? 'إرسال التسجيل' : 'Send Voice Note'}
           >
             <Send className="w-3.5 h-3.5" />
@@ -267,12 +290,12 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
         disabled={disabled}
         className={`flex items-center justify-center gap-1.5 rounded-xl transition-all cursor-pointer ${
           compact
-            ? 'p-2 bg-[#0E1526] hover:bg-emerald-950/50 border border-[#1E293B] hover:border-emerald-500/40 text-emerald-400 hover:text-emerald-300'
-            : 'px-3 py-2 bg-[#0E1526] hover:bg-emerald-950/50 border border-[#1E293B] hover:border-emerald-500/40 text-emerald-400 hover:text-emerald-300 text-xs font-semibold'
+            ? 'p-2 bg-[#080B10] hover:bg-[#241A0B] border border-[#E5B869]/20 hover:border-[#E5B869]/60 text-[#F5D794]'
+            : 'px-3 py-2 bg-[#080B10] hover:bg-[#241A0B] border border-[#E5B869]/20 hover:border-[#E5B869]/60 text-[#F5D794] text-xs font-semibold'
         }`}
         title={language === 'ar' ? 'تسجيل رسالة صوتية' : 'Record Voice Note'}
       >
-        <Mic className="w-4 h-4" />
+        <Mic className="w-4 h-4 text-[#E5B869]" />
         {!compact && <span>{language === 'ar' ? 'رسالة صوتية' : 'Voice Note'}</span>}
       </button>
     </div>
@@ -390,8 +413,8 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
     <div
       className={`flex items-center gap-2.5 p-2 sm:p-2.5 rounded-2xl border transition-all ${
         isSender
-          ? 'bg-emerald-950/40 border-emerald-500/30'
-          : 'bg-[#0E1526] border-[#1E293B]'
+          ? 'bg-[#241A0B]/80 border-[#E5B869]/40'
+          : 'bg-[#141A26] border-[#E5B869]/20'
       }`}
     >
       <audio ref={audioRef} src={audioUrl} preload="metadata" />
@@ -402,8 +425,8 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
         onClick={togglePlay}
         className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-95 cursor-pointer shadow-md ${
           isSender
-            ? 'bg-emerald-500 hover:bg-emerald-400 text-black'
-            : 'bg-blue-600 hover:bg-blue-500 text-white'
+            ? 'bg-gradient-to-br from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950'
+            : 'bg-gradient-to-br from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950'
         }`}
         title={isPlaying ? (language === 'ar' ? 'إيقاف مؤقت' : 'Pause voice message') : (language === 'ar' ? 'تشغيل الرسالة الصوتية' : 'Play voice message')}
       >
@@ -422,9 +445,7 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
                 key={idx}
                 className={`flex-1 rounded-full transition-colors ${
                   isPassed
-                    ? isSender
-                      ? 'bg-emerald-400'
-                      : 'bg-blue-400'
+                    ? 'bg-[#E5B869]'
                     : 'bg-slate-700/60'
                 }`}
                 style={{ height: `${barHeight}px` }}
@@ -441,15 +462,15 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
           step={0.1}
           value={currentTime}
           onChange={handleSeek}
-          className="w-full h-1 bg-transparent cursor-pointer appearance-none accent-emerald-400"
+          className="w-full h-1 bg-transparent cursor-pointer appearance-none accent-[#E5B869]"
         />
 
         {/* Duration & Speed */}
         <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
           <span>{formatTime(currentTime > 0 ? currentTime : duration)}</span>
           <span className="flex items-center gap-1">
-            <Mic className="w-2.5 h-2.5 text-emerald-400" />
-            <span>{language === 'ar' ? 'صوتية' : 'Voice'}</span>
+            <Mic className="w-2.5 h-2.5 text-[#E5B869]" />
+            <span className="text-[#F5D794]">{language === 'ar' ? 'صوتية' : 'Voice'}</span>
           </span>
         </div>
       </div>
@@ -458,7 +479,7 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
       <button
         type="button"
         onClick={cycleSpeed}
-        className="px-1.5 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[10px] font-bold shrink-0 transition-colors cursor-pointer"
+        className="px-1.5 py-0.5 rounded-lg bg-[#080B10] hover:bg-[#141A26] border border-[#E5B869]/20 text-[#F5D794] text-[10px] font-bold shrink-0 transition-colors cursor-pointer"
         title={language === 'ar' ? 'تغيير سرعة التشغيل' : 'Change playback speed'}
       >
         {playbackSpeed}x

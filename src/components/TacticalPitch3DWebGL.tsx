@@ -991,24 +991,24 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
       {/* Floating 3D Stadium HUD Overlay */}
       <div className="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-between pointer-events-none gap-2 flex-wrap">
         {/* Moroccan League 3D Badge */}
-        <div className="flex items-center gap-2 bg-slate-950/85 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-700/80 text-white shadow-xl pointer-events-auto">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-xs font-black tracking-wider uppercase bg-gradient-to-r from-emerald-400 to-teal-200 bg-clip-text text-transparent">
-            True 3D Pitch
+        <div className="flex items-center gap-2 bg-[#080B10]/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-[#E5B869]/30 text-white shadow-xl pointer-events-auto">
+          <div className="w-2.5 h-2.5 rounded-full bg-[#E5B869] animate-pulse" />
+          <span className="text-xs font-black tracking-wider uppercase bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] bg-clip-text text-transparent">
+            Moroccan 3D Stadium
           </span>
           <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">
-            • 360° Orbit & Lighting
+            • 360° Tactical Orbit
           </span>
         </div>
 
         {/* 3D Viewport Angle Presets & Controls */}
-        <div className="flex items-center gap-1.5 bg-slate-950/85 backdrop-blur-md p-1 rounded-xl border border-slate-700/80 shadow-xl pointer-events-auto">
+        <div className="flex items-center gap-1.5 bg-[#080B10]/90 backdrop-blur-md p-1 rounded-xl border border-[#E5B869]/30 shadow-xl pointer-events-auto">
           <button
             type="button"
             onClick={() => setCameraMode('stadium')}
             className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
               cameraMode === 'stadium'
-                ? 'bg-emerald-600 text-white shadow-md'
+                ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 shadow-md'
                 : 'text-slate-400 hover:text-white'
             }`}
             title="3D Stadium Isometric Angle"
@@ -1022,7 +1022,7 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
             onClick={() => setCameraMode('top')}
             className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
               cameraMode === 'top'
-                ? 'bg-slate-800 text-white shadow-md'
+                ? 'bg-[#141A26] text-[#F5D794] border border-[#E5B869]/30 shadow-md'
                 : 'text-slate-400 hover:text-white'
             }`}
             title="Overhead Bird's Eye View"
@@ -1036,7 +1036,7 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
             onClick={() => setCameraMode('green_end')}
             className={`px-2 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
               cameraMode === 'green_end'
-                ? 'bg-emerald-700 text-white shadow-md'
+                ? 'bg-[#0D503C] text-white shadow-md'
                 : 'text-slate-400 hover:text-emerald-300'
             }`}
             title="Green Goal End Perspective"
@@ -1059,13 +1059,13 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
             <span className="hidden sm:inline">Blue Goal</span>
           </button>
 
-          <div className="h-4 w-px bg-slate-700 mx-1" />
+          <div className="h-4 w-px bg-[#E5B869]/20 mx-1" />
 
           {/* Zoom Buttons */}
           <button
             type="button"
             onClick={() => handleZoom(-8)}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+            className="p-1.5 text-slate-400 hover:text-[#F5D794] rounded-lg transition-colors cursor-pointer"
             title="Zoom In"
           >
             <ZoomIn className="w-3.5 h-3.5" />
@@ -1073,7 +1073,7 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
           <button
             type="button"
             onClick={() => handleZoom(8)}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+            className="p-1.5 text-slate-400 hover:text-[#F5D794] rounded-lg transition-colors cursor-pointer"
             title="Zoom Out"
           >
             <ZoomOut className="w-3.5 h-3.5" />
@@ -1083,7 +1083,7 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
           <button
             type="button"
             onClick={() => setIsFullscreen(!isFullscreen)}
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+            className="p-1.5 text-slate-400 hover:text-[#F5D794] rounded-lg transition-colors cursor-pointer"
             title={isFullscreen ? 'Exit Fullscreen' : 'Expand 3D Pitch'}
           >
             {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
@@ -1095,10 +1095,10 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
       <div className="absolute bottom-3.5 left-3.5 right-3.5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pointer-events-none">
         {/* Left: General 3D guide or Slot Info */}
         {!selectedSlotKey ? (
-          <div className="bg-slate-950/85 backdrop-blur-md px-3.5 py-2 rounded-xl border border-slate-800 text-[11px] text-slate-300 flex items-center gap-2 shadow-xl pointer-events-auto">
-            <Info className="w-4 h-4 text-emerald-400 shrink-0" />
+          <div className="bg-[#080B10]/90 backdrop-blur-md px-3.5 py-2 rounded-xl border border-[#E5B869]/30 text-[11px] text-slate-300 flex items-center gap-2 shadow-xl pointer-events-auto">
+            <Info className="w-4 h-4 text-[#E5B869] shrink-0" />
             <span>
-              <strong>3D Pitch:</strong> Click any player token to select & lock your exact playing position
+              <strong className="text-[#F5D794]">3D Pitch:</strong> Click any player token to select & lock your exact playing position
             </span>
           </div>
         ) : (
@@ -1111,17 +1111,17 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
             if (!activeSlot) return null;
 
             return (
-              <div className="bg-[#0E1526]/95 backdrop-blur-md px-4 py-2.5 rounded-2xl border-2 border-amber-400/80 shadow-2xl flex items-center justify-between gap-3 text-white pointer-events-auto animate-in slide-in-from-bottom-2 duration-200">
+              <div className="bg-[#141A26]/95 backdrop-blur-md px-4 py-2.5 rounded-2xl border-2 border-[#E5B869] shadow-2xl flex items-center justify-between gap-3 text-white pointer-events-auto animate-in slide-in-from-bottom-2 duration-200">
                 <div className="flex items-center gap-2.5">
                   <div
                     className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shadow-md ${
-                      activeSlot.team === 'green' ? 'bg-emerald-500 text-slate-950' : 'bg-blue-600 text-white'
+                      activeSlot.team === 'green' ? 'bg-[#0D503C] text-white' : 'bg-blue-600 text-white'
                     }`}
                   >
                     {activeSlot.label}
                   </div>
                   <div>
-                    <div className="text-xs font-black text-amber-300 flex items-center gap-1.5">
+                    <div className="text-xs font-black text-[#F5D794] flex items-center gap-1.5">
                       <span>{activeSlot.team === 'green' ? 'Team Green' : 'Team Blue'}</span>
                       <span>• {activeSlot.label} ({activeSlot.roleDescription})</span>
                     </div>
@@ -1135,7 +1135,7 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
                   <button
                     type="button"
                     onClick={() => onSelfClaimSlot(activeSlot)}
-                    className="px-3.5 py-1.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 text-xs font-black rounded-xl shadow-lg border border-amber-300 flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                    className="px-3.5 py-1.5 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:opacity-90 text-slate-950 text-xs font-black rounded-xl shadow-lg border border-[#F5D794] flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
                   >
                     <Check className="w-3.5 h-3.5 text-slate-950" />
                     <span>Confirm Position</span>
@@ -1147,7 +1147,7 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
         )}
 
         {hoveredSlotKey && !selectedSlotKey && (
-          <div className="bg-amber-500 text-slate-950 px-3.5 py-1.5 rounded-xl font-black text-xs shadow-xl animate-pulse pointer-events-auto self-end">
+          <div className="bg-gradient-to-r from-[#F5D794] to-[#E5B869] text-slate-950 px-3.5 py-1.5 rounded-xl font-black text-xs shadow-xl animate-pulse pointer-events-auto self-end">
             Click to select position ⚽
           </div>
         )}

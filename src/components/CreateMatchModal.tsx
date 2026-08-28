@@ -147,24 +147,24 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
   return (
     <div
       id="create-match-modal"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
     >
-      <div className="relative w-full max-w-xl bg-[#0E1526] border border-[#1E293B] rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div className="relative w-full max-w-xl bg-[#0A3A2A] border border-[#E5B869]/35 rounded-3xl shadow-2xl shadow-black/80 overflow-hidden flex flex-col max-h-[92vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#1E293B] bg-[#090D16]/80">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E5B869]/20 bg-[#081813]/90">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+            <div className="w-10 h-10 rounded-2xl bg-[#0E4836] border border-[#E5B869]/35 flex items-center justify-center text-[#E5B869] shadow-md shadow-[#081813]">
               <PlusCircle className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-lg font-bold font-display text-white">{t('createMatch.modalTitle')}</h2>
-              <p className="text-xs text-slate-400">{t('createMatch.modalSubtitle')}</p>
+              <p className="text-xs text-emerald-300/70">{t('createMatch.modalSubtitle')}</p>
             </div>
           </div>
           <button
             id="close-create-modal-btn"
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-2 text-emerald-300/70 hover:text-white rounded-xl hover:bg-[#0E4836]/60 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -174,7 +174,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
           {/* Match Title */}
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-emerald-200 mb-1.5">
               {t('createMatch.titleLabel')}
             </label>
             <input
@@ -184,14 +184,14 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
               placeholder={t('createMatch.titlePlaceholder')}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-2.5 bg-[#090D16] border border-[#1E293B] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+              className="w-full px-4 py-2.5 bg-[#081813] border border-[#E5B869]/30 rounded-xl text-sm text-white placeholder-emerald-400/40 focus:outline-none focus:border-[#E5B869] focus:ring-1 focus:ring-[#E5B869]/40"
             />
           </div>
 
           {/* Venue Name & City */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-emerald-200 mb-1.5">
                 {t('createMatch.venueLabel')}
               </label>
               <input
@@ -201,11 +201,11 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
                 placeholder={t('createMatch.venuePlaceholder')}
                 value={venueName}
                 onChange={(e) => setVenueName(e.target.value)}
-                className="w-full px-3 py-2 bg-[#090D16] border border-[#1E293B] rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
+                className="w-full px-3 py-2 bg-[#081813] border border-[#E5B869]/30 rounded-xl text-sm text-white placeholder-emerald-400/40 focus:outline-none focus:border-[#E5B869] focus:ring-1 focus:ring-[#E5B869]/40"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-emerald-200 mb-1.5">
                 {t('createMatch.cityLabel')}
               </label>
               <input
@@ -215,7 +215,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
                 placeholder={t('createMatch.cityPlaceholder')}
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                className="w-full px-3 py-2 bg-[#090D16] border border-[#1E293B] rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500 font-medium"
+                className="w-full px-3 py-2 bg-[#081813] border border-[#E5B869]/30 rounded-xl text-sm text-white placeholder-emerald-400/40 focus:outline-none focus:border-[#E5B869] font-medium focus:ring-1 focus:ring-[#E5B869]/40"
               />
             </div>
           </div>
@@ -223,8 +223,8 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
           {/* Date, Time & Duration Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+              <label className="block text-xs font-semibold uppercase tracking-wider text-emerald-200 mb-1.5 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-[#E5B869]" />
                 <span>{t('createMatch.dateLabel')}</span>
               </label>
               <input
@@ -233,13 +233,13 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
                 required
                 value={matchDate}
                 onChange={(e) => setMatchDate(e.target.value)}
-                className="w-full px-3 py-2 bg-[#090D16] border border-[#1E293B] rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
+                className="w-full px-3 py-2 bg-[#081813] border border-[#E5B869]/30 rounded-xl text-sm text-white focus:outline-none focus:border-[#E5B869] focus:ring-1 focus:ring-[#E5B869]/40"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-blue-400" />
+              <label className="block text-xs font-semibold uppercase tracking-wider text-emerald-200 mb-1.5 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-[#F5D794]" />
                 <span>{t('createMatch.timeLabel')}</span>
               </label>
               <input
@@ -248,22 +248,22 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
                 required
                 value={matchTime}
                 onChange={(e) => setMatchTime(e.target.value)}
-                className="w-full px-3 py-2 bg-[#090D16] border border-[#1E293B] rounded-xl text-sm text-white focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 bg-[#081813] border border-[#E5B869]/30 rounded-xl text-sm text-white focus:outline-none focus:border-[#E5B869] focus:ring-1 focus:ring-[#E5B869]/40"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-emerald-200 mb-1.5">
                 {t('createMatch.durationLabel')}
               </label>
               <select
                 value={durationMinutes}
                 onChange={(e) => setDurationMinutes(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-[#090D16] border border-[#1E293B] rounded-xl text-sm text-white focus:outline-none focus:border-slate-600 font-medium"
+                className="w-full px-3 py-2 bg-[#081813] border border-[#E5B869]/30 rounded-xl text-sm text-white focus:outline-none focus:border-[#E5B869] font-medium focus:ring-1 focus:ring-[#E5B869]/40"
               >
-                <option value={60}>{language === 'ar' ? '60 دقيقة (ساعة)' : '60 Minutes (1 hr)'}</option>
-                <option value={90}>{language === 'ar' ? '90 دقيقة (ساعة ونصف)' : '90 Minutes (1.5 hrs)'}</option>
-                <option value={120}>{language === 'ar' ? '120 دقيقة (ساعتان)' : '120 Minutes (2 hrs)'}</option>
+                <option value={60} className="bg-[#081813] text-white">{language === 'ar' ? '60 دقيقة (ساعة)' : '60 Minutes (1 hr)'}</option>
+                <option value={90} className="bg-[#081813] text-white">{language === 'ar' ? '90 دقيقة (ساعة ونصف)' : '90 Minutes (1.5 hrs)'}</option>
+                <option value={120} className="bg-[#081813] text-white">{language === 'ar' ? '120 دقيقة (ساعتان)' : '120 Minutes (2 hrs)'}</option>
               </select>
             </div>
           </div>
@@ -271,8 +271,8 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
           {/* Location / Map Link */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-emerald-400" />
+              <label className="text-xs font-semibold uppercase tracking-wider text-emerald-200 flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-[#E5B869]" />
                 <span>{t('createMatch.locationLabel')}</span>
               </label>
               {isLinkValidUrl && (
@@ -280,7 +280,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
                   href={locationLink}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition-colors"
+                  className="text-xs font-semibold text-[#F5D794] hover:text-[#E5B869] flex items-center gap-1 transition-colors"
                 >
                   <Navigation className="w-3 h-3" />
                   <span>{t('createMatch.testMapLink')}</span>
@@ -294,14 +294,14 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
               placeholder="e.g. https://maps.google.com/?q=33.5592,-7.6321"
               value={locationLink}
               onChange={(e) => setLocationLink(e.target.value)}
-              className="w-full px-4 py-2.5 bg-[#090D16] border border-[#1E293B] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-mono text-xs"
+              className="w-full px-4 py-2.5 bg-[#081813] border border-[#E5B869]/30 rounded-xl text-sm text-white placeholder-emerald-400/40 focus:outline-none focus:border-[#E5B869] font-mono text-xs focus:ring-1 focus:ring-[#E5B869]/40"
             />
           </div>
 
           {/* Format & Player Capacity */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-emerald-200 mb-1.5">
                 {t('createMatch.formatLabel')}
               </label>
               <select
@@ -325,20 +325,20 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
                     setTotalPitchCost(deriveTotalFromPlayerPrice(numP, newCap));
                   }
                 }}
-                className="w-full px-3 py-2 bg-[#090D16] border border-[#1E293B] rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500 font-bold"
+                className="w-full px-3 py-2 bg-[#081813] border border-[#E5B869]/30 rounded-xl text-sm text-white focus:outline-none focus:border-[#E5B869] font-bold focus:ring-1 focus:ring-[#E5B869]/40"
               >
-                <option value="5v5">5 vs 5 ({language === 'ar' ? '10 لاعبين' : '10 players'})</option>
-                <option value="6v6">6 vs 6 ({language === 'ar' ? '12 لاعباً' : '12 players'})</option>
-                <option value="7v7">7 vs 7 ({language === 'ar' ? '14 لاعباً' : '14 players'})</option>
-                <option value="8v8">8 vs 8 ({language === 'ar' ? '16 لاعباً' : '16 players'})</option>
-                <option value="9v9">9 vs 9 ({language === 'ar' ? '18 لاعباً' : '18 players'})</option>
-                <option value="11v11">11 vs 11 ({language === 'ar' ? '22 لاعباً' : '22 players'})</option>
+                <option value="5v5" className="bg-[#081813] text-white">5 vs 5 ({language === 'ar' ? '10 لاعبين' : '10 players'})</option>
+                <option value="6v6" className="bg-[#081813] text-white">6 vs 6 ({language === 'ar' ? '12 لاعباً' : '12 players'})</option>
+                <option value="7v7" className="bg-[#081813] text-white">7 vs 7 ({language === 'ar' ? '14 لاعباً' : '14 players'})</option>
+                <option value="8v8" className="bg-[#081813] text-white">8 vs 8 ({language === 'ar' ? '16 لاعباً' : '16 players'})</option>
+                <option value="9v9" className="bg-[#081813] text-white">9 vs 9 ({language === 'ar' ? '18 لاعباً' : '18 players'})</option>
+                <option value="11v11" className="bg-[#081813] text-white">11 vs 11 ({language === 'ar' ? '22 لاعباً' : '22 players'})</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <Users className="w-3.5 h-3.5 text-blue-400" />
+              <label className="block text-xs font-semibold uppercase tracking-wider text-emerald-200 mb-1.5 flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5 text-[#E5B869]" />
                 <span>{t('createMatch.maxPlayers')}</span>
               </label>
               <input
@@ -353,26 +353,26 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
                   const numP = parsePrice(pricePerPlayer, 50);
                   setTotalPitchCost(deriveTotalFromPlayerPrice(numP, count));
                 }}
-                className="w-full px-3 py-2 bg-[#090D16] border border-[#1E293B] rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500"
+                className="w-full px-3 py-2 bg-[#081813] border border-[#E5B869]/30 rounded-xl text-sm text-white focus:outline-none focus:border-[#E5B869] focus:ring-1 focus:ring-[#E5B869]/40"
               />
             </div>
           </div>
 
           {/* Pricing & Cost Split (MAD) */}
-          <div className="p-4 bg-[#090D16] border border-[#1E293B] rounded-2xl space-y-3">
+          <div className="p-4 bg-[#081813] border border-[#E5B869]/30 rounded-2xl space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                <Coins className="w-4 h-4 text-amber-400" />
+                <Coins className="w-4 h-4 text-[#E5B869]" />
                 <span>{t('createMatch.pricingHeading')}</span>
               </span>
-              <span className="text-[11px] text-emerald-400 font-semibold">
+              <span className="text-[11px] text-[#F5D794] font-semibold">
                 {pricePerPlayer === 0 || pricePerPlayer === '0' ? (language === 'ar' ? 'مباراة مجانية' : 'Free Match') : formatMAD(pricePerPlayer) + (language === 'ar' ? ' / للاعب' : ' / player')}
               </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                <label className="block text-[11px] font-semibold text-emerald-200 mb-1">
                   {t('createMatch.pricePerPlayer')}
                 </label>
                 <div className="relative">
@@ -381,16 +381,16 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
                     type="number"
                     value={pricePerPlayer}
                     onChange={(e) => handlePriceChange(e.target.value)}
-                    className="w-full px-3 py-2 bg-[#0E1526] border border-[#1E293B] rounded-xl text-sm text-emerald-400 font-bold focus:outline-none focus:border-emerald-500 rtl:pl-14 rtl:pr-3 pr-14"
+                    className="w-full px-3 py-2 bg-[#0E4836] border border-[#E5B869]/30 rounded-xl text-sm text-[#F5D794] font-bold focus:outline-none focus:border-[#E5B869] rtl:pl-14 rtl:pr-3 pr-14"
                   />
-                  <span className="absolute right-3 rtl:right-auto rtl:left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                  <span className="absolute right-3 rtl:right-auto rtl:left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#E5B869]">
                     {t('common.mad')}
                   </span>
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                <label className="block text-[11px] font-semibold text-emerald-200 mb-1">
                   {t('createMatch.totalPitchCost')}
                 </label>
                 <div className="relative">
@@ -399,25 +399,25 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
                     type="number"
                     value={totalPitchCost}
                     onChange={(e) => handleTotalCostChange(e.target.value)}
-                    className="w-full px-3 py-2 bg-[#0E1526] border border-[#1E293B] rounded-xl text-sm text-amber-400 font-bold focus:outline-none focus:border-amber-500 rtl:pl-14 rtl:pr-3 pr-14"
+                    className="w-full px-3 py-2 bg-[#0E4836] border border-[#E5B869]/30 rounded-xl text-sm text-[#E5B869] font-bold focus:outline-none focus:border-[#E5B869] rtl:pl-14 rtl:pr-3 pr-14"
                   />
-                  <span className="absolute right-3 rtl:right-auto rtl:left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                  <span className="absolute right-3 rtl:right-auto rtl:left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-[#E5B869]">
                     {t('common.mad')}
                   </span>
                 </div>
               </div>
             </div>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-emerald-300/70">
               {t('createMatch.pricingNote')}
             </p>
           </div>
 
           {/* Footer Actions */}
-          <div className="pt-2 flex items-center justify-end gap-3 border-t border-[#1E293B]">
+          <div className="pt-2 flex items-center justify-end gap-3 border-t border-[#E5B869]/20">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+              className="px-4 py-2.5 rounded-xl text-xs font-semibold text-emerald-300 hover:text-white hover:bg-[#0E4836]/60 transition-colors cursor-pointer"
             >
               {t('common.cancel')}
             </button>
@@ -425,7 +425,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
               id="submit-create-match-btn"
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-2.5 rounded-xl text-xs font-black text-slate-950 bg-emerald-500 hover:bg-emerald-400 active:scale-95 transition-all flex items-center gap-2 shadow-lg shadow-emerald-950 cursor-pointer disabled:opacity-50"
+              className="px-6 py-2.5 rounded-xl text-xs font-black text-slate-950 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 active:scale-95 transition-all flex items-center gap-2 shadow-lg shadow-amber-950 cursor-pointer disabled:opacity-50"
             >
               <PlusCircle className="w-4 h-4" />
               <span>{isSubmitting ? t('common.loading') : t('createMatch.publishBtn')}</span>

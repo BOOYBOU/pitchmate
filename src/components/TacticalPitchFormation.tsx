@@ -616,12 +616,12 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
   return (
     <div id="3d-tactical-pitch-container" className="space-y-4">
       {/* 3D Tactical Command Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-[#0B1120] p-3 sm:p-4 rounded-2xl border border-slate-800 shadow-xl">
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-[#141A26] p-3 sm:p-4 rounded-2xl border border-[#E5B869]/30 shadow-xl">
         <div className="flex items-center gap-3 flex-wrap">
           {/* Formation Selector */}
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-              <Shirt className="w-3.5 h-3.5 text-emerald-400" />
+              <Shirt className="w-3.5 h-3.5 text-[#E5B869]" />
               {language === 'ar' ? 'الخطة التكتيكية:' : 'Formation:'}
             </span>
             <div className="relative">
@@ -633,25 +633,25 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
                   setFormationKey(key);
                   onUpdateTactical?.(key, key, assignments);
                 }}
-                className="appearance-none pl-3 pr-8 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-emerald-400 cursor-pointer shadow-sm transition-all"
+                className="appearance-none pl-3 pr-8 py-2 bg-[#080B10] border border-[#E5B869]/30 rounded-xl text-xs font-bold text-white focus:outline-none focus:border-[#E5B869] cursor-pointer shadow-sm transition-all"
               >
                 {categories.map((cat) => (
                   <optgroup
                     key={cat}
                     label={`─── ${cat} ───`}
-                    className="bg-slate-900 font-bold text-emerald-400"
+                    className="bg-[#080B10] font-bold text-[#F5D794]"
                   >
                     {Object.entries(FORMATIONS)
                       .filter(([_, val]) => val.category === cat)
                       .map(([key, val]) => (
-                        <option key={key} value={key} className="bg-slate-950 text-white font-normal">
+                        <option key={key} value={key} className="bg-[#080B10] text-white font-normal">
                           {val.label}
                         </option>
                       ))}
                   </optgroup>
                 ))}
               </select>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 rtl:right-auto rtl:left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <ChevronDown className="w-3.5 h-3.5 text-[#E5B869] absolute right-2.5 rtl:right-auto rtl:left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
           </div>
         </div>
@@ -663,10 +663,10 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
               id="tactical-autofill-btn"
               type="button"
               onClick={handleAutoFillFormation}
-              className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-sm"
+              className="px-3 py-1.5 bg-[#0D503C]/40 hover:bg-[#0D503C]/60 text-[#F5D794] border border-[#E5B869]/40 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-sm"
               title={language === 'ar' ? 'توزيع اللاعبين المؤكدين تلقائياً على مراكز الخطة' : 'Auto-place confirmed roster players onto tactical pitch slots'}
             >
-              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+              <Sparkles className="w-3.5 h-3.5 text-[#E5B869]" />
               {language === 'ar' ? 'توزيع التشكيلة تلقائياً' : 'Auto-Fill Lineup'}
             </button>
           )}
@@ -685,12 +685,12 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
           )}
 
           {/* Team Filter */}
-          <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800">
+          <div className="flex items-center bg-[#080B10] p-1 rounded-xl border border-[#E5B869]/20">
             <button
               type="button"
               onClick={() => setViewMode('full')}
               className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                viewMode === 'full' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'
+                viewMode === 'full' ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 font-black' : 'text-slate-400 hover:text-white'
               }`}
             >
               {language === 'ar' ? 'الفريقين' : 'Both'}
@@ -699,7 +699,7 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
               type="button"
               onClick={() => setViewMode('green')}
               className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                viewMode === 'green' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-emerald-300'
+                viewMode === 'green' ? 'bg-[#0D503C] text-[#F5D794] font-black border border-[#E5B869]/40' : 'text-slate-400 hover:text-[#F5D794]'
               }`}
             >
               {t('matches.greenTeam')}
@@ -708,7 +708,7 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
               type="button"
               onClick={() => setViewMode('blue')}
               className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                viewMode === 'blue' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-blue-300'
+                viewMode === 'blue' ? 'bg-[#241A0B] text-[#F5D794] font-black border border-[#E5B869]/40' : 'text-slate-400 hover:text-[#E5B869]'
               }`}
             >
               {t('matches.blueTeam')}
@@ -721,14 +721,14 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
       {confirmationSuccessMsg && (
         <div
           id="position-confirmation-success-banner"
-          className="bg-gradient-to-r from-emerald-950/90 via-emerald-900/90 to-[#0E1526] border-2 border-emerald-400/80 rounded-2xl p-4 shadow-2xl flex items-center justify-between gap-3 text-white animate-in zoom-in-95 duration-200"
+          className="bg-gradient-to-r from-[#0D503C]/90 via-[#241A0B]/90 to-[#141A26] border-2 border-[#E5B869]/80 rounded-2xl p-4 shadow-2xl flex items-center justify-between gap-3 text-white animate-in zoom-in-95 duration-200"
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center shrink-0">
-              <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+            <div className="w-10 h-10 rounded-xl bg-[#E5B869]/20 border border-[#E5B869]/40 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-6 h-6 text-[#E5B869]" />
             </div>
             <div>
-              <div className="text-xs font-black uppercase tracking-wider text-emerald-400">
+              <div className="text-xs font-black uppercase tracking-wider text-[#F5D794]">
                 {language === 'ar' ? 'تم تثبيت وتأكيد المركز' : 'Position Confirmed & Locked'}
               </div>
               <div className="text-sm font-bold text-slate-100 mt-0.5">
@@ -739,7 +739,7 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
           <button
             type="button"
             onClick={() => setConfirmationSuccessMsg(null)}
-            className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs font-bold rounded-xl border border-emerald-500/30 cursor-pointer"
+            className="px-3 py-1.5 bg-[#E5B869]/20 hover:bg-[#E5B869]/30 text-[#F5D794] text-xs font-bold rounded-xl border border-[#E5B869]/30 cursor-pointer"
           >
             {language === 'ar' ? 'إغلاق' : 'Dismiss'}
           </button>
@@ -750,16 +750,16 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
       {selectedSlot && (
         <div
           id="slot-assignment-drawer"
-          className="bg-gradient-to-b from-[#0F172A] to-[#0A0F1D] border-2 border-amber-500/60 rounded-3xl p-5 shadow-2xl animate-in fade-in slide-in-from-top-3 duration-200"
+          className="bg-gradient-to-b from-[#141A26] to-[#080B10] border-2 border-[#E5B869]/50 rounded-3xl p-5 shadow-2xl animate-in fade-in slide-in-from-top-3 duration-200"
         >
           {/* Header with Slot Identity */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#E5B869]/20">
             <div className="flex items-center gap-3.5">
               <div
                 className={`w-12 h-12 rounded-2xl flex flex-col items-center justify-center font-black shadow-lg border ${
                   selectedSlot.team === 'green'
-                    ? 'bg-emerald-950/80 border-emerald-400 text-emerald-300'
-                    : 'bg-blue-950/80 border-blue-400 text-blue-300'
+                    ? 'bg-[#0D503C]/80 border-[#E5B869] text-[#F5D794]'
+                    : 'bg-[#241A0B] border-[#E5B869] text-[#F5D794]'
                 }`}
               >
                 <span className="text-base leading-none">{selectedSlot.label}</span>
@@ -773,15 +773,15 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
                   <span
                     className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
                       selectedSlot.team === 'green'
-                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                        : 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                        ? 'bg-[#0D503C]/30 text-[#F5D794] border border-[#E5B869]/40'
+                        : 'bg-[#241A0B] text-[#F5D794] border border-[#E5B869]/40'
                     }`}
                   >
-                    <span className={`w-1.5 h-1.5 rounded-full ${selectedSlot.team === 'green' ? 'bg-emerald-400' : 'bg-blue-400'}`} />
+                    <span className={`w-1.5 h-1.5 rounded-full ${selectedSlot.team === 'green' ? 'bg-[#0D503C]' : 'bg-[#E5B869]'}`} />
                     {selectedSlot.team === 'green' ? (language === 'ar' ? 'الفريق الأخضر' : 'Team Green') : (language === 'ar' ? 'الفريق الأزرق' : 'Team Blue')}
                   </span>
 
-                  <span className="text-sm font-black text-amber-400">
+                  <span className="text-sm font-black text-[#F5D794]">
                     {getPositionArabicLabel(selectedSlot.position, selectedSlot.label)}
                   </span>
                 </div>
@@ -794,7 +794,7 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
                     </span>
                   )}
                   {!currentOccupantPlayer && (
-                    <span className="text-emerald-400 text-[11px] font-bold">
+                    <span className="text-[#E5B869] text-[11px] font-bold">
                       • {language === 'ar' ? 'مركز شاغر ومتاح' : 'Vacant Role'}
                     </span>
                   )}
@@ -812,8 +812,8 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
                 onClick={() => handleConfirmMyPosition(selectedSlot)}
                 className={`px-5 py-3 rounded-2xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 shadow-xl cursor-pointer active:scale-95 ${
                   isSelectedSlotOccupiedByMe
-                    ? 'bg-emerald-500 text-slate-950 ring-2 ring-emerald-300 shadow-emerald-500/30'
-                    : 'bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 hover:from-amber-300 hover:to-amber-400 text-slate-950 shadow-amber-500/30 border border-amber-300'
+                    ? 'bg-[#E5B869] text-slate-950 ring-2 ring-[#F5D794] shadow-amber-950/30'
+                    : 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 text-slate-950 shadow-amber-950/30 border border-[#F5D794]'
                 }`}
               >
                 {isConfirmingPosition ? (
@@ -875,12 +875,12 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
                     onClick={() => handleAssignPlayer(selectedSlot.key, player.userId, selectedSlot.position)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
                       isCurrent
-                        ? 'bg-amber-400 text-slate-950 ring-2 ring-amber-300 shadow-md font-black'
+                        ? 'bg-[#E5B869] text-slate-950 ring-2 ring-[#F5D794] shadow-md font-black'
                         : isAssignedElsewhere
-                        ? 'bg-slate-900 text-slate-400 border border-slate-800 hover:border-slate-700'
+                        ? 'bg-[#080B10] text-slate-400 border border-slate-800 hover:border-slate-700'
                         : selectedSlot.team === 'green'
-                        ? 'bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-200 border border-emerald-500/30'
-                        : 'bg-blue-500/15 hover:bg-blue-500/30 text-blue-200 border border-blue-500/30'
+                        ? 'bg-[#0D503C]/30 hover:bg-[#0D503C]/50 text-[#F5D794] border border-[#E5B869]/30'
+                        : 'bg-[#241A0B] hover:bg-[#342410] text-[#F5D794] border border-[#E5B869]/30'
                     }`}
                   >
                     <img
@@ -917,8 +917,8 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
       {/* Roster Bench Breakdown & Position Status */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Team Green Lineup & Bench */}
-        <div className="bg-[#0B1120] p-4 rounded-2xl border border-emerald-500/20 shadow-md">
-          <div className="flex items-center justify-between text-xs font-bold text-emerald-400 mb-2.5">
+        <div className="bg-[#141A26] p-4 rounded-2xl border border-[#0D503C]/40 shadow-md">
+          <div className="flex items-center justify-between text-xs font-bold text-[#F5D794] mb-2.5">
             <span>{language === 'ar' ? `تشكيلة الفريق الأخضر (${greenPlayers.length})` : `Team Green Squad (${greenPlayers.length})`}</span>
             <span className="text-[10px] text-slate-400">
               {Object.keys(assignments).filter((k) => k.startsWith('g_')).length} / {formation.slots.green.length} {language === 'ar' ? 'مراكز محجوزة' : 'Roles Assigned'}
@@ -934,12 +934,12 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
               return (
                 <div
                   key={player.userId}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-900/90 border border-slate-800 rounded-xl text-xs text-slate-200"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#080B10] border border-slate-800 rounded-xl text-xs text-slate-200"
                 >
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                  <span className="w-2 h-2 rounded-full bg-[#0D503C] shrink-0" />
                   <span className="font-semibold">{player.name}</span>
                   {slotDef ? (
-                    <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-emerald-950 text-emerald-300 border border-emerald-800">
+                    <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-[#0D503C] text-[#F5D794] border border-[#E5B869]/30">
                       {slotDef.label}
                     </span>
                   ) : (
@@ -959,9 +959,9 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
         </div>
 
         {/* Team Blue Lineup & Bench */}
-        <div className="bg-[#0B1120] p-4 rounded-2xl border border-blue-500/20 shadow-md">
-          <div className="flex items-center justify-between text-xs font-bold text-blue-400 mb-2.5">
-            <span>{language === 'ar' ? `تشكيلة الفريق الأزرق (${bluePlayers.length})` : `Team Blue Squad (${bluePlayers.length})`}</span>
+        <div className="bg-[#141A26] p-4 rounded-2xl border border-[#E5B869]/30 shadow-md">
+          <div className="flex items-center justify-between text-xs font-bold text-[#E5B869] mb-2.5">
+            <span>{language === 'ar' ? `تشكيلة الفريق الذهبي/الأزرق (${bluePlayers.length})` : `Team Blue Squad (${bluePlayers.length})`}</span>
             <span className="text-[10px] text-slate-400">
               {Object.keys(assignments).filter((k) => k.startsWith('b_')).length} / {formation.slots.blue.length} {language === 'ar' ? 'مراكز محجوزة' : 'Roles Assigned'}
             </span>
@@ -976,12 +976,12 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
               return (
                 <div
                   key={player.userId}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-900/90 border border-slate-800 rounded-xl text-xs text-slate-200"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-[#080B10] border border-slate-800 rounded-xl text-xs text-slate-200"
                 >
-                  <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0" />
+                  <span className="w-2 h-2 rounded-full bg-[#E5B869] shrink-0" />
                   <span className="font-semibold">{player.name}</span>
                   {slotDef ? (
-                    <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-blue-950 text-blue-300 border border-blue-800">
+                    <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-[#241A0B] text-[#F5D794] border border-[#E5B869]/40">
                       {slotDef.label}
                     </span>
                   ) : (

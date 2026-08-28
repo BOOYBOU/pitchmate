@@ -125,7 +125,7 @@ export const MatchShareModal: React.FC<MatchShareModalProps> = ({ isOpen, onClos
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-[#0D1527] border border-[#1E293B] rounded-3xl p-6 sm:p-7 shadow-2xl space-y-5 text-white">
+      <div className="relative w-full max-w-lg bg-[#141A26] border border-[#E5B869]/30 rounded-3xl p-6 sm:p-7 shadow-2xl space-y-5 text-white">
         {/* Close Button */}
         <button
           id="close-share-modal-btn"
@@ -137,8 +137,8 @@ export const MatchShareModal: React.FC<MatchShareModalProps> = ({ isOpen, onClos
 
         {/* Header */}
         <div className="flex items-center gap-3 pr-8">
-          <div className="w-11 h-11 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shadow-lg shadow-emerald-950 shrink-0">
-            <Share2 className="w-5 h-5" />
+          <div className="w-11 h-11 rounded-2xl bg-[#241A0B] border border-[#E5B869]/30 text-[#F5D794] flex items-center justify-center shadow-lg shadow-amber-950 shrink-0">
+            <Share2 className="w-5 h-5 text-[#E5B869]" />
           </div>
           <div>
             <h3 className="text-lg font-bold font-display text-white">One-Tap WhatsApp Squad Share</h3>
@@ -147,37 +147,37 @@ export const MatchShareModal: React.FC<MatchShareModalProps> = ({ isOpen, onClos
         </div>
 
         {/* Clean Match Summary Card */}
-        <div className="p-4 bg-[#080D1A] border border-[#1E293B] rounded-2xl space-y-3">
+        <div className="p-4 bg-[#080B10] border border-[#E5B869]/20 rounded-2xl space-y-3">
           <div className="flex items-start justify-between gap-2">
             <div>
               <span className="text-sm font-extrabold text-white line-clamp-1">{match.title}</span>
               <div className="flex items-center gap-2 mt-1 text-xs text-slate-400">
                 <span className="flex items-center gap-1 text-slate-300">
-                  <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+                  <Calendar className="w-3.5 h-3.5 text-[#E5B869]" />
                   {formattedDate}
                 </span>
               </div>
             </div>
-            <span className="px-2.5 py-1 rounded-lg text-[11px] font-black tracking-wider bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shrink-0">
+            <span className="px-2.5 py-1 rounded-lg text-[11px] font-black tracking-wider bg-[#241A0B] text-[#F5D794] border border-[#E5B869]/40 shrink-0">
               {match.format || '7v7'}
             </span>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-slate-300 border-t border-slate-800/80 pt-2.5">
-            <MapPin className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+          <div className="flex items-center gap-2 text-xs text-slate-300 border-t border-[#E5B869]/10 pt-2.5">
+            <MapPin className="w-3.5 h-3.5 text-[#E5B869] shrink-0" />
             <span className="truncate">{match.location.venueName} • {match.location.city || 'Casablanca'}</span>
           </div>
 
           <div className="grid grid-cols-2 gap-2 pt-1">
-            <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-center">
+            <div className="p-2.5 rounded-xl bg-[#141A26] border border-[#E5B869]/20 text-center">
               <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Roster Spots</span>
               <span className="text-xs font-black text-white">
                 {match.roster.length}/{match.maxPlayers} ({spotsLeft} open)
               </span>
             </div>
-            <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 text-center">
+            <div className="p-2.5 rounded-xl bg-[#141A26] border border-[#E5B869]/20 text-center">
               <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Fee / Player</span>
-              <span className="text-xs font-black text-emerald-400">
+              <span className="text-xs font-black text-[#F5D794]">
                 {formatMAD(match.pricePerPlayer, { showZeroAsFree: true })}
               </span>
             </div>
@@ -195,8 +195,8 @@ export const MatchShareModal: React.FC<MatchShareModalProps> = ({ isOpen, onClos
               onClick={() => setShareType('invite')}
               className={`py-2 px-2 rounded-xl text-xs font-bold transition-all text-center cursor-pointer ${
                 shareType === 'invite'
-                  ? 'bg-emerald-500 text-slate-950 shadow-md font-extrabold'
-                  : 'bg-[#080D1A] border border-[#1E293B] text-slate-300 hover:text-white hover:border-slate-700'
+                  ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 shadow-md font-extrabold'
+                  : 'bg-[#080B10] border border-[#E5B869]/20 text-slate-300 hover:text-white hover:border-[#E5B869]/40'
               }`}
             >
               📢 Match Invite
@@ -206,8 +206,8 @@ export const MatchShareModal: React.FC<MatchShareModalProps> = ({ isOpen, onClos
               onClick={() => setShareType('lineup')}
               className={`py-2 px-2 rounded-xl text-xs font-bold transition-all text-center cursor-pointer ${
                 shareType === 'lineup'
-                  ? 'bg-emerald-500 text-slate-950 shadow-md font-extrabold'
-                  : 'bg-[#080D1A] border border-[#1E293B] text-slate-300 hover:text-white hover:border-slate-700'
+                  ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 shadow-md font-extrabold'
+                  : 'bg-[#080B10] border border-[#E5B869]/20 text-slate-300 hover:text-white hover:border-[#E5B869]/40'
               }`}
             >
               ⚔️ Squad Lineup
@@ -217,8 +217,8 @@ export const MatchShareModal: React.FC<MatchShareModalProps> = ({ isOpen, onClos
               onClick={() => setShareType('payment')}
               className={`py-2 px-2 rounded-xl text-xs font-bold transition-all text-center cursor-pointer ${
                 shareType === 'payment'
-                  ? 'bg-emerald-500 text-slate-950 shadow-md font-extrabold'
-                  : 'bg-[#080D1A] border border-[#1E293B] text-slate-300 hover:text-white hover:border-slate-700'
+                  ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 shadow-md font-extrabold'
+                  : 'bg-[#080B10] border border-[#E5B869]/20 text-slate-300 hover:text-white hover:border-[#E5B869]/40'
               }`}
             >
               💳 CIH / MAD Fee
@@ -228,8 +228,8 @@ export const MatchShareModal: React.FC<MatchShareModalProps> = ({ isOpen, onClos
               onClick={() => setShareType('result')}
               className={`py-2 px-2 rounded-xl text-xs font-bold transition-all text-center cursor-pointer ${
                 shareType === 'result'
-                  ? 'bg-emerald-500 text-slate-950 shadow-md font-extrabold'
-                  : 'bg-[#080D1A] border border-[#1E293B] text-slate-300 hover:text-white hover:border-slate-700'
+                  ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 shadow-md font-extrabold'
+                  : 'bg-[#080B10] border border-[#E5B869]/20 text-slate-300 hover:text-white hover:border-[#E5B869]/40'
               }`}
             >
               🏆 Result & MOTM
@@ -238,7 +238,7 @@ export const MatchShareModal: React.FC<MatchShareModalProps> = ({ isOpen, onClos
         </div>
 
         {/* Message Preview Box */}
-        <div className="p-3 bg-[#080D1A] border border-slate-800 rounded-2xl max-h-36 overflow-y-auto font-mono text-[11px] text-slate-300 whitespace-pre-wrap leading-relaxed">
+        <div className="p-3 bg-[#080B10] border border-[#E5B869]/20 rounded-2xl max-h-36 overflow-y-auto font-mono text-[11px] text-slate-300 whitespace-pre-wrap leading-relaxed">
           {activeMessageText}
         </div>
 
@@ -259,12 +259,12 @@ export const MatchShareModal: React.FC<MatchShareModalProps> = ({ isOpen, onClos
               id="btn-copy-formatted-text"
               type="button"
               onClick={handleCopyMessage}
-              className="py-2.5 px-3 bg-[#080D1A] hover:bg-slate-900 border border-[#1E293B] hover:border-slate-700 active:scale-[0.99] text-slate-300 hover:text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="py-2.5 px-3 bg-[#080B10] hover:bg-[#141A26] border border-[#E5B869]/20 hover:border-[#E5B869]/50 active:scale-[0.99] text-slate-300 hover:text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               {copiedText ? (
                 <>
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-emerald-400">Message Copied!</span>
+                  <Check className="w-3.5 h-3.5 text-[#F5D794]" />
+                  <span className="text-[#F5D794]">Message Copied!</span>
                 </>
               ) : (
                 <>
@@ -278,12 +278,12 @@ export const MatchShareModal: React.FC<MatchShareModalProps> = ({ isOpen, onClos
               id="btn-copy-share-card"
               type="button"
               onClick={handleCopyLink}
-              className="py-2.5 px-3 bg-[#080D1A] hover:bg-slate-900 border border-[#1E293B] hover:border-slate-700 active:scale-[0.99] text-slate-300 hover:text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="py-2.5 px-3 bg-[#080B10] hover:bg-[#141A26] border border-[#E5B869]/20 hover:border-[#E5B869]/50 active:scale-[0.99] text-slate-300 hover:text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               {copiedLink ? (
                 <>
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-emerald-400">Link Copied!</span>
+                  <Check className="w-3.5 h-3.5 text-[#F5D794]" />
+                  <span className="text-[#F5D794]">Link Copied!</span>
                 </>
               ) : (
                 <>

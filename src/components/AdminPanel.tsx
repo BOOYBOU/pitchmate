@@ -67,12 +67,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onOpenMatchDetails, onOp
   return (
     <div className="space-y-6 animate-fadeIn pb-12">
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-[#0E1526] to-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-emerald-500/5 blur-3xl pointer-events-none" />
+      <div className="bg-gradient-to-r from-[#081813] via-[#0E4836] to-[#0A3A2A] border border-[#E5B869]/35 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
+        <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-[#E5B869]/10 blur-3xl pointer-events-none" />
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
           <div className="flex items-center gap-3.5">
-            <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400">
+            <div className="p-3 bg-[#081813] border border-[#E5B869]/40 rounded-2xl text-[#E5B869] shadow-md">
               <Shield className="w-7 h-7" />
             </div>
             <div>
@@ -80,11 +80,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onOpenMatchDetails, onOp
                 <h1 className="text-xl sm:text-2xl font-bold text-white font-display">
                   {t('admin.title', 'مركز القيادة والإدارة العامة')}
                 </h1>
-                <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 text-xs font-bold border border-purple-500/30">
+                <span className="px-2.5 py-0.5 rounded-full bg-[#081813] text-[#F5D794] text-xs font-black border border-[#E5B869]/40 shadow-sm">
                   {language === 'ar' ? 'المشرف العام' : 'SUPER ADMIN'}
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-slate-400 mt-1">
+              <p className="text-xs sm:text-sm text-emerald-200/80 mt-1">
                 {t('admin.subtitle', 'إدارة مجتمع اللاعبين، مراجعة طلبات الانضمام، مراقبة المباريات، ونشر الإعلانات')}
               </p>
             </div>
@@ -94,7 +94,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onOpenMatchDetails, onOp
             <button
               onClick={handleResetData}
               disabled={isResetting}
-              className="px-3 py-2 bg-slate-800/80 hover:bg-slate-800 text-slate-400 hover:text-slate-200 text-xs font-semibold rounded-lg border border-slate-700/60 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="px-3.5 py-2 bg-[#081813] hover:bg-[#0A3A2A] text-emerald-200 hover:text-[#F5D794] text-xs font-semibold rounded-xl border border-[#E5B869]/30 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               title={language === 'ar' ? 'إعادة ضبط المباريات الافتراضية' : 'Reset Database to Default Fixtures'}
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin' : ''}`} />
@@ -103,7 +103,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onOpenMatchDetails, onOp
 
             <button
               onClick={onOpenCreateMatch}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+              className="px-4 py-2 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:opacity-90 text-slate-950 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shadow-md shadow-amber-950/40 cursor-pointer"
             >
               <Trophy className="w-3.5 h-3.5" />
               <span>{t('nav.createMatch', 'تنظيم مباراة')}</span>
@@ -112,13 +112,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onOpenMatchDetails, onOp
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 mt-6 pt-4 border-t border-slate-800/80 overflow-x-auto pb-1">
+        <div className="flex items-center gap-2 mt-6 pt-4 border-t border-[#E5B869]/20 overflow-x-auto pb-1">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2 cursor-pointer shrink-0 ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors flex items-center gap-2 cursor-pointer shrink-0 ${
               activeTab === 'overview'
-                ? 'bg-emerald-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 font-bold shadow-md'
+                : 'text-emerald-300/70 hover:text-white hover:bg-[#081813]/60'
             }`}
           >
             <BarChart3 className="w-4 h-4" />
@@ -127,16 +127,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onOpenMatchDetails, onOp
 
           <button
             onClick={() => setActiveTab('users')}
-            className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2 cursor-pointer shrink-0 ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors flex items-center gap-2 cursor-pointer shrink-0 ${
               activeTab === 'users'
-                ? 'bg-emerald-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 font-bold shadow-md'
+                : 'text-emerald-300/70 hover:text-white hover:bg-[#081813]/60'
             }`}
           >
             <Users className="w-4 h-4" />
             <span>{t('admin.tabAllUsers', 'إدارة اللاعبين')}</span>
             {pendingUsersCount > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950 font-bold text-[10px]">
+              <span className="px-1.5 py-0.2 rounded-full bg-[#E5B869] text-slate-950 font-black text-[10px]">
                 {pendingUsersCount}
               </span>
             )}
@@ -144,10 +144,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onOpenMatchDetails, onOp
 
           <button
             onClick={() => setActiveTab('matches')}
-            className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2 cursor-pointer shrink-0 ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors flex items-center gap-2 cursor-pointer shrink-0 ${
               activeTab === 'matches'
-                ? 'bg-emerald-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 font-bold shadow-md'
+                : 'text-emerald-300/70 hover:text-white hover:bg-[#081813]/60'
             }`}
           >
             <Trophy className="w-4 h-4" />
@@ -156,10 +156,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onOpenMatchDetails, onOp
 
           <button
             onClick={() => setActiveTab('announcements')}
-            className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center gap-2 cursor-pointer shrink-0 ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors flex items-center gap-2 cursor-pointer shrink-0 ${
               activeTab === 'announcements'
-                ? 'bg-emerald-600 text-white shadow-sm'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 font-bold shadow-md'
+                : 'text-emerald-300/70 hover:text-white hover:bg-[#081813]/60'
             }`}
           >
             <Megaphone className="w-4 h-4" />

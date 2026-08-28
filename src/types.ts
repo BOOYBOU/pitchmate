@@ -182,6 +182,8 @@ export interface UserProfile {
   password?: string;
   passwordHash?: string; // Secure hashed password
   passwordSalt?: string;
+  isGoogleAuth?: boolean;
+  emailVerified?: boolean;
   isAdmin: boolean;
   isBanned?: boolean;
   banReason?: string;

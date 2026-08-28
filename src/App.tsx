@@ -59,7 +59,7 @@ function PitchMateApp() {
   };
 
   return (
-    <div className="min-h-screen stadium-ambient-bg text-slate-100 flex flex-col selection:bg-emerald-500/30 selection:text-emerald-300">
+    <div className="min-h-screen stadium-ambient-bg text-slate-100 flex flex-col selection:bg-[#E5B869]/30 selection:text-[#F5D794]">
       {/* App Header & Navigation */}
       <Header
         activeTab={activeTab}
@@ -144,39 +144,39 @@ function PitchMateApp() {
       />
 
       {/* Footer */}
-      <footer className="mt-auto border-t border-[#1E293B] bg-[#090D16]/90 py-6 text-xs text-slate-400">
+      <footer className="mt-auto border-t border-[#E5B869]/25 bg-[#081813]/95 py-6 text-xs text-emerald-300/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-white font-display">PitchMate</span>
-            <span>•</span>
-            <span>{t('brand.tagline')}</span>
+            <span className="font-bold text-[#F5D794] font-display">PitchMate</span>
+            <span className="text-[#E5B869]/40">•</span>
+            <span className="text-emerald-200/80">{t('brand.tagline')}</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-[11px]">
             <button
               onClick={() => setActiveTab('matches')}
-              className="text-slate-400 hover:text-slate-200 cursor-pointer transition-colors"
+              className="text-emerald-300/70 hover:text-[#F5D794] cursor-pointer transition-colors"
             >
               {t('nav.matches')}
             </button>
 
-            <span>•</span>
+            <span className="text-[#E5B869]/40">•</span>
 
             <button
               onClick={() => setActiveTab('profile')}
-              className="text-slate-400 hover:text-slate-200 cursor-pointer transition-colors"
+              className="text-emerald-300/70 hover:text-[#F5D794] cursor-pointer transition-colors"
             >
               {t('nav.profile')}
             </button>
 
-            <span>•</span>
+            <span className="text-[#E5B869]/40">•</span>
 
-            <span className="flex items-center gap-1 text-slate-300">
-              <Shield className="w-3.5 h-3.5 text-emerald-400" />
-              <span>{t('nav.superAdminBadge')}:</span> <strong className="text-emerald-400">Mustapha Bouhbous</strong>
+            <span className="flex items-center gap-1 text-emerald-100/90">
+              <Shield className="w-3.5 h-3.5 text-[#E5B869]" />
+              <span>{t('nav.superAdminBadge')}:</span> <strong className="text-[#F5D794]">Mustapha Bouhbous</strong>
             </span>
 
-            <span>•</span>
+            <span className="text-[#E5B869]/40">•</span>
 
             <button
               onClick={() => {
@@ -186,7 +186,7 @@ function PitchMateApp() {
                   setActiveTab('admin');
                 }
               }}
-              className="text-blue-400 hover:underline hover:text-blue-300 font-semibold cursor-pointer transition-colors"
+              className="text-[#E5B869] hover:underline hover:text-[#F5D794] font-bold cursor-pointer transition-colors"
             >
               {t('admin.title')}
             </button>

@@ -183,41 +183,41 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
       <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
         <div
           id="direct-messages-modal"
-          className="w-full max-w-5xl h-[90vh] sm:h-[84vh] bg-[#0E1526] border border-[#1E293B] rounded-3xl shadow-2xl flex overflow-hidden text-white relative"
+          className="w-full max-w-5xl h-[90vh] sm:h-[84vh] bg-[#0A3A2A] border border-[#E5B869]/35 rounded-3xl shadow-2xl flex overflow-hidden text-white relative"
         >
           {/* Left Sidebar: User List */}
-          <div className="w-full max-w-[280px] sm:max-w-[320px] bg-[#090D16] border-r border-[#1E293B] flex flex-col h-full shrink-0">
+          <div className="w-full max-w-[280px] sm:max-w-[320px] bg-[#081813] border-r border-[#E5B869]/20 flex flex-col h-full shrink-0">
             {/* Header & Search */}
-            <div className="p-4 border-b border-[#1E293B] space-y-3">
+            <div className="p-4 border-b border-[#E5B869]/20 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center text-white font-bold text-sm shadow-md">
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#F5D794] via-[#E5B869] to-[#C69238] flex items-center justify-center text-slate-950 font-bold text-sm shadow-md">
                     <MessageSquare className="w-4 h-4" />
                   </div>
                   <div>
                     <h3 className="text-sm font-black font-display text-white">Direct Messages</h3>
-                    <p className="text-[10px] text-slate-400">Teammate Voice & Chat</p>
+                    <p className="text-[10px] text-emerald-300/70">Teammate Voice & Chat</p>
                   </div>
                 </div>
               </div>
 
               {/* Search Bar */}
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-400/50" />
                 <input
                   type="text"
                   placeholder="Search teammates..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-1.5 bg-[#0E1526] border border-[#1E293B] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                  className="w-full pl-9 pr-3 py-1.5 bg-[#0A3A2A] border border-[#E5B869]/25 rounded-xl text-xs text-white placeholder-emerald-400/40 focus:outline-none focus:border-[#E5B869]"
                 />
               </div>
             </div>
 
             {/* Teammates List */}
-            <div className="flex-1 overflow-y-auto divide-y divide-[#1E293B]/40">
+            <div className="flex-1 overflow-y-auto divide-y divide-[#E5B869]/15">
               {filteredUsers.length === 0 ? (
-                <div className="p-6 text-center text-xs text-slate-500">
+                <div className="p-6 text-center text-xs text-emerald-300/60">
                   No teammates found matching query.
                 </div>
               ) : (
@@ -245,19 +245,19 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                       onClick={() => setSelectedUserId(u.id)}
                       className={`w-full p-3.5 flex items-center gap-3 text-left transition-all cursor-pointer ${
                         isSelected
-                          ? 'bg-[#131C31] border-l-4 border-emerald-500'
-                          : 'hover:bg-[#0E1526]'
+                          ? 'bg-[#0E4836] border-l-4 border-[#E5B869]'
+                          : 'hover:bg-[#0A3A2A]'
                       }`}
                     >
                       <div className="relative shrink-0">
                         <img
                           src={u.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
                           alt={u.name}
-                          className="w-10 h-10 rounded-full object-cover border border-[#1E293B]"
+                          className="w-10 h-10 rounded-full object-cover border border-[#E5B869]/30"
                           referrerPolicy="no-referrer"
                         />
                         {u.isAdmin && (
-                          <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-amber-500 text-black flex items-center justify-center text-[9px] font-black">
+                          <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#E5B869] text-slate-950 flex items-center justify-center text-[9px] font-black">
                             ★
                           </div>
                         )}
@@ -269,7 +269,7 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                             {u.name}
                           </span>
                           {lastMsg && (
-                            <span className="text-[10px] text-slate-500">
+                            <span className="text-[10px] text-emerald-400/60">
                               {new Date(lastMsg.createdAt).toLocaleTimeString([], {
                                 hour: '2-digit',
                                 minute: '2-digit',
@@ -279,15 +279,15 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                         </div>
 
                         <div className="flex items-center justify-between">
-                          <p className="text-[11px] text-slate-400 truncate max-w-[140px]">
+                          <p className="text-[11px] text-emerald-200/70 truncate max-w-[140px]">
                             {lastMsg ? (
                               lastMsg.audioUrl ? (
-                                <span className="flex items-center gap-1 text-emerald-400 font-medium">
-                                  <Mic className="w-3 h-3" /> Voice Note
+                                <span className="flex items-center gap-1 text-[#F5D794] font-medium">
+                                  <Mic className="w-3 h-3 text-[#E5B869]" /> Voice Note
                                 </span>
                               ) : lastMsg.imageUrl ? (
-                                <span className="flex items-center gap-1 text-blue-400">
-                                  <ImageIcon className="w-3 h-3" /> Photo
+                                <span className="flex items-center gap-1 text-[#F5D794]">
+                                  <ImageIcon className="w-3 h-3 text-[#E5B869]" /> Photo
                                 </span>
                               ) : (
                                 lastMsg.text
@@ -298,7 +298,7 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                           </p>
 
                           {unreadFromUser > 0 && (
-                            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500 text-black shrink-0">
+                            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[#E5B869] text-slate-950 shrink-0">
                               {unreadFromUser}
                             </span>
                           )}
@@ -311,17 +311,17 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
             </div>
 
             {/* Bottom Current Profile Tag */}
-            <div className="p-3 bg-[#0E1526] border-t border-[#1E293B] flex items-center justify-between">
+            <div className="p-3 bg-[#081813] border-t border-[#E5B869]/20 flex items-center justify-between">
               <div className="flex items-center gap-2 min-w-0">
                 <img
                   src={currentUser.avatarUrl}
                   alt={currentUser.name}
-                  className="w-7 h-7 rounded-full object-cover border border-emerald-500 shrink-0"
+                  className="w-7 h-7 rounded-full object-cover border border-[#E5B869] shrink-0"
                   referrerPolicy="no-referrer"
                 />
                 <div className="truncate text-xs">
-                  <span className="font-bold text-slate-200 block truncate">{currentUser.name}</span>
-                  <span className="text-[10px] text-emerald-400">Connected</span>
+                  <span className="font-bold text-emerald-100 block truncate">{currentUser.name}</span>
+                  <span className="text-[10px] text-[#F5D794]">Connected</span>
                 </div>
               </div>
             </div>
@@ -329,29 +329,29 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
 
           {/* Right Panel: Active Chat Thread */}
           <div
-            className="flex-1 flex flex-col bg-[#0E1526] h-full min-w-0 relative"
+            className="flex-1 flex flex-col bg-[#0A3A2A] h-full min-w-0 relative"
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
           >
             {/* Drag & Drop overlay */}
             {isDraggingOver && (
-              <div className="absolute inset-0 z-30 bg-emerald-950/80 border-2 border-dashed border-emerald-400 flex flex-col items-center justify-center text-emerald-300 backdrop-blur-sm">
-                <Upload className="w-12 h-12 mb-2 animate-bounce" />
+              <div className="absolute inset-0 z-30 bg-[#0E4836]/90 border-2 border-dashed border-[#E5B869] flex flex-col items-center justify-center text-[#F5D794] backdrop-blur-sm">
+                <Upload className="w-12 h-12 mb-2 animate-bounce text-[#E5B869]" />
                 <p className="text-sm font-bold">Drop Image to Share in Chat</p>
-                <p className="text-xs text-emerald-400/80">Supports JPG, PNG, GIF, WebP</p>
+                <p className="text-xs text-amber-300/80">Supports JPG, PNG, GIF, WebP</p>
               </div>
             )}
 
             {selectedUser ? (
               <>
                 {/* Chat Thread Header */}
-                <div className="p-3.5 sm:p-4 border-b border-[#1E293B] bg-[#0E1526] flex items-center justify-between">
+                <div className="p-3.5 sm:p-4 border-b border-[#E5B869]/20 bg-[#0A3A2A] flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <img
                       src={selectedUser.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
                       alt={selectedUser.name}
-                      className="w-9 h-9 rounded-full object-cover border border-emerald-500/40"
+                      className="w-9 h-9 rounded-full object-cover border border-[#E5B869]/40"
                       referrerPolicy="no-referrer"
                     />
                     <div>
@@ -360,13 +360,13 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                           {selectedUser.name}
                         </h4>
                         {selectedUser.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase() && (
-                          <span className="px-2 py-0.2 rounded-full text-[9px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                          <span className="px-2 py-0.2 rounded-full text-[9px] font-extrabold bg-[#0E4836] text-[#F5D794] border border-[#E5B869]/40">
                             Super Admin
                           </span>
                         )}
                       </div>
-                      <span className="text-[11px] text-emerald-400 flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="text-[11px] text-[#F5D794] flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#E5B869] animate-pulse" />
                         Active Player
                       </span>
                     </div>
@@ -376,7 +376,7 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                   <div className="flex items-center gap-2">
                     <button
                       onClick={onClose}
-                      className="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
+                      className="text-emerald-300/70 hover:text-white p-1.5 rounded-xl hover:bg-[#0E4836] transition-colors cursor-pointer"
                       title="Close"
                     >
                       <X className="w-5 h-5" />
@@ -385,16 +385,16 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                 </div>
 
                 {/* Chat Message Stream */}
-                <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-[#090D16]/40">
+                <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-[#081813]/60">
                   {conversationMessages.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-2 text-slate-500">
-                      <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-                        <MessageSquare className="w-6 h-6" />
+                    <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-2 text-emerald-300/60">
+                      <div className="w-12 h-12 rounded-2xl bg-[#0E4836] text-[#F5D794] flex items-center justify-center border border-[#E5B869]/30">
+                        <MessageSquare className="w-6 h-6 text-[#E5B869]" />
                       </div>
-                      <p className="text-xs font-semibold text-slate-300">
+                      <p className="text-xs font-semibold text-emerald-100">
                         Start a direct conversation with {selectedUser.name}!
                       </p>
-                      <p className="text-[11px] text-slate-500 max-w-xs">
+                      <p className="text-[11px] text-emerald-300/60 max-w-xs">
                         Coordinate match timings, team bib colors, send voice notes, or launch a live voice call.
                       </p>
                     </div>
@@ -417,7 +417,7 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                             <img
                               src={selectedUser.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
                               alt={selectedUser.name}
-                              className="w-7 h-7 rounded-full object-cover border border-slate-700 shrink-0 mb-1"
+                              className="w-7 h-7 rounded-full object-cover border border-[#E5B869]/30 shrink-0 mb-1"
                               referrerPolicy="no-referrer"
                             />
                           )}
@@ -425,8 +425,8 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                           <div
                             className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-2.5 text-xs relative shadow-md space-y-2 ${
                               isMine
-                                ? 'bg-blue-600 text-white rounded-br-none'
-                                : 'bg-[#131C31] text-slate-200 border border-[#1E293B] rounded-bl-none'
+                                ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 font-medium rounded-br-none'
+                                : 'bg-[#0E4836] text-white border border-[#E5B869]/25 rounded-bl-none'
                             }`}
                           >
                             {/* Voice Note Player */}
@@ -472,16 +472,16 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                             {/* Message Timestamp & Status */}
                             <div
                               className={`flex items-center justify-end gap-1 text-[9px] mt-1 ${
-                                isMine ? 'text-blue-200' : 'text-slate-400'
+                                isMine ? 'text-slate-950/70 font-semibold' : 'text-emerald-300/70'
                               }`}
                             >
                               <span>{msgTime}</span>
                               {isMine && (
                                 <span>
                                   {msg.read ? (
-                                    <CheckCheck className="w-3 h-3 text-emerald-300 inline" />
+                                    <CheckCheck className="w-3 h-3 text-slate-950 inline" />
                                   ) : (
-                                    <Check className="w-3 h-3 text-blue-200 inline" />
+                                    <Check className="w-3 h-3 text-slate-950/70 inline" />
                                   )}
                                 </span>
                               )}
@@ -491,7 +491,7 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                           {isMine && (
                             <button
                               onClick={() => deleteDirectMessage(msg.id)}
-                              className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 p-1 transition-opacity cursor-pointer mb-1"
+                              className="opacity-0 group-hover:opacity-100 text-emerald-400/50 hover:text-rose-400 p-1 transition-opacity cursor-pointer mb-1"
                               title="Delete message"
                             >
                               <Trash2 className="w-3 h-3" />
@@ -506,8 +506,8 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
 
                 {/* Image Upload / URL Preview Bar */}
                 {attachedImage && (
-                  <div className="p-3 bg-[#090D16] border-t border-[#1E293B] flex items-center gap-3 animate-in fade-in">
-                    <div className="relative w-16 h-16 rounded-xl overflow-hidden border-2 border-emerald-500 shrink-0">
+                  <div className="p-3 bg-[#081813] border-t border-[#E5B869]/20 flex items-center gap-3 animate-in fade-in">
+                    <div className="relative w-16 h-16 rounded-xl overflow-hidden border-2 border-[#E5B869] shrink-0">
                       <img
                         src={attachedImage}
                         alt="Attachment preview"
@@ -523,11 +523,11 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                         <X className="w-3 h-3" />
                       </button>
                     </div>
-                    <div className="text-xs text-slate-300">
-                      <span className="font-bold text-emerald-400 flex items-center gap-1">
-                        <ImageIcon className="w-3.5 h-3.5" /> Image attached
+                    <div className="text-xs text-emerald-100">
+                      <span className="font-bold text-[#F5D794] flex items-center gap-1">
+                        <ImageIcon className="w-3.5 h-3.5 text-[#E5B869]" /> Image attached
                       </span>
-                      <p className="text-[11px] text-slate-400">
+                      <p className="text-[11px] text-emerald-300/70">
                         Type an optional caption below and click send.
                       </p>
                     </div>
@@ -536,8 +536,8 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
 
                 {/* Paste Image URL Input Dialog */}
                 {isUrlInputOpen && (
-                  <div className="p-3 bg-[#090D16] border-t border-[#1E293B] flex items-center gap-2 animate-in fade-in">
-                    <Link className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <div className="p-3 bg-[#081813] border-t border-[#E5B869]/20 flex items-center gap-2 animate-in fade-in">
+                    <Link className="w-4 h-4 text-[#E5B869] shrink-0" />
                     <input
                       type="url"
                       placeholder="Paste image URL (https://...)"
@@ -549,20 +549,20 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                           handleAddUrlImage();
                         }
                       }}
-                      className="flex-1 px-3 py-1.5 bg-[#0E1526] border border-[#1E293B] rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                      className="flex-1 px-3 py-1.5 bg-[#0A3A2A] border border-[#E5B869]/25 rounded-xl text-xs text-white placeholder-emerald-400/40 focus:outline-none focus:border-[#E5B869]"
                     />
                     <button
                       type="button"
                       onClick={handleAddUrlImage}
                       disabled={!urlInputText.trim()}
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                      className="px-3 py-1.5 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:opacity-90 disabled:opacity-40 text-slate-950 rounded-xl text-xs font-bold transition-all cursor-pointer"
                     >
                       Attach
                     </button>
                     <button
                       type="button"
                       onClick={() => setIsUrlInputOpen(false)}
-                      className="p-1.5 text-slate-400 hover:text-white cursor-pointer"
+                      className="p-1.5 text-emerald-300/70 hover:text-white cursor-pointer"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -570,7 +570,7 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                 )}
 
                 {/* Message Input Box & Voice Controls */}
-                <div className="p-3 bg-[#0E1526] border-t border-[#1E293B] space-y-2">
+                <div className="p-3 bg-[#0A3A2A] border-t border-[#E5B869]/20 space-y-2">
                   <form
                     onSubmit={handleSendMessage}
                     className="flex items-center gap-2"
@@ -588,7 +588,7 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="p-2.5 rounded-2xl bg-[#090D16] hover:bg-[#131C31] border border-[#1E293B] text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer"
+                      className="p-2.5 rounded-2xl bg-[#081813] hover:bg-[#0E4836] border border-[#E5B869]/25 text-emerald-300/70 hover:text-[#F5D794] transition-colors cursor-pointer"
                       title="Upload image from device"
                     >
                       <Paperclip className="w-4 h-4" />
@@ -600,8 +600,8 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                       onClick={() => setIsUrlInputOpen(!isUrlInputOpen)}
                       className={`p-2.5 rounded-2xl border transition-colors cursor-pointer ${
                         isUrlInputOpen
-                          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
-                          : 'bg-[#090D16] hover:bg-[#131C31] border-[#1E293B] text-slate-400 hover:text-emerald-400'
+                          ? 'bg-[#0E4836] text-[#F5D794] border-[#E5B869]'
+                          : 'bg-[#081813] hover:bg-[#0E4836] border-[#E5B869]/25 text-emerald-300/70 hover:text-[#F5D794]'
                       }`}
                       title="Attach image from URL link"
                     >
@@ -620,14 +620,14 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                       placeholder={`Message ${selectedUser.name}...`}
                       value={messageInput}
                       onChange={(e) => setMessageInput(e.target.value)}
-                      className="flex-1 px-4 py-2.5 bg-[#090D16] border border-[#1E293B] rounded-2xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                      className="flex-1 px-4 py-2.5 bg-[#081813] border border-[#E5B869]/25 rounded-2xl text-xs text-white placeholder-emerald-400/40 focus:outline-none focus:border-[#E5B869]"
                     />
 
                     {/* Send Button */}
                     <button
                       type="submit"
                       disabled={!messageInput.trim() && !attachedImage}
-                      className="p-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white rounded-2xl transition-all shadow-md shadow-emerald-950 cursor-pointer"
+                      className="p-2.5 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:opacity-90 disabled:opacity-40 text-slate-950 rounded-2xl transition-all shadow-md shadow-amber-950 cursor-pointer font-bold"
                       title="Send Message"
                     >
                       <Send className="w-4 h-4" />
@@ -636,7 +636,7 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                 </div>
               </>
             ) : (
-              <div className="h-full flex items-center justify-center p-6 text-xs text-slate-500">
+              <div className="h-full flex items-center justify-center p-6 text-xs text-emerald-300/60">
                 Select a player to open direct chat
               </div>
             )}
@@ -652,12 +652,12 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
           onClick={() => setActiveLightboxImage(null)}
         >
           <div
-            className="relative max-w-4xl max-h-[90vh] bg-[#0E1526] border border-[#1E293B] rounded-3xl overflow-hidden shadow-2xl flex flex-col"
+            className="relative max-w-4xl max-h-[90vh] bg-[#0A3A2A] border border-[#E5B869]/35 rounded-3xl overflow-hidden shadow-2xl flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-3 bg-[#090D16] border-b border-[#1E293B] flex items-center justify-between">
+            <div className="p-3 bg-[#081813] border-b border-[#E5B869]/20 flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs font-bold text-white">
-                <ImageIcon className="w-4 h-4 text-emerald-400" />
+                <ImageIcon className="w-4 h-4 text-[#E5B869]" />
                 <span>Shared Match Media Preview</span>
               </div>
               <div className="flex items-center gap-2">
@@ -665,14 +665,14 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                   href={activeLightboxImage}
                   target="_blank"
                   rel="noreferrer"
-                  className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white transition-colors"
+                  className="p-1.5 rounded-lg bg-[#0E4836] text-[#F5D794] hover:text-white transition-colors"
                   title="Open in new tab"
                 >
                   <ExternalLink className="w-4 h-4" />
                 </a>
                 <button
                   onClick={() => setActiveLightboxImage(null)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                  className="p-1.5 rounded-lg text-emerald-300/70 hover:text-white hover:bg-[#0E4836] transition-colors cursor-pointer"
                   title="Close preview"
                 >
                   <X className="w-5 h-5" />
