@@ -95,20 +95,28 @@ interface PitchStoreContextType {
 
   // Authentication Actions
   loginWithCredentials: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  sendVerificationOTP: (email: string, type?: 'signup' | 'forgot_password') => Promise<{ success: boolean; code?: string; error?: string }>;
+  verifyOTPCode: (email: string, code: string) => Promise<{ success: boolean; error?: string }>;
   signupWithCredentials: (
     name: string,
     email: string,
     password: string,
-    avatarUrl?: string
+    avatarUrl?: string,
+    city?: string,
+    preferredPosition?: string,
+    otpCode?: string
   ) => Promise<{ success: boolean; pendingApproval?: boolean; error?: string }>;
-  loginWithGoogle: (action?: 'signin' | 'signup') => Promise<{
+  loginWithGoogle: (
+    action?: 'signin' | 'signup',
+    profileOverride?: { email: string; name?: string; avatarUrl?: string; uid?: string }
+  ) => Promise<{
     success: boolean;
     pendingApproval?: boolean;
     user?: UserProfile;
     code?: string;
     error?: string;
   }>;
-  resetPasswordWithEmail: (email: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
+  resetPasswordWithEmail: (email: string, newPassword: string, otpCode?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
 
   // Match Actions
@@ -628,7 +636,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (targetUser.status === 'pending') {
       return {
         success: false,
-        error: 'Your account is pending review. The Admin must approve your registration before you can sign in.',
+        error: 'Your account is on the waitlist awaiting manual Admin approval before you can sign in.',
       };
     }
 
@@ -636,6 +644,13 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return {
         success: false,
         error: 'Your registration was declined by the administrator.',
+      };
+    }
+
+    if (targetUser.isGoogleAuth && !targetUser.passwordHash && !targetUser.password) {
+      return {
+        success: false,
+        error: 'This account was registered using Google. Please click "Sign In with Google" using your approved Google account.',
       };
     }
 
@@ -658,11 +673,72 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return { success: true };
   }, [users]);
 
+  // Send 6-Digit Email Verification Code (OTP)
+  const sendVerificationOTP = useCallback(async (
+    email: string,
+    type: 'signup' | 'forgot_password' = 'signup'
+  ): Promise<{ success: boolean; code?: string; error?: string }> => {
+    const cleanEmail = sanitizeInput(email).toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      return { success: false, error: 'الرجاء إدخال بريد إلكتروني صالح.' };
+    }
+
+    try {
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail, type }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        return { success: false, error: data.error || 'فشل في إرسال رمز التحقق.' };
+      }
+
+      return { success: true, code: data.code };
+    } catch {
+      return { success: false, error: 'تعذر الاتصال بالخادم لإرسال رمز التحقق.' };
+    }
+  }, []);
+
+  // Verify 6-Digit Email OTP
+  const verifyOTPCode = useCallback(async (
+    email: string,
+    code: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    const cleanEmail = sanitizeInput(email).toLowerCase();
+    const cleanCode = code.trim();
+
+    if (!cleanEmail || !cleanCode) {
+      return { success: false, error: 'البريد الإلكتروني ورمز التحقق مطلوبان.' };
+    }
+
+    try {
+      const res = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail, code: cleanCode }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        return { success: false, error: data.error || 'رمز التحقق غير صحيح أو انتهت صلاحيته.' };
+      }
+
+      return { success: true };
+    } catch {
+      return { success: false, error: 'تعذر التحقق من الرمز بسبب خطأ في الاتصال.' };
+    }
+  }, []);
+
   const signupWithCredentials = useCallback(async (
     name: string,
     email: string,
     pass: string,
-    avatarUrl?: string
+    avatarUrl?: string,
+    city?: string,
+    preferredPosition?: string,
+    otpCode?: string
   ): Promise<{ success: boolean; pendingApproval?: boolean; error?: string }> => {
     const cleanName = sanitizeInput(name);
     const cleanEmail = sanitizeInput(email).toLowerCase();
@@ -698,6 +774,9 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           passwordHash: hash,
           passwordSalt: salt,
           avatarUrl: finalAvatarUrl,
+          city: city || 'Casablanca',
+          preferredPosition: preferredPosition || 'MID',
+          otpCode: otpCode || '',
         }),
       });
 
@@ -726,12 +805,23 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, []);
 
-  const resetPasswordWithEmail = useCallback(async (email: string, newPass: string): Promise<{ success: boolean; error?: string }> => {
+  const resetPasswordWithEmail = useCallback(async (
+    email: string,
+    newPass: string,
+    otpCode?: string
+  ): Promise<{ success: boolean; error?: string }> => {
     const cleanEmail = sanitizeInput(email).toLowerCase();
     const cleanPass = newPass.trim();
 
     if (!cleanEmail || !cleanPass) return { success: false, error: 'Email and new password are required.' };
     if (cleanPass.length < 6) return { success: false, error: 'New password must be at least 6 characters.' };
+
+    if (otpCode) {
+      const verifyRes = await verifyOTPCode(cleanEmail, otpCode);
+      if (!verifyRes.success) {
+        return { success: false, error: verifyRes.error || 'Invalid OTP code.' };
+      }
+    }
 
     const targetUser = users.find((u) => u.email.toLowerCase() === cleanEmail);
     if (!targetUser) return { success: false, error: 'No account found with this email address.' };
@@ -753,9 +843,12 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setCurrentUserId(targetUser.id);
     setIsAuthenticated(true);
     return { success: true };
-  }, [users]);
+  }, [users, verifyOTPCode]);
 
-  const loginWithGoogle = useCallback(async (action: 'signin' | 'signup' = 'signin'): Promise<{
+  const loginWithGoogle = useCallback(async (
+    action: 'signin' | 'signup' = 'signin',
+    profileOverride?: { email: string; name?: string; avatarUrl?: string; uid?: string }
+  ): Promise<{
     success: boolean;
     pendingApproval?: boolean;
     user?: UserProfile;
@@ -763,17 +856,47 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     error?: string;
   }> => {
     try {
-      const { GoogleAuthProvider, signInWithPopup } = await import('firebase/auth');
-      const { auth } = await import('./firebase');
+      let gEmail = '';
+      let gName = 'Google Player';
+      let gPhoto = '';
+      let gUid = '';
 
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
+      if (profileOverride && profileOverride.email) {
+        gEmail = profileOverride.email.toLowerCase().trim();
+        gName = profileOverride.name || (gEmail.split('@')[0] ? gEmail.split('@')[0].replace(/[._]/g, ' ') : 'Google Player');
+        gPhoto = profileOverride.avatarUrl || `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`;
+        gUid = profileOverride.uid || `g_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      } else {
+        try {
+          const { GoogleAuthProvider, signInWithPopup } = await import('firebase/auth');
+          const { auth } = await import('./firebase');
 
-      const result = await signInWithPopup(auth, provider);
-      const gUser = result.user;
-      const gEmail = (gUser.email || '').toLowerCase().trim();
-      const gName = gUser.displayName || 'Google Player';
-      const gPhoto = gUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(gName)}`;
+          const provider = new GoogleAuthProvider();
+          provider.setCustomParameters({ prompt: 'select_account' });
+
+          const result = await signInWithPopup(auth, provider);
+          const gUser = result.user;
+          gEmail = (gUser.email || '').toLowerCase().trim();
+          gName = gUser.displayName || 'Google Player';
+          gPhoto = gUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(gName)}`;
+          gUid = gUser.uid;
+        } catch (popupErr: any) {
+          // If domain unauthorized or popup blocked in sandbox/iframe, signal UI to open Google Account Chooser
+          if (
+            popupErr.code === 'auth/unauthorized-domain' ||
+            popupErr.code === 'auth/popup-blocked' ||
+            popupErr.code === 'auth/operation-not-allowed' ||
+            popupErr.message?.includes('unauthorized-domain')
+          ) {
+            return {
+              success: false,
+              code: 'SHOW_GOOGLE_PICKER',
+              error: 'SHOW_GOOGLE_PICKER',
+            };
+          }
+          throw popupErr;
+        }
+      }
 
       if (!gEmail) {
         return { success: false, error: 'Could not retrieve a valid email address from Google.' };
@@ -804,10 +927,10 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
         // Create Brand New Google Player
         const newGoogleUser: UserProfile = {
-          id: isMustapha ? 'user_mustapha' : `user_g_${gUser.uid}`,
+          id: isMustapha ? 'user_mustapha' : `user_g_${gUid}`,
           name: gName,
           email: gEmail,
-          avatarUrl: gPhoto,
+          avatarUrl: gPhoto || `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`,
           city: 'Casablanca',
           bio: 'Verified Google Player',
           preferredPosition: 'MID',
@@ -837,7 +960,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            uid: gUser.uid,
+            uid: gUid,
             name: gName,
             email: gEmail,
             avatarUrl: gPhoto,
@@ -883,10 +1006,11 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
         if (existingUser.status === 'pending' && !isMustapha) {
           return {
-            success: true,
+            success: false,
+            code: 'PENDING_APPROVAL',
             pendingApproval: true,
             user: existingUser,
-            error: 'حسابك الموثق عبر Google مسجل وهو الآن بانتظار موافقة المشرف العام.',
+            error: 'حسابك في قائمة الانتظار بانتظار موافقة المشرف العام (Mustapha Bouhbous) يدوياً. يرجى الانتظار حتى تتم مراجعة واعتماد حسابك.',
           };
         }
 
@@ -911,7 +1035,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            uid: gUser.uid,
+            uid: gUid || `g_${updatedUser.id}`,
             name: gName,
             email: gEmail,
             avatarUrl: gPhoto,
@@ -927,7 +1051,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         id: 'user_mustapha',
         name: gName,
         email: gEmail,
-        avatarUrl: gPhoto,
+        avatarUrl: gPhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
         city: 'Casablanca',
         bio: 'Platform Owner & Super Admin',
         preferredPosition: 'MID',
@@ -964,6 +1088,9 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
       if (err.code === 'auth/cancelled-popup-request') {
         return { success: false, error: 'تم إلغاء طلب تسجيل الدخول.' };
+      }
+      if (err.code === 'auth/unauthorized-domain' || err.message?.includes('unauthorized-domain')) {
+        return { success: false, code: 'SHOW_GOOGLE_PICKER', error: 'SHOW_GOOGLE_PICKER' };
       }
       return { success: false, error: err.message || 'حدث خطأ أثناء الاتصال بـ Google.' };
     }
@@ -2185,6 +2312,8 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     unreadNotificationsCount,
     isLoading,
     loginWithCredentials,
+    sendVerificationOTP,
+    verifyOTPCode,
     signupWithCredentials,
     loginWithGoogle,
     resetPasswordWithEmail,
@@ -2250,6 +2379,8 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     unreadNotificationsCount,
     isLoading,
     loginWithCredentials,
+    sendVerificationOTP,
+    verifyOTPCode,
     signupWithCredentials,
     loginWithGoogle,
     resetPasswordWithEmail,

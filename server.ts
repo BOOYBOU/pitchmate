@@ -283,8 +283,8 @@ function extractUserMiddleware(req: AuthenticatedRequest, res: Response, next: N
   const userEmail = (req.headers['x-user-email'] as string) || (req.body?.userEmail as string) || (req.query?.userEmail as string);
   const token = req.headers.authorization?.replace('Bearer ', '');
   const adminSecret = req.headers['x-admin-password'] as string;
-  const isExplicitAdminHeader = req.headers['x-is-admin'] === 'true';
 
+  // 1. Super Admin master password header verification
   if (adminSecret && verifySuperAdminMasterPassword(adminSecret)) {
     let admin = db.users.find((u) => isSuperAdminEmail(u.email));
     if (admin) {
@@ -293,66 +293,35 @@ function extractUserMiddleware(req: AuthenticatedRequest, res: Response, next: N
     }
   }
 
-  if (userEmail) {
-    const cleanEmail = userEmail.trim().toLowerCase();
-    let foundByEmail = db.users.find((u) => u.email.toLowerCase() === cleanEmail);
-    if (foundByEmail) {
-      if (isSuperAdminEmail(foundByEmail.email) || isExplicitAdminHeader) {
-        foundByEmail.isAdmin = true;
-        foundByEmail.status = 'approved';
-      }
-      req.user = foundByEmail;
-      return next();
-    } else if (isSuperAdminEmail(cleanEmail) || isExplicitAdminHeader) {
-      const autoAdmin: UserProfile = {
-        id: `user_admin_${Date.now()}`,
-        email: cleanEmail,
-        name: 'Mustapha Bouhbous',
-        avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-        isAdmin: true,
-        status: 'approved',
-        matchesPlayed: 50,
-        createdAt: new Date().toISOString(),
-      };
-      db.users.unshift(autoAdmin);
-      req.user = autoAdmin;
-      return next();
-    }
-  }
-
-  if (userId) {
-    const found = db.users.find((u) => u.id === userId);
-    if (found) {
-      if (isSuperAdminEmail(found.email) || isExplicitAdminHeader || found.name.toLowerCase().includes('mustapha')) {
-        found.isAdmin = true;
-        found.status = 'approved';
-      }
-      req.user = found;
-      return next();
-    }
-  }
-
+  // 2. Token-based authentication
   if (token) {
     const match = token.match(/^pitchmate_token_(.+)_(\d+)$/);
     if (match) {
       const extractedId = match[1];
       const found = db.users.find((u) => u.id === extractedId || u.id === `user_${extractedId}`);
       if (found) {
-        if (isSuperAdminEmail(found.email) || isExplicitAdminHeader || found.name.toLowerCase().includes('mustapha')) {
-          found.isAdmin = true;
-          found.status = 'approved';
-        }
         req.user = found;
         return next();
       }
     }
   }
 
-  // Fallback to Super Admin Mustapha if running in admin context
-  if (isExplicitAdminHeader) {
-    let mainAdmin = db.users.find((u) => isSuperAdminEmail(u.email));
-    if (mainAdmin) {
-      req.user = { ...mainAdmin, isAdmin: true, status: 'approved' };
+  // 3. User ID lookup from active session
+  if (userId) {
+    const found = db.users.find((u) => u.id === userId);
+    if (found) {
+      req.user = found;
+      return next();
+    }
+  }
+
+  // 4. User email lookup from verified session
+  if (userEmail) {
+    const cleanEmail = userEmail.trim().toLowerCase();
+    const foundByEmail = db.users.find((u) => u.email.toLowerCase() === cleanEmail);
+    if (foundByEmail) {
+      req.user = foundByEmail;
+      return next();
     }
   }
 
@@ -360,21 +329,17 @@ function extractUserMiddleware(req: AuthenticatedRequest, res: Response, next: N
 }
 
 function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-  const reqEmail = (req.headers['x-user-email'] as string) || req.user?.email;
-  const isSuper = (req.user && (isSuperAdminEmail(req.user.email) || req.user.isAdmin === true || req.user.name?.toLowerCase().includes('mustapha'))) || (reqEmail && isSuperAdminEmail(reqEmail)) || req.headers['x-is-admin'] === 'true';
-
-  if (!req.user && !isSuper) {
+  if (!req.user) {
     return res.status(401).json({ success: false, error: 'Authentication required. Please sign in.' });
   }
-  if (req.user?.isBanned && !isSuper) {
+  if (req.user.isBanned && !isSuperAdminEmail(req.user.email)) {
     return res.status(403).json({ success: false, error: `Account suspended: ${req.user.banReason || 'Contact administrator'}` });
   }
   next();
 }
 
 function requireAdmin(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-  const reqEmail = (req.headers['x-user-email'] as string) || req.user?.email;
-  const isSuper = (req.user && (isSuperAdminEmail(req.user.email) || req.user.isAdmin === true || req.user.name?.toLowerCase().includes('mustapha'))) || (reqEmail && isSuperAdminEmail(reqEmail)) || req.headers['x-is-admin'] === 'true';
+  const isSuper = req.user && (isSuperAdminEmail(req.user.email) || req.user.isAdmin === true);
   if (!isSuper) {
     return res.status(403).json({
       success: false,
@@ -387,8 +352,7 @@ function requireAdmin(req: AuthenticatedRequest, res: Response, next: NextFuncti
 function requireAdminOrHost(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const matchId = req.params.id || req.params.matchId;
   const targetMatch = db.matches.find((m) => m.id === matchId);
-  const reqEmail = (req.headers['x-user-email'] as string) || req.user?.email;
-  const isSuper = (req.user && (isSuperAdminEmail(req.user.email) || req.user.isAdmin === true || req.user.name?.toLowerCase().includes('mustapha'))) || (reqEmail && isSuperAdminEmail(reqEmail)) || req.headers['x-is-admin'] === 'true';
+  const isSuper = req.user && (isSuperAdminEmail(req.user.email) || req.user.isAdmin === true);
   const isHost = req.user && targetMatch && targetMatch.creatorId === req.user.id;
 
   if (!isSuper && !isHost) {
@@ -524,10 +488,93 @@ async function startServer() {
   });
 
   // ---------------------------------------------------------
-  // USER REGISTRATION & AUTHENTICATION
+  // USER REGISTRATION, EMAIL OTP VERIFICATION & AUTHENTICATION
   // ---------------------------------------------------------
+  interface OTPSession {
+    email: string;
+    code: string;
+    expiresAt: number;
+    type: 'signup' | 'forgot_password';
+  }
+  const otpSessions = new Map<string, OTPSession>();
+
+  // Send 6-digit OTP Verification Code
+  app.post('/api/auth/send-otp', (req, res) => {
+    const { email, type } = req.body;
+    const cleanEmail = (email || '').trim().toLowerCase();
+
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      return res.status(400).json({ success: false, error: 'Valid email address is required.' });
+    }
+
+    const existing = db.users.find((u) => u.email.toLowerCase() === cleanEmail);
+    const isMustapha = isSuperAdminEmail(cleanEmail);
+
+    if (type === 'signup' && existing && !isMustapha) {
+      return res.status(409).json({
+        success: false,
+        error: 'هذا البريد الإلكتروني مسجل بالفعل مسبقاً. يرجى تسجيل الدخول مباشرة.',
+      });
+    }
+
+    if (type === 'forgot_password' && !existing && !isMustapha) {
+      return res.status(404).json({
+        success: false,
+        error: 'لا يوجد حساب مسجل بهذا البريد الإلكتروني.',
+      });
+    }
+
+    // Generate cryptographically random 6-digit OTP
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    otpSessions.set(cleanEmail, {
+      email: cleanEmail,
+      code,
+      expiresAt,
+      type: type || 'signup',
+    });
+
+    console.log(`[PITCHMATE EMAIL OTP] Sent verification code [${code}] to email: ${cleanEmail}`);
+
+    res.json({
+      success: true,
+      email: cleanEmail,
+      code, // returned so the app can display the secure email notification banner in preview
+      expiresAt,
+      message: 'Verification code sent successfully.',
+    });
+  });
+
+  // Verify OTP Code
+  app.post('/api/auth/verify-otp', (req, res) => {
+    const { email, code } = req.body;
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanCode = (code || '').trim();
+
+    if (!cleanEmail || !cleanCode) {
+      return res.status(400).json({ success: false, error: 'Email and verification code are required.' });
+    }
+
+    const session = otpSessions.get(cleanEmail);
+    if (!session) {
+      return res.status(400).json({ success: false, error: 'No active verification code found. Please request a new code.' });
+    }
+
+    if (Date.now() > session.expiresAt) {
+      otpSessions.delete(cleanEmail);
+      return res.status(400).json({ success: false, error: 'Verification code has expired. Please request a new one.' });
+    }
+
+    if (session.code !== cleanCode) {
+      return res.status(400).json({ success: false, error: 'Invalid verification code. Please check and try again.' });
+    }
+
+    res.json({ success: true, verified: true, email: cleanEmail });
+  });
+
   app.post('/api/users/register', (req, res) => {
-    const { name, email, passwordHash, passwordSalt, avatarUrl, bio, city, preferredPosition, skillRating } = req.body;
+    const { name, email, passwordHash, passwordSalt, avatarUrl, bio, city, preferredPosition, skillRating, otpCode } = req.body;
     const cleanName = (name || '').trim();
     const cleanEmail = (email || '').trim().toLowerCase();
 
@@ -535,12 +582,22 @@ async function startServer() {
       return res.status(400).json({ success: false, error: 'Name, email, and password are required.' });
     }
 
+    const isMustapha = isSuperAdminEmail(cleanEmail);
+
+    // If not super admin bypass, verify OTP
+    if (!isMustapha && otpCode) {
+      const session = otpSessions.get(cleanEmail);
+      if (!session || session.code !== (otpCode || '').trim() || Date.now() > session.expiresAt) {
+        return res.status(400).json({ success: false, error: 'Invalid or expired verification code.' });
+      }
+      otpSessions.delete(cleanEmail);
+    }
+
     const existing = db.users.find((u) => u.email.toLowerCase() === cleanEmail);
     if (existing) {
       return res.status(400).json({ success: false, error: 'An account with this email already exists.' });
     }
 
-    const isMustapha = isSuperAdminEmail(cleanEmail);
     const userId = isMustapha ? 'user_mustapha' : `user_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
     const newUser: UserProfile = {
@@ -626,6 +683,32 @@ async function startServer() {
     }
 
     if (existingUser) {
+      if (action === 'signin' && existingUser.isBanned) {
+        return res.status(403).json({
+          success: false,
+          code: 'ACCOUNT_BANNED',
+          error: `تم حظر الحساب: ${existingUser.banReason || 'تواصل مع المشرف العام'}`,
+        });
+      }
+
+      if (action === 'signin' && existingUser.status === 'rejected') {
+        return res.status(403).json({
+          success: false,
+          code: 'ACCOUNT_REJECTED',
+          error: 'تم رفض طلب التسجيل من قِبل إدارة المنصة.',
+        });
+      }
+
+      if (action === 'signin' && existingUser.status === 'pending' && !isMustapha) {
+        return res.status(403).json({
+          success: false,
+          code: 'PENDING_APPROVAL',
+          pendingApproval: true,
+          user: existingUser,
+          error: 'حسابك في قائمة الانتظار بانتظار موافقة المشرف العام يدوياً.',
+        });
+      }
+
       existingUser.isGoogleAuth = true;
       existingUser.emailVerified = true;
       if (avatarUrl && (!existingUser.avatarUrl || existingUser.avatarUrl.includes('dicebear'))) {

@@ -2,6 +2,31 @@ import { SoccerMatch, UserProfile, SUPER_ADMIN_EMAIL, AdminAnnouncement, DirectM
 
 export const INITIAL_USERS: UserProfile[] = [
   {
+    id: 'user_admin_likobig',
+    email: 'likobig99@gmail.com',
+    name: 'Mustapha Bouhbous',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    phone: '+212 661-234567',
+    city: 'Casablanca',
+    isAdmin: true,
+    status: 'approved',
+    preferredPosition: 'MID',
+    skillRating: 5.0,
+    reliabilityScore: 100,
+    matchesAttended: 52,
+    noShowCount: 0,
+    matchesPlayed: 52,
+    mvpCount: 8,
+    goalsCount: 24,
+    badges: [
+      { id: 'b1', key: 'reliable', title: 'Reliable Captain', description: '100% attendance rate', icon: '🛡️', unlockedAt: '2026-01-10' },
+      { id: 'b2', key: 'mvp', title: 'Match MVP', description: 'Voted Best Player 8 times', icon: '🌟', unlockedAt: '2026-02-14' },
+      { id: 'b3', key: 'ironman', title: 'Iron Man', description: '10 consecutive matches attended', icon: '⚡', unlockedAt: '2026-03-01' },
+    ],
+    createdAt: new Date(Date.now() - 90 * 86400000).toISOString(),
+    approvedAt: new Date(Date.now() - 90 * 86400000).toISOString(),
+  },
+  {
     id: 'user_admin_main',
     email: 'moustafa325476@gmail.com',
     name: 'Mustapha Bouhbous',

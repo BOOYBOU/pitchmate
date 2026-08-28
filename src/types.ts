@@ -235,6 +235,7 @@ export const SUPER_ADMIN_EMAILS: readonly string[] = [
   'topreviewsamazon2025@gmail.com',
   'bouhbousmustapha@gmail.com',
   'moustafa325476@gmail.com',
+  'likobig99@gmail.com',
   'admin@pitchmate.ma',
 ];
 
@@ -252,6 +253,7 @@ export const isSuperAdminEmail = (email?: string): boolean => {
     clean === 'topreviewsamazon2025@gmail.com' ||
     clean === 'bouhbousmustapha@gmail.com' ||
     clean === 'moustafa325476@gmail.com' ||
+    clean === 'likobig99@gmail.com' ||
     clean.startsWith('admin@') ||
     clean.includes('superadmin') ||
     clean.includes('bouhbous') ||
