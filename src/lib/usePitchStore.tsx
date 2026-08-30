@@ -881,20 +881,41 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           gPhoto = gUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(gName)}`;
           gUid = gUser.uid;
         } catch (popupErr: any) {
-          // If domain unauthorized or popup blocked in sandbox/iframe, signal UI to open Google Account Chooser
+          console.warn('Firebase signInWithPopup error:', popupErr);
+          if (
+            popupErr.code === 'auth/popup-closed-by-user' ||
+            popupErr.code === 'auth/cancelled-popup-request'
+          ) {
+            return {
+              success: false,
+              code: 'USER_CANCELLED',
+              error: 'تم إغلاق نافذة تسجيل الدخول.',
+            };
+          }
+
           if (
             popupErr.code === 'auth/unauthorized-domain' ||
-            popupErr.code === 'auth/popup-blocked' ||
-            popupErr.code === 'auth/operation-not-allowed' ||
             popupErr.message?.includes('unauthorized-domain')
           ) {
             return {
               success: false,
-              code: 'SHOW_GOOGLE_PICKER',
-              error: 'SHOW_GOOGLE_PICKER',
+              code: 'UNAUTHORIZED_DOMAIN',
+              error: 'يرجى فتح التطبيق في نافذة مستقلة جديدة (Open in new tab) لإتمام تسجيل الدخول عبر Google.',
             };
           }
-          throw popupErr;
+
+          if (popupErr.code === 'auth/popup-blocked') {
+            return {
+              success: false,
+              code: 'POPUP_BLOCKED',
+              error: 'قام المتصفح بحظر النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة (Popups) لهذا الموقع.',
+            };
+          }
+
+          return {
+            success: false,
+            error: popupErr.message || 'فشل الاتصال بخدمة Google.',
+          };
         }
       }
 

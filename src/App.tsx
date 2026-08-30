@@ -42,6 +42,20 @@ function PitchMateApp() {
   const [isDirectMessagesOpen, setIsDirectMessagesOpen] = useState(false);
   const [directMessageRecipientId, setDirectMessageRecipientId] = useState<string | null>(null);
 
+  // Deep-link support: auto-open match if URL contains ?match=match_id
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && matches.length > 0 && !selectedMatch) {
+      const params = new URLSearchParams(window.location.search);
+      const matchIdParam = params.get('match');
+      if (matchIdParam) {
+        const found = matches.find((m) => m.id === matchIdParam);
+        if (found) {
+          setSelectedMatch(found);
+        }
+      }
+    }
+  }, [matches, selectedMatch]);
+
   // Mandatory Authentication Gate: if user is not authenticated, render the dedicated Auth landing view
   if (!isAuthenticated) {
     return <AuthView />;
@@ -176,20 +190,17 @@ function PitchMateApp() {
               <span>{t('nav.superAdminBadge')}:</span> <strong className="text-[#F5D794]">Mustapha Bouhbous</strong>
             </span>
 
-            <span className="text-[#E5B869]/40">•</span>
-
-            <button
-              onClick={() => {
-                const mustapha = users.find((u) => u.email.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase());
-                if (mustapha) {
-                  setCurrentUserById(mustapha.id);
-                  setActiveTab('admin');
-                }
-              }}
-              className="text-[#E5B869] hover:underline hover:text-[#F5D794] font-bold cursor-pointer transition-colors"
-            >
-              {t('admin.title')}
-            </button>
+            {currentUser?.isAdmin && (
+              <>
+                <span className="text-[#E5B869]/40">•</span>
+                <button
+                  onClick={() => setActiveTab('admin')}
+                  className="text-[#E5B869] hover:underline hover:text-[#F5D794] font-bold cursor-pointer transition-colors"
+                >
+                  {t('admin.title')}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </footer>
