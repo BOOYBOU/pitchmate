@@ -888,11 +888,13 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           popupErr.code === 'auth/unauthorized-domain' ||
           popupErr.message?.includes('unauthorized-domain')
         ) {
-          const currentHostname = typeof window !== 'undefined' ? window.location.hostname : 'unknown-domain';
+          const currentHostname = typeof window !== 'undefined' ? window.location.hostname : '';
           return {
             success: false,
             code: 'UNAUTHORIZED_DOMAIN',
-            error: `النطاق الحالي (${currentHostname}) غير مصرح به في Firebase. يرجى إضافته في Firebase Console -> Authentication -> Settings -> Authorized Domains.`,
+            error: currentHostname
+              ? `النطاق (${currentHostname}) لم يتم اعتماده بعد في Firebase Authentication. يرجى إضافته في Authorized Domains.`
+              : 'النطاق الحالي غير مصرح به في Firebase Authentication.',
           };
         }
 
