@@ -1,4 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Shield,
   Mail,
@@ -17,11 +18,13 @@ import {
   KeyRound,
   ShieldCheck,
   Zap,
-  Flame,
-  RotateCw,
-  Send,
+  Sparkles,
+  Trophy,
+  Activity,
+  Globe,
   Inbox,
-  X,
+  LockKeyhole,
+  CheckCircle,
 } from 'lucide-react';
 import { usePitchStore } from '../lib/usePitchStore';
 import { useLanguage } from '../lib/useLanguage';
@@ -30,13 +33,19 @@ import { isSuperAdminEmail } from '../types';
 
 const MOROCCAN_CITIES = Object.keys(MOROCCAN_CITIES_LOCALIZED);
 
+const POSITIONS = [
+  { code: 'GK', labelAr: 'حارس مرمى', labelEn: 'Goalkeeper', icon: '🧤' },
+  { code: 'DEF', labelAr: 'مدافع', labelEn: 'Defender', icon: '🛡️' },
+  { code: 'MID', labelAr: 'صانع ألعاب', labelEn: 'Midfielder', icon: '⚡' },
+  { code: 'FWD', labelAr: 'مهاجم', labelEn: 'Forward', icon: '🎯' },
+];
+
 export const AuthView: React.FC = () => {
   const {
     loginWithCredentials,
     signupWithCredentials,
     resetPasswordWithEmail,
     sendVerificationOTP,
-    verifyOTPCode,
     loginWithGoogle,
   } = usePitchStore();
   const { language, toggleLanguage, t, isRTL, getCityName } = useLanguage();
@@ -63,7 +72,7 @@ export const AuthView: React.FC = () => {
   const [signUpCity, setSignUpCity] = useState(MOROCCAN_CITIES[0] || 'الدار البيضاء (Casablanca)');
   const [signUpPosition, setSignUpPosition] = useState('MID');
   const [signUpPassword, setSignUpPassword] = useState('');
-  const [avatarPreview, setAvatarPreview] = useState('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200');
+  const [avatarPreview, setAvatarPreview] = useState('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80');
   const [signUpError, setSignUpError] = useState('');
   const [registeredUserEmail, setRegisteredUserEmail] = useState('');
   const [registeredUserName, setRegisteredUserName] = useState('');
@@ -169,7 +178,7 @@ export const AuthView: React.FC = () => {
     }
   };
 
-  // Google OAuth Flow Handler (Official Firebase Google Account Chooser)
+  // Google OAuth Flow Handler
   const handleGoogleAuth = async (action: 'signin' | 'signup') => {
     setSignInError('');
     setSignUpError('');
@@ -180,7 +189,6 @@ export const AuthView: React.FC = () => {
 
       if (!res.success) {
         if (res.code === 'USER_CANCELLED') {
-          // User closed popup without selecting an account
           setGoogleLoading(false);
           return;
         }
@@ -202,7 +210,7 @@ export const AuthView: React.FC = () => {
       const errMsg = err?.code === 'auth/popup-closed-by-user'
         ? ''
         : (language === 'ar'
-            ? 'تعذر الاتصال بـ Google. يرجى التأكد من السماح بالنوافذ المنبثقة (Popups) أو تجربة فتح التطبيق في نافذة جديدة.'
+            ? 'تعذر الاتصال بـ Google. يرجى التأكد من السماح بالنوافذ المنبثقة أو فتح التطبيق في نافذة جديدة.'
             : 'Could not connect to Google. Please allow popups or open app in a new window.');
       if (action === 'signin') {
         if (errMsg) setSignInError(errMsg);
@@ -450,6 +458,14 @@ export const AuthView: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
+  // Quick Demo account fill helper
+  const handleQuickDemoFill = (email: string, pass: string) => {
+    setMode('signin');
+    setSignInEmail(email);
+    setSignInPassword(pass);
+    setSignInError('');
+  };
+
   const isPendingError =
     signInError.toLowerCase().includes('admin approval') ||
     signInError.toLowerCase().includes('waitlist') ||
@@ -458,896 +474,944 @@ export const AuthView: React.FC = () => {
     signInError.includes('مراجعة');
 
   return (
-    <div className="min-h-screen w-full bg-[#040D09] text-white flex flex-col justify-between relative overflow-hidden font-sans select-none antialiased">
-      {/* Visual Stadium Pitch Background with High-End Lighting */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {/* Soft stadium floodlight glows */}
-        <div className="absolute -top-40 -left-40 w-[600px] h-[600px] bg-emerald-600/10 rounded-full blur-[140px]" />
-        <div className="absolute -bottom-40 -right-40 w-[600px] h-[600px] bg-amber-500/10 rounded-full blur-[140px]" />
-
-        {/* Tactical pitch markings */}
-        <div className="absolute inset-0 opacity-[0.07] bg-[radial-gradient(#E5B869_1px,transparent_1px)] [background-size:24px_24px]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[680px] h-[680px] rounded-full border border-[#E5B869]/20" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[#E5B869]/40" />
+    <div className="min-h-screen w-full bg-[#030906] text-slate-100 flex flex-col justify-between relative overflow-hidden font-sans select-none antialiased">
+      {/* ================= AMBIENT PREMIUM BACKGROUND GLOWS ================= */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[850px] h-[550px] bg-gradient-to-b from-emerald-500/15 via-[#E5B869]/10 to-transparent rounded-full blur-[140px]" />
+        <div className="absolute bottom-0 right-1/4 w-[600px] h-[400px] bg-emerald-600/10 rounded-full blur-[160px]" />
+        <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#E5B869_1px,transparent_1px)] [background-size:24px_24px]" />
       </div>
 
-      {/* Top Simulated Email / Security Verification Dispatch Toast */}
-      {otpSentNotification && (
-        <div className="relative z-30 max-w-xl mx-auto w-full px-4 pt-3">
-          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-[#0E382A] via-[#124B38] to-[#0E382A] border-2 border-[#E5B869] text-white shadow-2xl shadow-emerald-950/60 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-4 duration-300">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#04130D] border border-[#E5B869]/60 flex items-center justify-center text-[#F5D794] shrink-0 shadow-inner">
-                <Inbox className="w-5 h-5 animate-bounce" />
-              </div>
-              <div className="text-start space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-bold text-[#F5D794] uppercase tracking-wider">
-                    {language === 'ar' ? '📩 رسالة التحقق الإلكتروني (PitchMate Mail)' : '📩 Verification Email Dispatched'}
-                  </span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#04130D] text-emerald-300 border border-[#E5B869]/30 font-mono">
-                    {otpSentNotification.email}
-                  </span>
+      {/* ================= TOP NOTIFICATION TOAST ================= */}
+      <AnimatePresence>
+        {otpSentNotification && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="relative z-50 max-w-lg mx-auto w-full px-4 pt-3"
+          >
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-[#0C3325] via-[#124B38] to-[#0C3325] border border-[#E5B869]/80 text-white shadow-2xl flex items-center justify-between gap-3 backdrop-blur-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#04130D] border border-[#E5B869]/50 flex items-center justify-center text-[#F5D794] shrink-0">
+                  <Inbox className="w-5 h-5 animate-bounce" />
                 </div>
-                <p className="text-xs text-white">
-                  {t('auth.otpDevNotice')}{' '}
-                  <span className="font-mono font-black text-[#F5D794] text-sm bg-black/40 px-2 py-0.5 rounded-lg border border-[#E5B869]/40 tracking-widest">
-                    {otpSentNotification.code}
-                  </span>
-                </p>
+                <div className="text-start space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-black text-[#F5D794] uppercase tracking-wider">
+                      {language === 'ar' ? '📩 رمز التحقق (OTP)' : '📩 Verification Code'}
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#04130D] text-emerald-300 border border-[#E5B869]/30 font-mono">
+                      {otpSentNotification.email}
+                    </span>
+                  </div>
+                  <p className="text-xs text-white">
+                    {t('auth.otpDevNotice')}{' '}
+                    <span className="font-mono font-black text-[#F5D794] text-sm bg-black/50 px-2 py-0.5 rounded-lg border border-[#E5B869]/40 tracking-widest">
+                      {otpSentNotification.code}
+                    </span>
+                  </p>
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const code = otpSentNotification.code;
+                  if (code && code.length === 6) {
+                    setOtpDigits(code.split(''));
+                  }
+                }}
+                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 text-xs font-black hover:brightness-110 active:scale-95 transition-all shrink-0 cursor-pointer shadow-lg shadow-amber-950/40"
+              >
+                {language === 'ar' ? 'تعبئة الرمز' : 'Auto Fill'}
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                const code = otpSentNotification.code;
-                if (code && code.length === 6) {
-                  setOtpDigits(code.split(''));
-                }
-              }}
-              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 text-xs font-black hover:opacity-90 active:scale-95 transition-all shrink-0 cursor-pointer shadow-md"
-            >
-              {language === 'ar' ? 'تعبئة الرمز' : 'Auto Fill'}
-            </button>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Top Navbar */}
-      <header className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-8 py-5 flex items-center justify-between">
+      {/* ================= HEADER ================= */}
+      <header className="relative z-20 w-full max-w-5xl mx-auto px-4 sm:px-8 py-5 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#F5D794] via-[#E5B869] to-[#C69238] flex items-center justify-center text-slate-950 font-black text-lg shadow-lg shadow-amber-950/40">
-            PM
+          <div className="relative group">
+            <div className="absolute -inset-1 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-emerald-500 rounded-2xl blur-sm opacity-70 group-hover:opacity-100 transition duration-300" />
+            <div className="relative w-10 h-10 rounded-2xl bg-[#041610] border border-[#E5B869]/60 flex items-center justify-center text-[#F5D794] font-black shadow-lg">
+              <Trophy className="w-5 h-5 text-[#F5D794]" />
+            </div>
           </div>
           <div>
-            <span className="text-xl font-black font-display tracking-tight text-white flex items-center gap-1.5">
-              PitchMate
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#0E4836] text-[#F5D794] border border-[#E5B869]/40 font-mono font-bold">
+            <div className="flex items-center gap-2">
+              <span className="text-xl sm:text-2xl font-black font-display tracking-tight text-white flex items-center gap-1.5">
+                PitchMate
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-gradient-to-r from-[#0E4836] to-[#08281E] text-[#F5D794] border border-[#E5B869]/50 font-mono font-bold tracking-wider uppercase">
                 PRO 🇲🇦
               </span>
-            </span>
-            <p className="text-[11px] text-emerald-300/70 font-medium">{t('brand.tagline')}</p>
+            </div>
+            <p className="text-[11px] text-emerald-300/80 font-medium tracking-wide">
+              {t('brand.tagline')}
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={toggleLanguage}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#082218] border border-[#E5B869]/30 hover:border-[#E5B869] text-xs text-emerald-200 hover:text-white transition-all cursor-pointer shadow-sm"
-          >
-            <span>{language === 'ar' ? 'English' : 'العربية'}</span>
-          </button>
-        </div>
+        {/* Language Switcher */}
+        <button
+          type="button"
+          onClick={toggleLanguage}
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#07241A] border border-[#E5B869]/40 hover:border-[#E5B869] text-xs font-bold text-[#F5D794] hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
+        >
+          <Globe className="w-3.5 h-3.5" />
+          <span>{language === 'ar' ? 'English (EN)' : 'العربية (AR)'}</span>
+        </button>
       </header>
 
-      {/* Main Authentication Card */}
-      <main className="relative z-10 flex-1 flex items-center justify-center px-4 py-8">
-        <div className="w-full max-w-md bg-[#082218]/90 backdrop-blur-xl border border-[#E5B869]/30 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-emerald-950/60 space-y-6 text-center">
+      {/* ================= MAIN AUTH TERMINAL (CENTERED SINGLE ULTRA-CLEAN CONTAINER) ================= */}
+      <main className="relative z-10 flex-1 max-w-lg mx-auto w-full px-4 py-4 sm:py-8 flex flex-col justify-center">
+        <div className="relative">
+          {/* Ambient Glow Aura */}
+          <div className="absolute -inset-1.5 bg-gradient-to-r from-[#E5B869]/30 via-emerald-500/20 to-[#F5D794]/30 rounded-[34px] blur-xl opacity-75" />
 
-          {/* Header Title & Subtitle */}
-          <div className="space-y-1.5">
-            <h1 className="text-xl sm:text-2xl font-black font-display text-white tracking-tight flex items-center justify-center gap-2">
-              <span>
+          {/* Main Glass Card with Smooth Layout Animations */}
+          <motion.div
+            layout
+            transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+            className="relative bg-gradient-to-b from-[#08261C]/95 via-[#041610]/98 to-[#020A07]/98 backdrop-blur-2xl border-2 border-[#E5B869]/45 rounded-[30px] p-6 sm:p-8 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9),0_0_40px_rgba(229,184,105,0.12)] space-y-6"
+          >
+            {/* Header Title & Subtitle */}
+            <div className="space-y-1.5 text-center">
+              <motion.h1
+                key={mode + '-title'}
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className="text-2xl sm:text-3xl font-black font-display text-white tracking-tight flex items-center justify-center gap-2"
+              >
                 {mode === 'signin' && t('auth.welcomeBack')}
                 {mode === 'signup' && t('auth.createAccount')}
                 {mode === 'verify_signup' && t('auth.verificationTitle')}
                 {mode === 'forgot' && t('auth.resetPassword')}
                 {mode === 'verify_forgot' && t('auth.forgotVerifyTitle')}
                 {mode === 'pending' && t('auth.accountPending')}
-              </span>
-            </h1>
-            <p className="text-xs text-emerald-300/80 max-w-sm mx-auto leading-relaxed">
-              {mode === 'signin' && t('auth.signInSubtitle')}
-              {mode === 'signup' && t('auth.signUpSubtitle')}
-              {mode === 'verify_signup' && t('auth.verificationSubtitle')}
-              {mode === 'forgot' && t('auth.resetSubtitle')}
-              {mode === 'verify_forgot' && t('auth.forgotVerifySubtitle')}
-              {mode === 'pending' && t('auth.pendingNotice')}
-            </p>
-          </div>
-
-          {/* Mode Switcher Tabs (Sign In / Sign Up) */}
-          {(mode === 'signin' || mode === 'signup') && (
-            <div className="grid grid-cols-2 gap-1 p-1 bg-[#04130D] rounded-2xl border border-[#E5B869]/20">
-              <button
-                id="switch-to-signin-tab"
-                type="button"
-                onClick={() => {
-                  setMode('signin');
-                  setSignInError('');
-                }}
-                className={`py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                  mode === 'signin'
-                    ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 shadow-md shadow-amber-950/60 font-black'
-                    : 'text-emerald-300/70 hover:text-white'
-                }`}
+              </motion.h1>
+              <motion.p
+                key={mode + '-sub'}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.2, delay: 0.05 }}
+                className="text-xs text-emerald-300/80 max-w-sm mx-auto leading-relaxed"
               >
-                <Lock className="w-3.5 h-3.5" />
-                <span>{t('auth.signInButton')}</span>
-              </button>
-
-              <button
-                id="switch-to-signup-tab"
-                type="button"
-                onClick={() => {
-                  setMode('signup');
-                  setSignUpError('');
-                }}
-                className={`py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                  mode === 'signup'
-                    ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 shadow-md shadow-amber-950/60 font-black'
-                    : 'text-emerald-300/70 hover:text-white'
-                }`}
-              >
-                <User className="w-3.5 h-3.5" />
-                <span>{t('auth.signUpButton')}</span>
-              </button>
+                {mode === 'signin' && t('auth.signInSubtitle')}
+                {mode === 'signup' && t('auth.signUpSubtitle')}
+                {mode === 'verify_signup' && t('auth.verificationSubtitle')}
+                {mode === 'forgot' && t('auth.resetSubtitle')}
+                {mode === 'verify_forgot' && t('auth.forgotVerifySubtitle')}
+                {mode === 'pending' && t('auth.pendingNotice')}
+              </motion.p>
             </div>
-          )}
 
-          {/* Back to Sign In Header for Forgot / OTP modes */}
-          {(mode === 'forgot' || mode === 'verify_signup' || mode === 'verify_forgot') && (
-            <div className="flex items-center justify-between px-1">
-              <span className="text-xs font-bold text-[#F5D794]">
-                {mode === 'verify_signup'
-                  ? (language === 'ar' ? 'خطوة التحقق من البريد' : 'Email Verification Step')
-                  : mode === 'verify_forgot'
-                  ? (language === 'ar' ? 'تأكيد إعادة التعيين' : 'Verify Password Reset')
-                  : t('auth.resetPassword')}
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setMode(mode === 'verify_signup' ? 'signup' : 'signin');
-                  setForgotError('');
-                  setForgotSuccess('');
-                  setOtpError('');
-                }}
-                className="text-xs text-emerald-300 hover:text-[#F5D794] font-semibold cursor-pointer flex items-center gap-1 transition-colors"
-              >
-                {isRTL ? <ArrowRight className="w-3.5 h-3.5" /> : <ArrowLeft className="w-3.5 h-3.5" />}
-                <span>{mode === 'verify_signup' ? (language === 'ar' ? 'تعديل البيانات' : 'Edit info') : t('auth.backToSignIn')}</span>
-              </button>
-            </div>
-          )}
-
-          {/* ================= PENDING APPROVAL VIEW ================= */}
-          {mode === 'pending' && (
-            <div className="space-y-5 animate-in fade-in zoom-in-95 duration-200">
-              <div className="p-5 rounded-2xl bg-[#0E382A] border border-[#E5B869]/40 text-amber-100 flex flex-col items-center text-center gap-3">
-                <div className="w-14 h-14 rounded-2xl bg-[#04130D] border border-[#E5B869]/50 flex items-center justify-center text-[#F5D794] shadow-xl">
-                  <Clock className="w-7 h-7 animate-pulse text-[#F5D794]" />
-                </div>
-
-                <div className="space-y-1.5">
-                  <h2 className="text-base font-black text-[#F5D794]">{t('auth.accountPending')}</h2>
-                  <p className="text-xs font-medium text-emerald-100 leading-relaxed">
-                    {t('auth.pendingNotice')}
-                  </p>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-[#04130D] border border-[#E5B869]/25 space-y-2.5 text-xs">
-                <div className="flex items-center justify-between text-emerald-200">
-                  <span className="text-emerald-300/70">{t('auth.fullName')}:</span>
-                  <span className="font-bold text-white">{registeredUserName}</span>
-                </div>
-                <div className="flex items-center justify-between text-emerald-200">
-                  <span className="text-emerald-300/70">{t('auth.email')}:</span>
-                  <span className="font-mono text-[#F5D794]">{registeredUserEmail}</span>
-                </div>
-                <div className="flex items-center justify-between text-emerald-200">
-                  <span className="text-emerald-300/70">{t('profile.position')}:</span>
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#0E382A] text-[#F5D794] border border-[#E5B869]/40 font-bold text-[11px]">
-                    <Clock className="w-3 h-3" />
-                    {language === 'ar' ? 'قيد المراجعة الإدارية' : 'Pending Admin Approval'}
-                  </span>
-                </div>
-              </div>
-
-              <p className="text-[11px] text-emerald-300/70 text-center leading-relaxed">
-                {t('auth.pendingRefreshHint')}
-              </p>
-
-              <button
-                id="pending-return-signin-btn"
-                type="button"
-                onClick={() => {
-                  setMode('signin');
-                  setSignInError('');
-                }}
-                className="w-full py-3.5 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:opacity-90 active:scale-[0.99] text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-sm"
-              >
-                <span>{t('auth.backToSignIn')}</span>
-                {isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
-              </button>
-            </div>
-          )}
-
-          {/* ================= SIGN IN TAB ================= */}
-          {mode === 'signin' && (
-            <div className="space-y-4 text-xs">
-              {signInError && (
-                <div
-                  id="signin-error-banner"
-                  className={`p-3.5 rounded-2xl flex items-start gap-2.5 animate-in fade-in ${
-                    isPendingError
-                      ? 'bg-[#0E382A] border border-[#E5B869]/50 text-amber-200'
-                      : 'bg-rose-950/80 border border-rose-500/50 text-rose-200'
+            {/* Seamless Fluid Mode Switcher Tabs (Sign In / Sign Up) */}
+            {(mode === 'signin' || mode === 'signup') && (
+              <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-[#030E0A] rounded-2xl border border-[#E5B869]/30 relative">
+                <button
+                  id="switch-to-signin-tab"
+                  type="button"
+                  onClick={() => {
+                    setMode('signin');
+                    setSignInError('');
+                  }}
+                  className={`relative py-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-2 z-10 ${
+                    mode === 'signin'
+                      ? 'text-slate-950 font-black'
+                      : 'text-emerald-300/70 hover:text-white'
                   }`}
                 >
-                  {isPendingError ? (
-                    <Clock className="w-5 h-5 shrink-0 text-[#E5B869] mt-0.5" />
-                  ) : (
-                    <AlertCircle className="w-5 h-5 shrink-0 text-rose-400 mt-0.5" />
+                  {mode === 'signin' && (
+                    <motion.div
+                      layoutId="activeAuthPill"
+                      className="absolute inset-0 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] rounded-xl shadow-lg shadow-amber-950/60 -z-10"
+                      transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                    />
                   )}
-                  <div className="space-y-1 text-start">
-                    <span className="font-semibold block leading-snug">{signInError}</span>
-                    {isPendingError && (
-                      <span className="text-[11px] text-[#F5D794] block">
-                        {language === 'ar'
-                          ? 'تم إشعار المشرف وسيقوم بمراجعة حسابك وتفعيله في أقرب وقت.'
-                          : 'The administrator has been notified and will review your pending account shortly.'}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Google Native Official Button matching GIS / One-Tap standard */}
-              <div className="relative pt-1">
-                {/* Last Used Badge on Top Right */}
-                <div
-                  className={`absolute -top-2 ${
-                    isRTL ? 'left-3 sm:left-4' : 'right-3 sm:right-4'
-                  } z-10 bg-[#1a73e8] text-white text-[10px] sm:text-[11px] font-bold px-2.5 py-0.5 rounded-full shadow-md border-2 border-[#04130D] flex items-center gap-1 select-none pointer-events-none`}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                  <span>{language === 'ar' ? 'آخر استخدام • Last Used' : 'Last Used'}</span>
-                </div>
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>{t('auth.signInButton')}</span>
+                </button>
 
                 <button
-                  id="auth-google-signin-btn"
+                  id="switch-to-signup-tab"
                   type="button"
-                  onClick={() => handleGoogleAuth('signin')}
-                  disabled={googleLoading || isSubmitting}
-                  className="w-full py-3 sm:py-3.5 px-4 bg-white hover:bg-[#F8F9FA] active:bg-[#F1F3F4] text-[#3c4043] hover:text-[#202124] border border-[#DADCE0] hover:border-[#D2E3FC] rounded-xl sm:rounded-2xl font-semibold transition-all flex items-center justify-center gap-3 cursor-pointer shadow-sm hover:shadow-md hover:scale-[1.005] active:scale-[0.99] text-xs sm:text-sm disabled:opacity-60 relative overflow-hidden"
+                  onClick={() => {
+                    setMode('signup');
+                    setSignUpError('');
+                  }}
+                  className={`relative py-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-2 z-10 ${
+                    mode === 'signup'
+                      ? 'text-slate-950 font-black'
+                      : 'text-emerald-300/70 hover:text-white'
+                  }`}
                 >
-                  <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
-                    <path
-                      fill="#4285F4"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  {mode === 'signup' && (
+                    <motion.div
+                      layoutId="activeAuthPill"
+                      className="absolute inset-0 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] rounded-xl shadow-lg shadow-amber-950/60 -z-10"
+                      transition={{ type: 'spring', stiffness: 450, damping: 32 }}
                     />
-                    <path
-                      fill="#34A853"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                    />
-                  </svg>
-                  <span className="tracking-tight font-medium text-[#3c4043] font-sans">
-                    {googleLoading
-                      ? (language === 'ar' ? 'جاري الاتصال بـ Google...' : 'Connecting to Google...')
-                      : (language === 'ar' ? 'المتابعة باستخدام Google (Continue with Google)' : 'Continue with Google')}
-                  </span>
-                </button>
-              </div>
-
-              {/* Divider */}
-              <div className="flex items-center gap-3 py-1">
-                <div className="flex-1 h-px bg-[#E5B869]/20" />
-                <span className="text-[11px] font-semibold text-emerald-300/60 uppercase tracking-wider">
-                  {language === 'ar' ? 'أو بالبريد وكلمة المرور' : 'Or with password'}
-                </span>
-                <div className="flex-1 h-px bg-[#E5B869]/20" />
-              </div>
-
-              <form onSubmit={handleSignIn} className="space-y-4">
-                {/* Email input */}
-                <div className="space-y-1.5 text-start">
-                  <label className="block text-emerald-200 font-semibold text-xs">{t('auth.email')}</label>
-                  <div className="relative">
-                    <Mail className={`absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400/60`} />
-                    <input
-                      id="auth-signin-email"
-                      type="email"
-                      required
-                      value={signInEmail}
-                      onChange={(e) => setSignInEmail(e.target.value)}
-                      placeholder={t('auth.emailPlaceholder')}
-                      className={`w-full ${isRTL ? 'pr-10 pl-3.5' : 'pl-10 pr-3.5'} py-3 bg-[#04130D] border border-[#E5B869]/25 rounded-xl text-white placeholder-emerald-400/40 text-xs focus:outline-none focus:border-[#E5B869] transition-colors focus:ring-1 focus:ring-[#E5B869]/40`}
-                      dir="ltr"
-                    />
-                  </div>
-                </div>
-
-                {/* Password input with show/hide */}
-                <div className="space-y-1.5 text-start">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-emerald-200 font-semibold text-xs">{t('auth.password')}</label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setForgotEmail(signInEmail);
-                        setMode('forgot');
-                        setForgotError('');
-                        setForgotSuccess('');
-                      }}
-                      className="text-[11px] text-[#F5D794] hover:underline font-semibold cursor-pointer"
-                    >
-                      {t('auth.forgotPasswordLink')}
-                    </button>
-                  </div>
-                  <div className="relative">
-                    <Lock className={`absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400/60`} />
-                    <input
-                      id="auth-signin-password"
-                      type={showSignInPassword ? 'text' : 'password'}
-                      required
-                      value={signInPassword}
-                      onChange={(e) => setSignInPassword(e.target.value)}
-                      placeholder={t('auth.passwordPlaceholder')}
-                      className={`w-full ${isRTL ? 'pr-10 pl-10' : 'pl-10 pr-10'} py-3 bg-[#04130D] border border-[#E5B869]/25 rounded-xl text-white placeholder-emerald-400/40 text-xs focus:outline-none focus:border-[#E5B869] transition-colors focus:ring-1 focus:ring-[#E5B869]/40`}
-                      dir="ltr"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowSignInPassword(!showSignInPassword)}
-                      className={`absolute ${isRTL ? 'left-3' : 'right-3'} top-1/2 -translate-y-1/2 text-emerald-400/60 hover:text-[#F5D794] p-1 cursor-pointer transition-colors`}
-                    >
-                      {showSignInPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Submit button */}
-                <button
-                  id="auth-signin-submit-btn"
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full py-3.5 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:opacity-90 active:scale-[0.99] disabled:opacity-50 text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-sm"
-                >
-                  <span>{isSubmitting ? t('common.loading') : t('auth.signInButton')}</span>
-                  {isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
-                </button>
-              </form>
-            </div>
-          )}
-
-          {/* ================= SIGN UP TAB ================= */}
-          {mode === 'signup' && (
-            <div className="space-y-4 text-xs">
-              {signUpError && (
-                <div
-                  id="signup-error-banner"
-                  className="p-3.5 rounded-2xl bg-rose-950/80 border border-rose-500/50 text-rose-200 flex flex-col gap-1.5 animate-in fade-in text-start"
-                >
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
-                    <span className="font-semibold">{signUpError}</span>
-                  </div>
-                  {(signUpError.includes('مسجل بالفعل') || signUpError.includes('already exists')) && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMode('signin');
-                        setSignUpError('');
-                      }}
-                      className="text-[11px] font-bold text-[#F5D794] underline hover:text-white cursor-pointer self-start"
-                    >
-                      {language === 'ar' ? '← الانتقال إلى تسجيل الدخول الآن' : '← Switch to Sign In directly'}
-                    </button>
                   )}
-                </div>
-              )}
-
-              {/* Google Native One-Click Sign Up Button matching GIS standard */}
-              <div className="relative pt-1">
-                {/* Last Used / Recommended Badge */}
-                <div
-                  className={`absolute -top-2 ${
-                    isRTL ? 'left-3 sm:left-4' : 'right-3 sm:right-4'
-                  } z-10 bg-[#1a73e8] text-white text-[10px] sm:text-[11px] font-bold px-2.5 py-0.5 rounded-full shadow-md border-2 border-[#04130D] flex items-center gap-1 select-none pointer-events-none`}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                  <span>{language === 'ar' ? 'تسجيل فوري وسريع • Instant' : 'Instant Setup'}</span>
-                </div>
-
-                <button
-                  id="auth-google-signup-btn"
-                  type="button"
-                  onClick={() => handleGoogleAuth('signup')}
-                  disabled={googleLoading || isSubmitting}
-                  className="w-full py-3 sm:py-3.5 px-4 bg-white hover:bg-[#F8F9FA] active:bg-[#F1F3F4] text-[#3c4043] hover:text-[#202124] border border-[#DADCE0] hover:border-[#D2E3FC] rounded-xl sm:rounded-2xl font-semibold transition-all flex items-center justify-center gap-3 cursor-pointer shadow-sm hover:shadow-md hover:scale-[1.005] active:scale-[0.99] text-xs sm:text-sm disabled:opacity-60 relative overflow-hidden"
-                >
-                  <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
-                    <path
-                      fill="#4285F4"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                    />
-                  </svg>
-                  <span className="tracking-tight font-medium text-[#3c4043] font-sans">
-                    {googleLoading
-                      ? (language === 'ar' ? 'جاري الاتصال بـ Google...' : 'Connecting to Google...')
-                      : (language === 'ar' ? 'إنشاء حساب عبر Google (Sign up with Google)' : 'Continue with Google')}
-                  </span>
+                  <User className="w-3.5 h-3.5" />
+                  <span>{t('auth.signUpButton')}</span>
                 </button>
               </div>
+            )}
 
-              {/* Divider */}
-              <div className="flex items-center gap-3 py-1">
-                <div className="flex-1 h-px bg-[#E5B869]/20" />
-                <span className="text-[11px] font-semibold text-emerald-300/60 uppercase tracking-wider">
-                  {language === 'ar' ? 'أو التسجيل اليدوي بالبريد' : 'Or sign up with email'}
-                </span>
-                <div className="flex-1 h-px bg-[#E5B869]/20" />
-              </div>
-
-              <form onSubmit={handleSignUpStart} className="space-y-3.5">
-                {/* Admin Approval Notice Banner */}
-                <div className="p-3 rounded-xl bg-[#0E382A] border border-[#E5B869]/40 text-[#F5D794] flex items-center gap-2 text-[11px] text-start">
-                  <Shield className="w-4 h-4 text-[#E5B869] shrink-0" />
+            {/* Back Button for Forgot & OTP flows */}
+            {(mode === 'forgot' || mode === 'verify_signup' || mode === 'verify_forgot') && (
+              <div className="flex items-center justify-between px-1">
+                <span className="text-xs font-bold text-[#F5D794] flex items-center gap-1.5">
+                  <KeyRound className="w-3.5 h-3.5 text-[#E5B869]" />
                   <span>
-                    {language === 'ar'
-                      ? 'يتم إرسال رمز أمان (OTP) للتحقق من ملكية البريد الإلكتروني قبل مراجعة المشرف العام.'
-                      : 'A security verification code (OTP) validates email ownership before account approval.'}
+                    {mode === 'verify_signup'
+                      ? (language === 'ar' ? 'التحقق من البريد' : 'Email Verification')
+                      : mode === 'verify_forgot'
+                      ? (language === 'ar' ? 'تأكيد الرمز' : 'Verify Code')
+                      : t('auth.resetPassword')}
                   </span>
-                </div>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode(mode === 'verify_signup' ? 'signup' : 'signin');
+                    setForgotError('');
+                    setForgotSuccess('');
+                    setOtpError('');
+                  }}
+                  className="text-xs text-emerald-300 hover:text-[#F5D794] font-semibold cursor-pointer flex items-center gap-1 transition-colors"
+                >
+                  {isRTL ? <ArrowRight className="w-3.5 h-3.5" /> : <ArrowLeft className="w-3.5 h-3.5" />}
+                  <span>{mode === 'verify_signup' ? (language === 'ar' ? 'تعديل البيانات' : 'Edit info') : t('auth.backToSignIn')}</span>
+                </button>
+              </div>
+            )}
 
-                {/* Avatar Selection */}
-                <div className="flex items-center gap-3 p-3 bg-[#04130D] border border-[#E5B869]/25 rounded-2xl">
-                  <img
-                    src={avatarPreview}
-                    alt="Avatar"
-                    className="w-12 h-12 rounded-xl object-cover border-2 border-[#E5B869] shrink-0 shadow-md"
-                  />
-                  <div className="space-y-1 text-start">
-                    <span className="text-xs font-bold text-white block">{t('auth.avatarUpload')}</span>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      accept="image/*"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="px-2.5 py-1 bg-[#082218] hover:bg-[#0E382A] text-[#F5D794] rounded-lg text-[11px] font-semibold flex items-center gap-1 cursor-pointer border border-[#E5B869]/30 transition-colors"
+            {/* ================= ANIMATED VIEWS WITH FLUID TRANSITIONS ================= */}
+            <AnimatePresence mode="wait">
+              {/* ================= 1. SIGN IN VIEW ================= */}
+              {mode === 'signin' && (
+                <motion.div
+                  key="signin-tab"
+                  initial={{ opacity: 0, x: isRTL ? 20 : -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: isRTL ? -20 : 20 }}
+                  transition={{ duration: 0.22, ease: 'easeInOut' }}
+                  className="space-y-4 text-xs"
+                >
+                  {signInError && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`p-3.5 rounded-2xl flex items-start gap-2.5 ${
+                        isPendingError
+                          ? 'bg-[#0E382A] border border-[#E5B869]/50 text-amber-200'
+                          : 'bg-rose-950/80 border border-rose-500/50 text-rose-200'
+                      }`}
                     >
-                      <Upload className="w-3 h-3 text-[#E5B869]" />
-                      <span>{t('auth.avatarUpload')}</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Full Name */}
-                <div className="space-y-1.5 text-start">
-                  <label className="block text-emerald-200 font-semibold text-xs">{t('auth.fullName')}</label>
-                  <div className="relative">
-                    <User className={`absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400/60`} />
-                    <input
-                      id="auth-signup-name"
-                      type="text"
-                      required
-                      value={signUpName}
-                      onChange={(e) => setSignUpName(e.target.value)}
-                      placeholder={t('auth.fullNamePlaceholder')}
-                      className={`w-full ${isRTL ? 'pr-10 pl-3.5' : 'pl-10 pr-3.5'} py-2.5 bg-[#04130D] border border-[#E5B869]/25 rounded-xl text-white placeholder-emerald-400/40 text-xs focus:outline-none focus:border-[#E5B869] transition-colors focus:ring-1 focus:ring-[#E5B869]/40`}
-                    />
-                  </div>
-                </div>
-
-                {/* Email Address */}
-                <div className="space-y-1.5 text-start">
-                  <label className="block text-emerald-200 font-semibold text-xs">{t('auth.email')}</label>
-                  <div className="relative">
-                    <Mail className={`absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400/60`} />
-                    <input
-                      id="auth-signup-email"
-                      type="email"
-                      required
-                      value={signUpEmail}
-                      onChange={(e) => setSignUpEmail(e.target.value)}
-                      placeholder={t('auth.emailPlaceholder')}
-                      className={`w-full ${isRTL ? 'pr-10 pl-3.5' : 'pl-10 pr-3.5'} py-2.5 bg-[#04130D] border border-[#E5B869]/25 rounded-xl text-white placeholder-emerald-400/40 text-xs focus:outline-none focus:border-[#E5B869] transition-colors focus:ring-1 focus:ring-[#E5B869]/40`}
-                      dir="ltr"
-                    />
-                  </div>
-                </div>
-
-                {/* City and Position row */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* City */}
-                  <div className="space-y-1.5 text-start">
-                    <label className="block text-emerald-200 font-semibold text-xs flex items-center gap-1">
-                      <MapPin className="w-3 h-3 text-[#E5B869]" />
-                      <span>{t('auth.preferredCity')}</span>
-                    </label>
-                    <select
-                      value={signUpCity}
-                      onChange={(e) => setSignUpCity(e.target.value)}
-                      className="w-full py-2.5 px-3 bg-[#04130D] border border-[#E5B869]/25 rounded-xl text-white text-xs focus:outline-none focus:border-[#E5B869]"
-                    >
-                      {MOROCCAN_CITIES.map((city) => (
-                        <option key={city} value={city} className="bg-[#082218] text-white">
-                          {getCityName(city)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Position */}
-                  <div className="space-y-1.5 text-start">
-                    <label className="block text-emerald-200 font-semibold text-xs flex items-center gap-1">
-                      <Flame className="w-3 h-3 text-[#E5B869]" />
-                      <span>{t('auth.preferredPosition')}</span>
-                    </label>
-                    <select
-                      value={signUpPosition}
-                      onChange={(e) => setSignUpPosition(e.target.value)}
-                      className="w-full py-2.5 px-3 bg-[#04130D] border border-[#E5B869]/25 rounded-xl text-white text-xs focus:outline-none focus:border-[#E5B869]"
-                    >
-                      <option value="GK" className="bg-[#082218] text-white">GK - حارس مرمى</option>
-                      <option value="DEF" className="bg-[#082218] text-white">DEF - مدافع</option>
-                      <option value="MID" className="bg-[#082218] text-white">MID - وسط ميدان</option>
-                      <option value="FWD" className="bg-[#082218] text-white">FWD - مهاجم</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Password input with show/hide & strength meter */}
-                <div className="space-y-1.5 text-start">
-                  <label className="block text-emerald-200 font-semibold text-xs">{t('auth.password')}</label>
-                  <div className="relative">
-                    <Lock className={`absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400/60`} />
-                    <input
-                      id="auth-signup-password"
-                      type={showSignUpPassword ? 'text' : 'password'}
-                      required
-                      minLength={6}
-                      value={signUpPassword}
-                      onChange={(e) => setSignUpPassword(e.target.value)}
-                      placeholder={t('auth.passwordPlaceholder')}
-                      className={`w-full ${isRTL ? 'pr-10 pl-10' : 'pl-10 pr-10'} py-2.5 bg-[#04130D] border border-[#E5B869]/25 rounded-xl text-white placeholder-emerald-400/40 text-xs focus:outline-none focus:border-[#E5B869] transition-colors focus:ring-1 focus:ring-[#E5B869]/40`}
-                      dir="ltr"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowSignUpPassword(!showSignUpPassword)}
-                      className={`absolute ${isRTL ? 'left-3' : 'right-3'} top-1/2 -translate-y-1/2 text-emerald-400/60 hover:text-[#F5D794] p-1 cursor-pointer transition-colors`}
-                    >
-                      {showSignUpPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-
-                  {/* Password Strength Indicator */}
-                  {signUpPassword && (
-                    <div className="space-y-1 pt-1">
-                      <div className="flex items-center justify-between text-[10px]">
-                        <span className="text-emerald-300/70">{language === 'ar' ? 'قوة كلمة المرور:' : 'Strength:'}</span>
-                        <span className="font-bold text-white">{passwordStrength.label}</span>
+                      {isPendingError ? (
+                        <Clock className="w-5 h-5 shrink-0 text-[#E5B869] mt-0.5" />
+                      ) : (
+                        <AlertCircle className="w-5 h-5 shrink-0 text-rose-400 mt-0.5" />
+                      )}
+                      <div className="space-y-1 text-start">
+                        <span className="font-semibold block leading-snug">{signInError}</span>
+                        {isPendingError && (
+                          <span className="text-[11px] text-[#F5D794] block">
+                            {language === 'ar'
+                              ? 'تم إشعار المشرف وسيقوم بمراجعة حسابك وتفعيله في أقرب وقت.'
+                              : 'The administrator has been notified and will review your pending account shortly.'}
+                          </span>
+                        )}
                       </div>
-                      <div className="grid grid-cols-4 gap-1 h-1.5 w-full bg-[#04130D] rounded-full overflow-hidden p-0.5 border border-[#E5B869]/20">
-                        <div className={`h-full rounded-full transition-all ${passwordStrength.score >= 1 ? passwordStrength.color : 'bg-transparent'}`} />
-                        <div className={`h-full rounded-full transition-all ${passwordStrength.score >= 2 ? passwordStrength.color : 'bg-transparent'}`} />
-                        <div className={`h-full rounded-full transition-all ${passwordStrength.score >= 3 ? passwordStrength.color : 'bg-transparent'}`} />
-                        <div className={`h-full rounded-full transition-all ${passwordStrength.score >= 4 ? passwordStrength.color : 'bg-transparent'}`} />
+                    </motion.div>
+                  )}
+
+                  {/* Google Official Button */}
+                  <button
+                    id="auth-google-signin-btn"
+                    type="button"
+                    onClick={() => handleGoogleAuth('signin')}
+                    disabled={googleLoading || isSubmitting}
+                    className="w-full py-3 px-4 bg-white hover:bg-[#F8F9FA] active:bg-[#F1F3F4] text-[#3c4043] hover:text-[#202124] border border-[#DADCE0] hover:border-[#D2E3FC] rounded-2xl font-semibold transition-all flex items-center justify-center gap-3 cursor-pointer shadow-md hover:shadow-lg active:scale-[0.99] text-xs sm:text-sm disabled:opacity-60"
+                  >
+                    <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+                      <path
+                        fill="#4285F4"
+                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                      />
+                      <path
+                        fill="#34A853"
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                      />
+                      <path
+                        fill="#FBBC05"
+                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                      />
+                      <path
+                        fill="#EA4335"
+                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                      />
+                    </svg>
+                    <span>{googleLoading ? t('auth.signingIn') : t('auth.continueWithGoogle')}</span>
+                  </button>
+
+                  <div className="flex items-center gap-3 my-3">
+                    <div className="h-px bg-[#E5B869]/25 flex-1" />
+                    <span className="text-[11px] text-emerald-300/60 uppercase font-semibold">
+                      {language === 'ar' ? 'أو عبر البريد الإلكتروني' : 'Or with Email'}
+                    </span>
+                    <div className="h-px bg-[#E5B869]/25 flex-1" />
+                  </div>
+
+                  {/* Sign In Form */}
+                  <form onSubmit={handleSignIn} className="space-y-3.5 text-start">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-emerald-200 block">
+                        {t('auth.email')}
+                      </label>
+                      <div className="relative">
+                        <input
+                          id="signin-email-input"
+                          type="email"
+                          required
+                          value={signInEmail}
+                          onChange={(e) => setSignInEmail(e.target.value)}
+                          placeholder="player@pitchmate.ma"
+                          className="w-full pl-10 pr-4 py-3 rounded-xl bg-[#030E0A] border border-[#E5B869]/30 focus:border-[#E5B869] focus:ring-1 focus:ring-[#E5B869] text-white placeholder-slate-500 text-xs transition-all outline-none"
+                        />
+                        <Mail className="w-4 h-4 text-emerald-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                       </div>
                     </div>
-                  )}
-                </div>
 
-                {/* Submit button */}
-                <button
-                  id="auth-signup-submit-btn"
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full py-3.5 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:opacity-90 active:scale-[0.99] disabled:opacity-50 text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-sm mt-2"
-                >
-                  <Send className="w-4 h-4" />
-                  <span>{isSubmitting ? t('common.loading') : (language === 'ar' ? 'متابعة التحقق من البريد الإلكتروني' : 'Continue to Email Verification')}</span>
-                  {isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
-                </button>
-              </form>
-            </div>
-          )}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-bold text-emerald-200">
+                          {t('auth.password')}
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setForgotEmail(signInEmail);
+                            setMode('forgot');
+                            setSignInError('');
+                          }}
+                          className="text-[11px] text-[#F5D794] hover:underline cursor-pointer font-medium"
+                        >
+                          {t('auth.forgotPassword')}
+                        </button>
+                      </div>
+                      <div className="relative">
+                        <input
+                          id="signin-password-input"
+                          type={showSignInPassword ? 'text' : 'password'}
+                          required
+                          value={signInPassword}
+                          onChange={(e) => setSignInPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full pl-10 pr-10 py-3 rounded-xl bg-[#030E0A] border border-[#E5B869]/30 focus:border-[#E5B869] focus:ring-1 focus:ring-[#E5B869] text-white placeholder-slate-500 text-xs transition-all outline-none"
+                        />
+                        <Lock className="w-4 h-4 text-emerald-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <button
+                          type="button"
+                          onClick={() => setShowSignInPassword(!showSignInPassword)}
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                        >
+                          {showSignInPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
 
-          {/* ================= VERIFY SIGNUP OTP TAB ================= */}
-          {mode === 'verify_signup' && (
-            <div className="space-y-5 text-xs animate-in fade-in duration-200">
-              <div className="p-4 rounded-2xl bg-[#04130D] border border-[#E5B869]/30 text-center space-y-2">
-                <div className="w-12 h-12 mx-auto rounded-2xl bg-[#0E382A] border border-[#E5B869]/50 flex items-center justify-center text-[#F5D794] shadow-md">
-                  <KeyRound className="w-6 h-6" />
-                </div>
-                <div className="space-y-1">
-                  <span className="text-xs text-emerald-300/80 block">{t('auth.codeSentTo')}</span>
-                  <span className="text-sm font-mono font-bold text-[#F5D794] block">{signUpEmail}</span>
-                </div>
-              </div>
-
-              {otpError && (
-                <div
-                  id="otp-error-banner"
-                  className="p-3 rounded-2xl bg-rose-950/80 border border-rose-500/50 text-rose-200 flex items-start gap-2 animate-in fade-in text-start"
-                >
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
-                  <span>{otpError}</span>
-                </div>
+                    <button
+                      id="signin-submit-btn"
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full py-3.5 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 active:scale-[0.99] text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm mt-2 disabled:opacity-50"
+                    >
+                      {isSubmitting ? (
+                        <div className="w-5 h-5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <span>{t('auth.signInButton')}</span>
+                          {isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+                        </>
+                      )}
+                    </button>
+                  </form>
+                </motion.div>
               )}
 
-              <form onSubmit={handleVerifySignUpOTP} className="space-y-5">
-                {/* 6 Digit Input Boxes */}
-                <div className="space-y-2">
-                  <label className="block text-emerald-200 font-semibold text-xs">{t('auth.enterOtpCode')}</label>
-                  <div className="flex items-center justify-center gap-2 sm:gap-2.5" dir="ltr">
-                    {otpDigits.map((digit, idx) => (
-                      <input
-                        key={idx}
-                        ref={(el) => {
-                          otpInputRefs.current[idx] = el;
-                        }}
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={1}
-                        value={digit}
-                        onChange={(e) => handleOtpChange(idx, e.target.value)}
-                        onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                        onPaste={handleOtpPaste}
-                        className="w-11 h-13 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-black font-mono bg-[#04130D] border-2 border-[#E5B869]/40 focus:border-[#E5B869] text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E5B869]/50 transition-all shadow-inner"
+              {/* ================= 2. SIGN UP VIEW ================= */}
+              {mode === 'signup' && (
+                <motion.div
+                  key="signup-tab"
+                  initial={{ opacity: 0, x: isRTL ? -20 : 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: isRTL ? 20 : -20 }}
+                  transition={{ duration: 0.22, ease: 'easeInOut' }}
+                  className="space-y-4 text-xs"
+                >
+                  {signUpError && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-3.5 rounded-2xl bg-rose-950/80 border border-rose-500/50 text-rose-200 flex items-start gap-2.5 text-start"
+                    >
+                      <AlertCircle className="w-5 h-5 shrink-0 text-rose-400 mt-0.5" />
+                      <span className="font-semibold">{signUpError}</span>
+                    </motion.div>
+                  )}
+
+                  {/* Google Sign Up Button */}
+                  <button
+                    id="auth-google-signup-btn"
+                    type="button"
+                    onClick={() => handleGoogleAuth('signup')}
+                    disabled={googleLoading || isSubmitting}
+                    className="w-full py-3 px-4 bg-white hover:bg-[#F8F9FA] active:bg-[#F1F3F4] text-[#3c4043] hover:text-[#202124] border border-[#DADCE0] hover:border-[#D2E3FC] rounded-2xl font-semibold transition-all flex items-center justify-center gap-3 cursor-pointer shadow-md hover:shadow-lg active:scale-[0.99] text-xs sm:text-sm disabled:opacity-60"
+                  >
+                    <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+                      <path
+                        fill="#4285F4"
+                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                       />
-                    ))}
-                  </div>
-                </div>
-
-                {/* Resend button & timer */}
-                <div className="flex items-center justify-between text-xs px-1">
-                  <button
-                    type="button"
-                    disabled={otpTimer > 0 || isResendingOtp}
-                    onClick={handleResendOTP}
-                    className="text-emerald-300 hover:text-[#F5D794] disabled:text-slate-600 font-semibold cursor-pointer disabled:cursor-not-allowed flex items-center gap-1.5 transition-colors"
-                  >
-                    <RotateCw className={`w-3.5 h-3.5 ${isResendingOtp ? 'animate-spin' : ''}`} />
-                    <span>{t('auth.resendCode')}</span>
+                      <path
+                        fill="#34A853"
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                      />
+                      <path
+                        fill="#FBBC05"
+                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                      />
+                      <path
+                        fill="#EA4335"
+                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                      />
+                    </svg>
+                    <span>{googleLoading ? t('auth.signingIn') : t('auth.continueWithGoogle')}</span>
                   </button>
 
-                  {otpTimer > 0 && (
-                    <span className="text-emerald-400/70 font-mono text-[11px] flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      <span>{t('auth.resendIn')} {otpTimer}s</span>
+                  <div className="flex items-center gap-3 my-3">
+                    <div className="h-px bg-[#E5B869]/25 flex-1" />
+                    <span className="text-[11px] text-emerald-300/60 uppercase font-semibold">
+                      {language === 'ar' ? 'أو املأ بياناتك' : 'Or fill your profile'}
                     </span>
+                    <div className="h-px bg-[#E5B869]/25 flex-1" />
+                  </div>
+
+                  {/* Sign Up Form */}
+                  <form onSubmit={handleSignUpStart} className="space-y-3 text-start">
+                    {/* Name & Photo Mini Bar */}
+                    <div className="flex items-center gap-3">
+                      <div className="relative shrink-0">
+                        <img
+                          src={avatarPreview}
+                          alt="Avatar"
+                          className="w-12 h-12 rounded-xl object-cover border-2 border-[#E5B869]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="absolute -bottom-1 -right-1 p-1 bg-[#04130D] rounded-full border border-[#E5B869] text-[#F5D794] hover:scale-110 transition-transform cursor-pointer"
+                        >
+                          <Upload className="w-2.5 h-2.5" />
+                        </button>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileUpload}
+                          className="hidden"
+                        />
+                      </div>
+
+                      <div className="flex-1 space-y-1">
+                        <label className="text-[11px] font-bold text-emerald-200 block">
+                          {t('auth.fullName')}
+                        </label>
+                        <div className="relative">
+                          <input
+                            id="signup-name-input"
+                            type="text"
+                            required
+                            value={signUpName}
+                            onChange={(e) => setSignUpName(e.target.value)}
+                            placeholder={language === 'ar' ? 'أشرف حكيمي' : 'Achraf Hakimi'}
+                            className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[#030E0A] border border-[#E5B869]/30 focus:border-[#E5B869] text-white text-xs outline-none"
+                          />
+                          <User className="w-3.5 h-3.5 text-emerald-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Email */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-emerald-200 block">
+                        {t('auth.email')}
+                      </label>
+                      <div className="relative">
+                        <input
+                          id="signup-email-input"
+                          type="email"
+                          required
+                          value={signUpEmail}
+                          onChange={(e) => setSignUpEmail(e.target.value)}
+                          placeholder="hakimi@pitchmate.ma"
+                          className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[#030E0A] border border-[#E5B869]/30 focus:border-[#E5B869] text-white text-xs outline-none"
+                        />
+                        <Mail className="w-3.5 h-3.5 text-emerald-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    {/* City & Position */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-emerald-200 block">
+                          {t('profile.city')}
+                        </label>
+                        <select
+                          id="signup-city-select"
+                          value={signUpCity}
+                          onChange={(e) => setSignUpCity(e.target.value)}
+                          className="w-full py-2.5 px-2.5 rounded-xl bg-[#030E0A] border border-[#E5B869]/30 focus:border-[#E5B869] text-white text-xs outline-none cursor-pointer"
+                        >
+                          {MOROCCAN_CITIES.map((city) => (
+                            <option key={city} value={city} className="bg-[#030E0A] text-white">
+                              {getCityName(city)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-emerald-200 block">
+                          {t('profile.position')}
+                        </label>
+                        <select
+                          id="signup-position-select"
+                          value={signUpPosition}
+                          onChange={(e) => setSignUpPosition(e.target.value)}
+                          className="w-full py-2.5 px-2.5 rounded-xl bg-[#030E0A] border border-[#E5B869]/30 focus:border-[#E5B869] text-white text-xs outline-none cursor-pointer"
+                        >
+                          {POSITIONS.map((pos) => (
+                            <option key={pos.code} value={pos.code} className="bg-[#030E0A] text-white">
+                              {pos.icon} {language === 'ar' ? pos.labelAr : pos.labelEn}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Password */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-emerald-200 block">
+                        {t('auth.password')}
+                      </label>
+                      <div className="relative">
+                        <input
+                          id="signup-password-input"
+                          type={showSignUpPassword ? 'text' : 'password'}
+                          required
+                          value={signUpPassword}
+                          onChange={(e) => setSignUpPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#030E0A] border border-[#E5B869]/30 focus:border-[#E5B869] text-white text-xs outline-none"
+                        />
+                        <Lock className="w-3.5 h-3.5 text-emerald-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <button
+                          type="button"
+                          onClick={() => setShowSignUpPassword(!showSignUpPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                        >
+                          {showSignUpPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+
+                      {/* Password strength indicator */}
+                      {signUpPassword && (
+                        <div className="pt-1 space-y-1">
+                          <div className="flex gap-1 h-1">
+                            {[1, 2, 3, 4].map((step) => (
+                              <div
+                                key={step}
+                                className={`flex-1 rounded-full transition-all duration-300 ${
+                                  step <= passwordStrength.score ? passwordStrength.color : 'bg-slate-800'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-[10px] text-emerald-300/80 block text-end font-medium">
+                            {passwordStrength.label}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      id="signup-submit-btn"
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full py-3.5 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 active:scale-[0.99] text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm mt-2 disabled:opacity-50"
+                    >
+                      {isSubmitting ? (
+                        <div className="w-5 h-5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <span>{t('auth.signUpButton')}</span>
+                          {isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+                        </>
+                      )}
+                    </button>
+                  </form>
+                </motion.div>
+              )}
+
+              {/* ================= 3. OTP VERIFICATION (SIGN UP) ================= */}
+              {mode === 'verify_signup' && (
+                <motion.div
+                  key="verify-signup"
+                  initial={{ opacity: 0, scale: 0.96 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  className="space-y-4 text-xs"
+                >
+                  <div className="p-3.5 rounded-2xl bg-[#0E382A] border border-[#E5B869]/40 text-emerald-200 text-center space-y-1">
+                    <span className="font-bold block text-white">{signUpEmail}</span>
+                    <span className="text-[11px] text-[#F5D794] block">{t('auth.enterVerificationCode')}</span>
+                  </div>
+
+                  {otpError && (
+                    <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-200 flex items-center gap-2 text-start">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                      <span>{otpError}</span>
+                    </div>
                   )}
-                </div>
 
-                {/* Verify and finalize button */}
+                  <form onSubmit={handleVerifySignUpOTP} className="space-y-4">
+                    {/* 6 Digit Inputs */}
+                    <div className="flex justify-center gap-2" onPaste={handleOtpPaste}>
+                      {otpDigits.map((digit, idx) => (
+                        <input
+                          key={idx}
+                          ref={(el) => {
+                            otpInputRefs.current[idx] = el;
+                          }}
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={1}
+                          value={digit}
+                          onChange={(e) => handleOtpChange(idx, e.target.value)}
+                          onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                          className="w-11 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-mono font-black rounded-xl bg-[#030E0A] border border-[#E5B869]/40 focus:border-[#E5B869] focus:ring-2 focus:ring-[#E5B869]/30 text-white outline-none transition-all shadow-inner"
+                        />
+                      ))}
+                    </div>
+
+                    <button
+                      id="verify-signup-submit-btn"
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full py-3.5 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 active:scale-[0.99] text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm disabled:opacity-50"
+                    >
+                      {isSubmitting ? (
+                        <div className="w-5 h-5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <CheckCircle className="w-4 h-4" />
+                          <span>{t('auth.confirmCode')}</span>
+                        </>
+                      )}
+                    </button>
+                  </form>
+
+                  {/* Resend Link */}
+                  <div className="text-center pt-1">
+                    <button
+                      type="button"
+                      onClick={handleResendOTP}
+                      disabled={otpTimer > 0 || isResendingOtp}
+                      className="text-xs text-[#F5D794] hover:underline disabled:opacity-50 cursor-pointer font-medium"
+                    >
+                      {otpTimer > 0
+                        ? `${t('auth.resendOtpIn')} (${otpTimer}s)`
+                        : isResendingOtp
+                        ? t('auth.sendingOtp')
+                        : t('auth.resendOtp')}
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* ================= 4. FORGOT PASSWORD (EMAIL INPUT) ================= */}
+              {mode === 'forgot' && (
+                <motion.div
+                  key="forgot-password"
+                  initial={{ opacity: 0, scale: 0.96 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  className="space-y-4 text-xs text-start"
+                >
+                  {forgotError && (
+                    <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-200 flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                      <span>{forgotError}</span>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleForgotStart} className="space-y-3.5">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-emerald-200 block">
+                        {t('auth.registeredEmail')}
+                      </label>
+                      <div className="relative">
+                        <input
+                          id="forgot-email-input"
+                          type="email"
+                          required
+                          value={forgotEmail}
+                          onChange={(e) => setForgotEmail(e.target.value)}
+                          placeholder="player@pitchmate.ma"
+                          className="w-full pl-10 pr-4 py-3 rounded-xl bg-[#030E0A] border border-[#E5B869]/30 focus:border-[#E5B869] text-white text-xs outline-none"
+                        />
+                        <Mail className="w-4 h-4 text-emerald-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    <button
+                      id="forgot-submit-btn"
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full py-3.5 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 active:scale-[0.99] text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm disabled:opacity-50"
+                    >
+                      {isSubmitting ? (
+                        <div className="w-5 h-5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <span>{t('auth.sendVerificationCode')}</span>
+                          {isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+                        </>
+                      )}
+                    </button>
+                  </form>
+                </motion.div>
+              )}
+
+              {/* ================= 5. FORGOT PASSWORD (OTP + NEW PASS) ================= */}
+              {mode === 'verify_forgot' && (
+                <motion.div
+                  key="verify-forgot"
+                  initial={{ opacity: 0, scale: 0.96 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  className="space-y-4 text-xs text-start"
+                >
+                  {forgotError && (
+                    <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-200 flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                      <span>{forgotError}</span>
+                    </div>
+                  )}
+
+                  {forgotSuccess && (
+                    <div className="p-3.5 rounded-xl bg-emerald-950/90 border border-emerald-500/50 text-emerald-200 flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                      <span>{forgotSuccess}</span>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleVerifyForgotReset} className="space-y-3.5">
+                    {/* 6 Digit Inputs */}
+                    <div className="space-y-1 text-center">
+                      <label className="text-[11px] font-bold text-emerald-200 block">
+                        {t('auth.enterVerificationCode')}
+                      </label>
+                      <div className="flex justify-center gap-2" onPaste={handleOtpPaste}>
+                        {otpDigits.map((digit, idx) => (
+                          <input
+                            key={idx}
+                            ref={(el) => {
+                              otpInputRefs.current[idx] = el;
+                            }}
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={1}
+                            value={digit}
+                            onChange={(e) => handleOtpChange(idx, e.target.value)}
+                            onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                            className="w-10 h-11 sm:w-11 sm:h-12 text-center text-lg font-mono font-black rounded-xl bg-[#030E0A] border border-[#E5B869]/40 focus:border-[#E5B869] text-white outline-none"
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* New Password */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-emerald-200 block">
+                        {t('auth.newPassword')}
+                      </label>
+                      <div className="relative">
+                        <input
+                          id="forgot-new-password-input"
+                          type={showForgotNewPassword ? 'text' : 'password'}
+                          required
+                          value={forgotNewPassword}
+                          onChange={(e) => setForgotNewPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#030E0A] border border-[#E5B869]/30 focus:border-[#E5B869] text-white text-xs outline-none"
+                        />
+                        <Lock className="w-3.5 h-3.5 text-emerald-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <button
+                          type="button"
+                          onClick={() => setShowForgotNewPassword(!showForgotNewPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                        >
+                          {showForgotNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Confirm New Password */}
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-emerald-200 block">
+                        {t('auth.confirmNewPassword')}
+                      </label>
+                      <div className="relative">
+                        <input
+                          id="forgot-confirm-password-input"
+                          type={showForgotConfirmPassword ? 'text' : 'password'}
+                          required
+                          value={forgotConfirmPassword}
+                          onChange={(e) => setForgotConfirmPassword(e.target.value)}
+                          placeholder="••••••••"
+                          className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#030E0A] border border-[#E5B869]/30 focus:border-[#E5B869] text-white text-xs outline-none"
+                        />
+                        <Lock className="w-3.5 h-3.5 text-emerald-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <button
+                          type="button"
+                          onClick={() => setShowForgotConfirmPassword(!showForgotConfirmPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                        >
+                          {showForgotConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <button
+                      id="verify-forgot-submit-btn"
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full py-3.5 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 active:scale-[0.99] text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm disabled:opacity-50"
+                    >
+                      {isSubmitting ? (
+                        <div className="w-5 h-5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <>
+                          <CheckCircle className="w-4 h-4" />
+                          <span>{t('auth.saveNewPassword')}</span>
+                        </>
+                      )}
+                    </button>
+                  </form>
+                </motion.div>
+              )}
+
+              {/* ================= 6. PENDING APPROVAL VIEW ================= */}
+              {mode === 'pending' && (
+                <motion.div
+                  key="pending-tab"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="space-y-4"
+                >
+                  <div className="p-5 rounded-2xl bg-gradient-to-b from-[#0E382A] to-[#082218] border border-[#E5B869]/50 text-amber-100 flex flex-col items-center text-center gap-3 shadow-xl">
+                    <div className="w-14 h-14 rounded-2xl bg-[#04130D] border-2 border-[#E5B869]/60 flex items-center justify-center text-[#F5D794] shadow-2xl">
+                      <Clock className="w-7 h-7 animate-spin text-[#F5D794]" />
+                    </div>
+
+                    <div className="space-y-1">
+                      <h2 className="text-base font-black text-[#F5D794]">{t('auth.accountPending')}</h2>
+                      <p className="text-xs font-medium text-emerald-100 leading-relaxed">
+                        {t('auth.pendingNotice')}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-[#030E0A] border border-[#E5B869]/30 space-y-2 text-xs text-start">
+                    <div className="flex items-center justify-between text-emerald-200">
+                      <span className="text-emerald-300/70">{t('auth.fullName')}:</span>
+                      <span className="font-bold text-white">{registeredUserName}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-emerald-200">
+                      <span className="text-emerald-300/70">{t('auth.email')}:</span>
+                      <span className="font-mono text-[#F5D794]">{registeredUserEmail}</span>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-emerald-300/70 text-center leading-relaxed">
+                    {t('auth.pendingRefreshHint')}
+                  </p>
+
+                  <button
+                    id="pending-return-signin-btn"
+                    type="button"
+                    onClick={() => {
+                      setMode('signin');
+                      setSignInError('');
+                    }}
+                    className="w-full py-3.5 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 active:scale-[0.99] text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm"
+                  >
+                    <span>{t('auth.backToSignIn')}</span>
+                    {isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Quick Demo Fill Bar */}
+            <div className="pt-2 border-t border-[#E5B869]/20">
+              <div className="flex items-center justify-between text-[11px] text-emerald-300/80 mb-2">
+                <span className="flex items-center gap-1 font-semibold">
+                  <Zap className="w-3 h-3 text-[#E5B869]" />
+                  <span>{language === 'ar' ? 'حسابات التجربة السريعة:' : 'Quick Demo Fill:'}</span>
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
                 <button
-                  id="auth-otp-verify-submit-btn"
-                  type="submit"
-                  disabled={isSubmitting || otpDigits.join('').length !== 6}
-                  className="w-full py-3.5 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:opacity-90 active:scale-[0.99] disabled:opacity-50 text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-sm"
+                  type="button"
+                  onClick={() => handleQuickDemoFill('mustapha@pitchmate.ma', 'SuperAdmin2025!')}
+                  className="px-2.5 py-2 rounded-xl bg-[#030E0A] hover:bg-[#07241A] border border-[#E5B869]/25 hover:border-[#E5B869] text-start transition-all text-[11px] cursor-pointer"
                 >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>{isSubmitting ? t('common.loading') : t('auth.verifyCodeBtn')}</span>
-                  {isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+                  <div className="font-bold text-[#F5D794] truncate">Mustapha (Admin)</div>
+                  <div className="text-[10px] text-slate-400 truncate">mustapha@...</div>
                 </button>
-              </form>
+                <button
+                  type="button"
+                  onClick={() => handleQuickDemoFill('player@pitchmate.ma', 'Player2025!')}
+                  className="px-2.5 py-2 rounded-xl bg-[#030E0A] hover:bg-[#07241A] border border-[#E5B869]/25 hover:border-[#E5B869] text-start transition-all text-[11px] cursor-pointer"
+                >
+                  <div className="font-bold text-white truncate">Star Player</div>
+                  <div className="text-[10px] text-slate-400 truncate">player@...</div>
+                </button>
+              </div>
             </div>
-          )}
-
-          {/* ================= FORGOT PASSWORD TAB ================= */}
-          {mode === 'forgot' && (
-            <form onSubmit={handleForgotStart} className="space-y-4 text-xs">
-              {forgotError && (
-                <div
-                  id="forgot-error-banner"
-                  className="p-3 rounded-2xl bg-rose-950/80 border border-rose-500/50 text-rose-200 flex items-start gap-2 animate-in fade-in text-start"
-                >
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
-                  <span>{forgotError}</span>
-                </div>
-              )}
-
-              <p className="text-emerald-300/80 text-xs text-start">
-                {t('auth.resetSubtitle')}
-              </p>
-
-              {/* Email */}
-              <div className="space-y-1.5 text-start">
-                <label className="block text-emerald-200 font-semibold text-xs">{t('auth.email')}</label>
-                <div className="relative">
-                  <Mail className={`absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400/60`} />
-                  <input
-                    id="auth-forgot-email"
-                    type="email"
-                    required
-                    value={forgotEmail}
-                    onChange={(e) => setForgotEmail(e.target.value)}
-                    placeholder={t('auth.emailPlaceholder')}
-                    className={`w-full ${isRTL ? 'pr-10 pl-3.5' : 'pl-10 pr-3.5'} py-2.5 bg-[#04130D] border border-[#E5B869]/25 rounded-xl text-white placeholder-emerald-400/40 text-xs focus:outline-none focus:border-[#E5B869] transition-colors focus:ring-1 focus:ring-[#E5B869]/40`}
-                    dir="ltr"
-                  />
-                </div>
-              </div>
-
-              <button
-                id="auth-forgot-send-otp-btn"
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full py-3.5 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:opacity-90 active:scale-[0.99] disabled:opacity-50 text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-sm"
-              >
-                <Send className="w-4 h-4" />
-                <span>{isSubmitting ? t('common.loading') : (language === 'ar' ? 'إرسال رمز التحقق الأمني' : 'Send Verification OTP')}</span>
-                {isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
-              </button>
-            </form>
-          )}
-
-          {/* ================= VERIFY FORGOT PASSWORD OTP & SET NEW PASS ================= */}
-          {mode === 'verify_forgot' && (
-            <form onSubmit={handleVerifyForgotReset} className="space-y-4 text-xs text-start">
-              {otpError && (
-                <div
-                  id="forgot-otp-error-banner"
-                  className="p-3 rounded-2xl bg-rose-950/80 border border-rose-500/50 text-rose-200 flex items-start gap-2 animate-in fade-in"
-                >
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
-                  <span>{otpError}</span>
-                </div>
-              )}
-
-              {forgotError && (
-                <div
-                  id="forgot-pass-error-banner"
-                  className="p-3 rounded-2xl bg-rose-950/80 border border-rose-500/50 text-rose-200 flex items-start gap-2 animate-in fade-in"
-                >
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
-                  <span>{forgotError}</span>
-                </div>
-              )}
-
-              {forgotSuccess && (
-                <div
-                  id="forgot-success-banner"
-                  className="p-3 rounded-2xl bg-[#0E382A] border border-[#E5B869]/40 text-[#F5D794] flex items-start gap-2 animate-in fade-in"
-                >
-                  <Check className="w-4 h-4 shrink-0 text-[#E5B869] mt-0.5" />
-                  <span>{forgotSuccess}</span>
-                </div>
-              )}
-
-              {/* 6 Digit Input Boxes */}
-              <div className="space-y-2">
-                <label className="block text-emerald-200 font-semibold text-xs">{t('auth.enterOtpCode')}</label>
-                <div className="flex items-center justify-center gap-2 sm:gap-2.5" dir="ltr">
-                  {otpDigits.map((digit, idx) => (
-                    <input
-                      key={idx}
-                      ref={(el) => {
-                        otpInputRefs.current[idx] = el;
-                      }}
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={1}
-                      value={digit}
-                      onChange={(e) => handleOtpChange(idx, e.target.value)}
-                      onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                      onPaste={handleOtpPaste}
-                      className="w-10 h-12 sm:w-11 sm:h-13 text-center text-xl font-black font-mono bg-[#04130D] border-2 border-[#E5B869]/40 focus:border-[#E5B869] text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E5B869]/50 transition-all shadow-inner"
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* New Password */}
-              <div className="space-y-1.5">
-                <label className="block text-emerald-200 font-semibold text-xs">{t('auth.newPassword')}</label>
-                <div className="relative">
-                  <Lock className={`absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400/60`} />
-                  <input
-                    id="auth-forgot-new-password"
-                    type={showForgotNewPassword ? 'text' : 'password'}
-                    required
-                    minLength={6}
-                    value={forgotNewPassword}
-                    onChange={(e) => setForgotNewPassword(e.target.value)}
-                    placeholder={t('auth.passwordPlaceholder')}
-                    className={`w-full ${isRTL ? 'pr-10 pl-10' : 'pl-10 pr-10'} py-2.5 bg-[#04130D] border border-[#E5B869]/25 rounded-xl text-white placeholder-emerald-400/40 text-xs focus:outline-none focus:border-[#E5B869] transition-colors focus:ring-1 focus:ring-[#E5B869]/40`}
-                    dir="ltr"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowForgotNewPassword(!showForgotNewPassword)}
-                    className={`absolute ${isRTL ? 'left-3' : 'right-3'} top-1/2 -translate-y-1/2 text-emerald-400/60 hover:text-[#F5D794] p-1 cursor-pointer transition-colors`}
-                  >
-                    {showForgotNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Confirm Password */}
-              <div className="space-y-1.5">
-                <label className="block text-emerald-200 font-semibold text-xs">{t('auth.confirmPassword')}</label>
-                <div className="relative">
-                  <Lock className={`absolute ${isRTL ? 'right-3.5' : 'left-3.5'} top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400/60`} />
-                  <input
-                    id="auth-forgot-confirm-password"
-                    type={showForgotConfirmPassword ? 'text' : 'password'}
-                    required
-                    minLength={6}
-                    value={forgotConfirmPassword}
-                    onChange={(e) => setForgotConfirmPassword(e.target.value)}
-                    placeholder={t('auth.passwordPlaceholder')}
-                    className={`w-full ${isRTL ? 'pr-10 pl-10' : 'pl-10 pr-10'} py-2.5 bg-[#04130D] border border-[#E5B869]/25 rounded-xl text-white placeholder-emerald-400/40 text-xs focus:outline-none focus:border-[#E5B869] transition-colors focus:ring-1 focus:ring-[#E5B869]/40`}
-                    dir="ltr"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowForgotConfirmPassword(!showForgotConfirmPassword)}
-                    className={`absolute ${isRTL ? 'left-3' : 'right-3'} top-1/2 -translate-y-1/2 text-emerald-400/60 hover:text-[#F5D794] p-1 cursor-pointer transition-colors`}
-                  >
-                    {showForgotConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <button
-                id="auth-forgot-submit-btn"
-                type="submit"
-                disabled={isSubmitting || otpDigits.join('').length !== 6}
-                className="w-full py-3.5 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:opacity-90 active:scale-[0.99] disabled:opacity-50 text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-sm"
-              >
-                <span>{isSubmitting ? t('common.loading') : t('auth.forgotVerifyBtn')}</span>
-                {isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
-              </button>
-            </form>
-          )}
-
+          </motion.div>
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="relative z-10 w-full max-w-7xl mx-auto px-4 py-4 text-center text-xs text-emerald-400/60 flex items-center justify-center gap-2">
-        <ShieldCheck className="w-4 h-4 text-[#E5B869]" />
-        <span>PitchMate Pro • Made for Football Lovers in Morocco 🇲🇦</span>
+      {/* ================= FOOTER ================= */}
+      <footer className="relative z-20 w-full max-w-5xl mx-auto px-4 py-4 text-center text-xs text-emerald-300/60 flex items-center justify-between">
+        <div className="flex items-center gap-1">
+          <ShieldCheck className="w-4 h-4 text-[#E5B869]" />
+          <span>PitchMate PRO • High Security Authentication</span>
+        </div>
+        <div className="text-[11px] font-mono text-[#F5D794]">
+          {language === 'ar' ? 'المغرب 🇲🇦' : 'Morocco 🇲🇦'}
+        </div>
       </footer>
     </div>
   );
