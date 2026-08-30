@@ -846,8 +846,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [users, verifyOTPCode]);
 
   const loginWithGoogle = useCallback(async (
-    action: 'signin' | 'signup' = 'signin',
-    profileOverride?: { email: string; name?: string; avatarUrl?: string; uid?: string }
+    action: 'signin' | 'signup' = 'signin'
   ): Promise<{
     success: boolean;
     pendingApproval?: boolean;
@@ -856,68 +855,74 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     error?: string;
   }> => {
     try {
-      let gEmail = '';
-      let gName = 'Google Player';
-      let gPhoto = '';
-      let gUid = '';
+      const { GoogleAuthProvider, signInWithPopup } = await import('firebase/auth');
+      const { auth } = await import('./firebase');
 
-      if (profileOverride && profileOverride.email) {
-        gEmail = profileOverride.email.toLowerCase().trim();
-        gName = profileOverride.name || (gEmail.split('@')[0] ? gEmail.split('@')[0].replace(/[._]/g, ' ') : 'Google Player');
-        gPhoto = profileOverride.avatarUrl || `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`;
-        gUid = profileOverride.uid || `g_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-      } else {
-        try {
-          const { GoogleAuthProvider, signInWithPopup } = await import('firebase/auth');
-          const { auth } = await import('./firebase');
+      // Configure Google Auth Provider
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({
+        prompt: 'select_account',
+      });
+      provider.addScope('profile');
+      provider.addScope('email');
 
-          const provider = new GoogleAuthProvider();
-          provider.setCustomParameters({ prompt: 'select_account' });
+      let gUser;
+      try {
+        const result = await signInWithPopup(auth, provider);
+        gUser = result.user;
+      } catch (popupErr: any) {
+        console.error('Firebase Google signInWithPopup error details:', popupErr);
 
-          const result = await signInWithPopup(auth, provider);
-          const gUser = result.user;
-          gEmail = (gUser.email || '').toLowerCase().trim();
-          gName = gUser.displayName || 'Google Player';
-          gPhoto = gUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(gName)}`;
-          gUid = gUser.uid;
-        } catch (popupErr: any) {
-          console.warn('Firebase signInWithPopup error:', popupErr);
-          if (
-            popupErr.code === 'auth/popup-closed-by-user' ||
-            popupErr.code === 'auth/cancelled-popup-request'
-          ) {
-            return {
-              success: false,
-              code: 'USER_CANCELLED',
-              error: 'تم إغلاق نافذة تسجيل الدخول.',
-            };
-          }
-
-          if (
-            popupErr.code === 'auth/unauthorized-domain' ||
-            popupErr.message?.includes('unauthorized-domain')
-          ) {
-            return {
-              success: false,
-              code: 'UNAUTHORIZED_DOMAIN',
-              error: 'يرجى فتح التطبيق في نافذة مستقلة جديدة (Open in new tab) لإتمام تسجيل الدخول عبر Google.',
-            };
-          }
-
-          if (popupErr.code === 'auth/popup-blocked') {
-            return {
-              success: false,
-              code: 'POPUP_BLOCKED',
-              error: 'قام المتصفح بحظر النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة (Popups) لهذا الموقع.',
-            };
-          }
-
+        if (
+          popupErr.code === 'auth/popup-closed-by-user' ||
+          popupErr.code === 'auth/cancelled-popup-request'
+        ) {
           return {
             success: false,
-            error: popupErr.message || 'فشل الاتصال بخدمة Google.',
+            code: 'USER_CANCELLED',
+            error: 'تم إلغاء نافذة اختيار الحساب من قِبل المستخدم.',
           };
         }
+
+        if (
+          popupErr.code === 'auth/unauthorized-domain' ||
+          popupErr.message?.includes('unauthorized-domain')
+        ) {
+          const currentHostname = typeof window !== 'undefined' ? window.location.hostname : 'unknown-domain';
+          return {
+            success: false,
+            code: 'UNAUTHORIZED_DOMAIN',
+            error: `النطاق الحالي (${currentHostname}) غير مصرح به في Firebase. يرجى إضافته في Firebase Console -> Authentication -> Settings -> Authorized Domains.`,
+          };
+        }
+
+        if (popupErr.code === 'auth/popup-blocked') {
+          return {
+            success: false,
+            code: 'POPUP_BLOCKED',
+            error: 'قام المتصفح بحظر النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة (Pop-ups) أو فتح الموقع في نافذة مستقلة.',
+          };
+        }
+
+        if (popupErr.code === 'auth/operation-not-allowed') {
+          return {
+            success: false,
+            code: 'OPERATION_NOT_ALLOWED',
+            error: 'موفر تسجيل الدخول عبر Google غير مفعل في Firebase Console. يرجى تفعيله من Authentication -> Sign-in method -> Google.',
+          };
+        }
+
+        return {
+          success: false,
+          code: popupErr.code,
+          error: `[Google Auth Error: ${popupErr.code || 'UNKNOWN'}]: ${popupErr.message || 'فشل الاتصال بخدمة Google.'}`,
+        };
       }
+
+      const gEmail = (gUser.email || '').toLowerCase().trim();
+      const gName = gUser.displayName || 'Google Player';
+      const gPhoto = gUser.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(gName)}`;
+      const gUid = gUser.uid;
 
       if (!gEmail) {
         return { success: false, error: 'Could not retrieve a valid email address from Google.' };
@@ -926,90 +931,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const isMustapha = isSuperAdminEmail(gEmail);
       const existingUser = users.find((u) => u.email.toLowerCase() === gEmail);
 
-      // CASE 1: User is attempting to CREATE ACCOUNT (SIGN UP)
-      if (action === 'signup') {
-        if (existingUser && !isMustapha) {
-          return {
-            success: false,
-            code: 'USER_EXISTS',
-            user: existingUser,
-            error: 'هذا الحساب مسجل بالفعل مسبقاً، يرجى الانتقال إلى تسجيل الدخول مباشرة.',
-          };
-        }
-
-        if (existingUser && isMustapha) {
-          setCurrentUserId(existingUser.id);
-          setIsAuthenticated(true);
-          const token = `pitchmate_token_${existingUser.id}_${Date.now()}`;
-          localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
-          localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, existingUser.id);
-          return { success: true, pendingApproval: false, user: existingUser };
-        }
-
-        // Create Brand New Google Player
-        const newGoogleUser: UserProfile = {
-          id: isMustapha ? 'user_mustapha' : `user_g_${gUid}`,
-          name: gName,
-          email: gEmail,
-          avatarUrl: gPhoto || `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`,
-          city: 'Casablanca',
-          bio: 'Verified Google Player',
-          preferredPosition: 'MID',
-          skillRating: 4.5,
-          reliabilityScore: 100,
-          matchesAttended: 0,
-          noShowCount: 0,
-          mvpCount: 0,
-          goalsCount: 0,
-          badges: [
-            { id: 'b_welcome', key: 'welcome', title: 'New PitchMate', description: 'Joined the community', icon: '⚽', unlockedAt: new Date().toISOString() },
-            { id: 'b_verified', key: 'verified', title: 'Google Verified', description: 'Identity verified via Google', icon: '🔒', unlockedAt: new Date().toISOString() },
-          ],
-          isGoogleAuth: true,
-          emailVerified: true,
-          isAdmin: isMustapha,
-          status: isMustapha ? 'approved' : 'pending',
-          approvedAt: isMustapha ? new Date().toISOString() : undefined,
-          matchesPlayed: 0,
-          createdAt: new Date().toISOString(),
-        };
-
-        setUsers((prev) => [...prev, newGoogleUser]);
-        saveUserToFirestore(newGoogleUser);
-
-        fetch('/api/users/google-auth', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            uid: gUid,
-            name: gName,
-            email: gEmail,
-            avatarUrl: gPhoto,
-            action: 'signup',
-          }),
-        }).catch(() => {});
-
-        if (isMustapha) {
-          setCurrentUserId(newGoogleUser.id);
-          setIsAuthenticated(true);
-          const token = `pitchmate_token_${newGoogleUser.id}_${Date.now()}`;
-          localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
-          localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, newGoogleUser.id);
-          return { success: true, pendingApproval: false, user: newGoogleUser };
-        }
-
-        return { success: true, pendingApproval: true, user: newGoogleUser };
-      }
-
-      // CASE 2: User is attempting to SIGN IN
-      if (!existingUser && !isMustapha) {
-        return {
-          success: false,
-          code: 'USER_NOT_FOUND',
-          error: 'هذا الحساب غير مسجل بعد، يرجى إنشاء حساب جديد أولاً عبر Google.',
-        };
-      }
-
+      // If user already exists:
       if (existingUser) {
         if (existingUser.isBanned) {
           return {
@@ -1051,32 +973,19 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const token = `pitchmate_token_${updatedUser.id}_${Date.now()}`;
         localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
         localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, updatedUser.id);
-
-        fetch('/api/users/google-auth', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            uid: gUid || `g_${updatedUser.id}`,
-            name: gName,
-            email: gEmail,
-            avatarUrl: gPhoto,
-            action: 'signin',
-          }),
-        }).catch(() => {});
-
         return { success: true, pendingApproval: false, user: updatedUser };
       }
 
-      // If mustapha signin for the very first time
-      const mustaphaUser: UserProfile = {
-        id: 'user_mustapha',
+      // If user is brand new (auto-register seamlessly):
+      const newGoogleUser: UserProfile = {
+        id: isMustapha ? 'user_mustapha' : `user_g_${gUid}`,
         name: gName,
         email: gEmail,
-        avatarUrl: gPhoto || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        avatarUrl: gPhoto,
         city: 'Casablanca',
-        bio: 'Platform Owner & Super Admin',
+        bio: 'Verified Google Player',
         preferredPosition: 'MID',
-        skillRating: 5.0,
+        skillRating: 4.5,
         reliabilityScore: 100,
         matchesAttended: 0,
         noShowCount: 0,
@@ -1084,34 +993,48 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         goalsCount: 0,
         badges: [
           { id: 'b_welcome', key: 'welcome', title: 'New PitchMate', description: 'Joined the community', icon: '⚽', unlockedAt: new Date().toISOString() },
+          { id: 'b_verified', key: 'verified', title: 'Google Verified', description: 'Identity verified via Google', icon: '🔒', unlockedAt: new Date().toISOString() },
         ],
         isGoogleAuth: true,
         emailVerified: true,
-        isAdmin: true,
-        status: 'approved',
-        approvedAt: new Date().toISOString(),
+        isAdmin: isMustapha,
+        status: isMustapha ? 'approved' : 'pending',
+        approvedAt: isMustapha ? new Date().toISOString() : undefined,
         matchesPlayed: 0,
         createdAt: new Date().toISOString(),
       };
 
-      setUsers((prev) => [...prev, mustaphaUser]);
-      saveUserToFirestore(mustaphaUser);
-      setCurrentUserId(mustaphaUser.id);
-      setIsAuthenticated(true);
-      const token = `pitchmate_token_${mustaphaUser.id}_${Date.now()}`;
-      localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
-      localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, mustaphaUser.id);
+      setUsers((prev) => [...prev, newGoogleUser]);
+      saveUserToFirestore(newGoogleUser);
 
-      return { success: true, pendingApproval: false, user: mustaphaUser };
+      fetch('/api/users/google-auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uid: gUid,
+          name: gName,
+          email: gEmail,
+          avatarUrl: gPhoto,
+          action: action,
+        }),
+      }).catch(() => {});
+
+      if (isMustapha) {
+        setCurrentUserId(newGoogleUser.id);
+        setIsAuthenticated(true);
+        const token = `pitchmate_token_${newGoogleUser.id}_${Date.now()}`;
+        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+        localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, newGoogleUser.id);
+        return { success: true, pendingApproval: false, user: newGoogleUser };
+      }
+
+      return { success: true, pendingApproval: true, user: newGoogleUser };
     } catch (err: any) {
       if (err.code === 'auth/popup-closed-by-user') {
         return { success: false, error: 'تم إلغاء نافذة تسجيل الدخول بـ Google.' };
       }
       if (err.code === 'auth/cancelled-popup-request') {
         return { success: false, error: 'تم إلغاء طلب تسجيل الدخول.' };
-      }
-      if (err.code === 'auth/unauthorized-domain' || err.message?.includes('unauthorized-domain')) {
-        return { success: false, code: 'SHOW_GOOGLE_PICKER', error: 'SHOW_GOOGLE_PICKER' };
       }
       return { success: false, error: err.message || 'حدث خطأ أثناء الاتصال بـ Google.' };
     }
