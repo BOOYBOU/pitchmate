@@ -132,6 +132,7 @@ interface PitchStoreContextType {
   assignPlayerTeam: (matchId: string, userId: string, team: TeamSide) => Promise<boolean>;
   removePlayerFromMatch: (matchId: string, userId: string) => Promise<boolean>;
   toggleMatchLock: (matchId: string) => Promise<boolean>;
+  broadcastWaitlistAlert: (matchId: string) => Promise<{ success: boolean; notifiedCount: number; openSpots: number }>;
   togglePlayerPaidStatus: (matchId: string, playerId: string) => Promise<boolean>;
   updatePlayerPaymentStatus: (
     matchId: string,
@@ -402,6 +403,38 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return notifications.filter((n) => n.userId === currentUser.id && !n.read).length;
   }, [notifications, currentUser.id]);
 
+  const mergeMatchesWithTimestamps = useCallback((current: SoccerMatch[], incoming: SoccerMatch[]): SoccerMatch[] => {
+    if (!incoming || incoming.length === 0) return current;
+    if (!current || current.length === 0) return incoming;
+
+    const currentMap = new Map(current.map((m) => [m.id, m]));
+    const incomingMap = new Map(incoming.map((m) => [m.id, m]));
+    const merged: SoccerMatch[] = [];
+
+    incoming.forEach((inc) => {
+      const curr = currentMap.get(inc.id);
+      if (!curr) {
+        merged.push(inc);
+      } else {
+        const currTime = new Date(curr.updatedAt || curr.createdAt || 0).getTime();
+        const incTime = new Date(inc.updatedAt || inc.createdAt || 0).getTime();
+        if (currTime > incTime) {
+          merged.push(curr); // retain optimistic local state
+        } else {
+          merged.push(inc);
+        }
+      }
+    });
+
+    current.forEach((curr) => {
+      if (!incomingMap.has(curr.id)) {
+        merged.push(curr);
+      }
+    });
+
+    return merged;
+  }, []);
+
   const getAuthHeaders = useCallback(() => {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) || `pitchmate_token_${currentUserId}_${Date.now()}`;
     const isAdminUser = Boolean(
@@ -448,7 +481,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     // 2. Subscribe in Realtime to Firestore collections
     const unsubMatches = subscribeToMatches((cloudMatches) => {
       if (cloudMatches && cloudMatches.length > 0) {
-        setMatches(cloudMatches);
+        setMatches((prev) => mergeMatchesWithTimestamps(prev, cloudMatches));
       }
     });
 
@@ -490,7 +523,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       unsubMessages();
       unsubNotifications();
     };
-  }, []);
+  }, [mergeMatchesWithTimestamps]);
 
   // Setup Singleton Server-Sent Events (SSE) for realtime sync fallback
   useEffect(() => {
@@ -511,7 +544,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 if (payload) setUsers(payload);
                 break;
               case 'SYNC_MATCHES':
-                if (payload) setMatches(payload);
+                if (payload) setMatches((prev) => mergeMatchesWithTimestamps(prev, payload));
                 break;
               case 'SYNC_COMMENTS':
                 if (payload) setComments(payload);
@@ -531,7 +564,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 break;
               case 'SYNC_ALL':
                 if (payload.users) setUsers(payload.users);
-                if (payload.matches) setMatches(payload.matches);
+                if (payload.matches) setMatches((prev) => mergeMatchesWithTimestamps(prev, payload.matches));
                 if (payload.comments) setComments(payload.comments);
                 if (payload.announcements) setAnnouncements(payload.announcements);
                 if (payload.directMessages) setDirectMessages(payload.directMessages);
@@ -883,6 +916,15 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           return {
             success: false,
             code: 'USER_CANCELLED',
+          };
+        }
+
+        if (popupErr.code === 'auth/unauthorized-domain') {
+          const currentHostname = typeof window !== 'undefined' ? window.location.hostname : 'domain';
+          return {
+            success: false,
+            code: 'UNAUTHORIZED_DOMAIN',
+            error: `النطاق (${currentHostname}) غير مضاف في قائمة النطاقات المصرح بها في Firebase Authentication Console. يرجى إضافته في إعدادات Firebase أو استخدام تسجيل الدخول بالبريد الإلكتروني.`,
           };
         }
 
@@ -1325,6 +1367,23 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     fetch(`/api/matches/${matchId}/toggle-lock`, { method: 'POST', headers: getAuthHeaders() }).catch(() => {});
     return true;
+  }, [getAuthHeaders]);
+
+  const broadcastWaitlistAlert = useCallback(async (matchId: string): Promise<{ success: boolean; notifiedCount: number; openSpots: number }> => {
+    try {
+      const res = await fetch(`/api/matches/${matchId}/broadcast-waitlist-alert`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
+      const data = await res.json();
+      if (data.success) {
+        SoundEffects.playWhistle();
+        return { success: true, notifiedCount: data.notifiedCount || 0, openSpots: data.openSpots || 0 };
+      }
+      return { success: false, notifiedCount: 0, openSpots: 0 };
+    } catch {
+      return { success: false, notifiedCount: 0, openSpots: 0 };
+    }
   }, [getAuthHeaders]);
 
   const togglePlayerPaidStatus = useCallback(async (matchId: string, playerId: string): Promise<boolean> => {
@@ -2334,6 +2393,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     assignPlayerTeam,
     removePlayerFromMatch,
     toggleMatchLock,
+    broadcastWaitlistAlert,
     togglePlayerPaidStatus,
     updatePlayerPaymentStatus,
     updateMatchPitchCost,
@@ -2403,6 +2463,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     assignPlayerTeam,
     removePlayerFromMatch,
     toggleMatchLock,
+    broadcastWaitlistAlert,
     togglePlayerPaidStatus,
     updatePlayerPaymentStatus,
     updateMatchPitchCost,

@@ -23,7 +23,26 @@ export const MOROCCAN_CITIES: MoroccanCityInfo[] = [
   { name: 'El Jadida', lat: 33.2316, lng: -8.5007 },
 ];
 
-export const MOROCCO_CITIES = MOROCCAN_CITIES;
+export const MOROCCAN_BANKS = [
+  { code: 'CIH', name: 'CIH Bank (بنك السياحة والفندقة)' },
+  { code: 'AWB', name: 'Attijariwafa Bank (التجاري وفا بنك)' },
+  { code: 'BP', name: 'Banque Populaire (البنك الشعبي)' },
+  { code: 'BMCE', name: 'Bank of Africa / BMCE' },
+  { code: 'CDM', name: 'Crédit du Maroc' },
+  { code: 'SGMB', name: 'Société Générale Maroc' },
+  { code: 'CAM', name: 'Crédit Agricole du Maroc' },
+  { code: 'CFG', name: 'CFG Bank' },
+  { code: 'ALBARID', name: 'Al Barid Bank (بريد بنك)' },
+  { code: 'CASHPLUS', name: 'CashPlus / Wafacash' },
+];
+
+export const DEFAULT_CIH_BANK_DETAILS = {
+  bankName: 'CIH Bank',
+  accountHolder: 'Mustapha (PitchMate Captain)',
+  rib: '230 780 1234567890123456 78',
+  phone: '+212 661 234567',
+  notes: 'Virement instantané gratuit via CIH Mobile',
+};
 
 /**
  * Return current Date/time formatted for standard HTML datetime-local input in Morocco timezone

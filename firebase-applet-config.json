@@ -1,12 +1,12 @@
 {
-  "projectId": "gen-lang-client-0407903452",
-  "appId": "1:68569646862:web:583b535dffec15f265795f",
-  "apiKey": "AIzaSyCnlaGvRgHwDOGsQOfQpWeXPTMgNsrrPf0",
-  "authDomain": "gen-lang-client-0407903452.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-pitchmate-111d0b53-825d-43d7-999e-983cd5c1aef7",
-  "storageBucket": "gen-lang-client-0407903452.firebasestorage.app",
-  "messagingSenderId": "68569646862",
-  "measurementId": "",
-  "oAuthClientId": "68569646862-vkob8v5c1od0jsu2op6fe34erlp9gubj.apps.googleusercontent.com",
+  "projectId": "pitchmat26",
+  "appId": "1:1076458495010:web:13cf950f1b285d0bb77e7b",
+  "apiKey": "AIzaSyAFfCx3jt_weDf-pCm53RUOJv_XUZH9kgo",
+  "authDomain": "pitchmat26.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "pitchmat26.firebasestorage.app",
+  "messagingSenderId": "1076458495010",
+  "measurementId": "G-Z2YKHWXLS3",
+  "oAuthClientId": "",
   "recaptchaSiteKey": ""
 }

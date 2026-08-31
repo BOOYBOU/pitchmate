@@ -1256,6 +1256,43 @@ async function startServer() {
         }
       }
 
+      // Late Cancellation Reliability Engine Check (< 3 hours before kickoff)
+      if (wasInRoster && match.dateTime) {
+        const matchTime = new Date(match.dateTime).getTime();
+        const now = Date.now();
+        const hoursRemaining = (matchTime - now) / (1000 * 60 * 60);
+
+        if (hoursRemaining < 3 && hoursRemaining > -2) {
+          const leavingUser = db.users.find((u) => u.id === userId);
+          if (leavingUser) {
+            leavingUser.reliabilityScore = Math.max(0, Math.round((leavingUser.reliabilityScore || 100) - 5));
+            db.notifications.unshift({
+              id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+              userId: leavingUser.id,
+              title: 'Late Dropout Notice',
+              message: `You left "${match.title}" less than 3 hours before kickoff. A 5% reliability score deduction was recorded.`,
+              type: 'system',
+              linkId: matchId,
+              createdAt: new Date().toISOString(),
+              read: false,
+            });
+          }
+
+          if (match.creatorId && match.creatorId !== userId) {
+            db.notifications.unshift({
+              id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+              userId: match.creatorId,
+              title: 'Late Player Cancellation',
+              message: `A player dropped out of "${match.title}" with less than 3 hours to kickoff.`,
+              type: 'match_leave',
+              linkId: matchId,
+              createdAt: new Date().toISOString(),
+              read: false,
+            });
+          }
+        }
+      }
+
       match.roster = updatedRoster;
       match.waitlist = updatedWaitlist;
       match.paidPlayerIds = (match.paidPlayerIds || []).filter((id) => id !== userId);
@@ -1560,6 +1597,42 @@ async function startServer() {
     });
 
     res.json({ success: true, match, goal: newGoal });
+  });
+
+  app.post('/api/matches/:id/broadcast-waitlist-alert', requireAdminOrHost, (req: AuthenticatedRequest, res) => {
+    const matchId = req.params.id;
+    const match = db.matches.find((m) => m.id === matchId);
+    if (!match) return res.status(404).json({ success: false, error: 'Match not found' });
+
+    const openSpots = Math.max(0, match.maxPlayers - match.roster.length);
+    const notifiedUserIds: string[] = [];
+
+    // Notify all waitlist players
+    (match.waitlist || []).forEach((wPlayer) => {
+      notifiedUserIds.push(wPlayer.userId);
+      db.notifications.unshift({
+        id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        userId: wPlayer.userId,
+        title: '🚨 Urgent: Spot Available in Match!',
+        message: `A spot is open for "${match.title}" at ${match.location?.venueName || 'the pitch'}! Tap to claim your slot right now.`,
+        type: 'waitlist_promoted',
+        linkId: matchId,
+        createdAt: new Date().toISOString(),
+        read: false,
+      });
+    });
+
+    broadcastSSE('SYNC_ALL', {
+      matches: db.matches,
+      notifications: db.notifications,
+    });
+
+    res.json({
+      success: true,
+      openSpots,
+      notifiedCount: notifiedUserIds.length,
+      waitlistCount: (match.waitlist || []).length,
+    });
   });
 
   // ---------------------------------------------------------

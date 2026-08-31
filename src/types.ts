@@ -226,7 +226,7 @@ export interface InAppNotification {
   userId: string;
   title: string;
   message: string;
-  type: 'approval' | 'match_join' | 'waitlist_promoted' | 'cost_reminder' | 'system' | 'team_balance' | 'mvp_vote' | 'goal_scored';
+  type: 'approval' | 'match_join' | 'match_leave' | 'waitlist_promoted' | 'cost_reminder' | 'system' | 'team_balance' | 'mvp_vote' | 'goal_scored' | 'warning';
   createdAt: string;
   read: boolean;
   linkId?: string;

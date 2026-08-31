@@ -7,7 +7,8 @@ import {
   FORMATIONS,
   getNormalizedFormationKey,
   getDefaultFormationForFormat,
-} from './TacticalPitchFormation';
+  generateDynamicTacticalSlots,
+} from '../lib/tacticalFormations';
 import { usePitchStore } from '../lib/usePitchStore';
 import {
   Rotate3d,
@@ -20,6 +21,7 @@ import {
   Sparkles,
   Info,
   Lock,
+  Unlock,
   AlertCircle,
   Users,
   Check,
@@ -88,13 +90,21 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
 
   // Safely resolve the active formation and assignments
   const normalizedKey = getNormalizedFormationKey(match?.formationGreen, match?.format, match?.maxPlayers);
-  const activeFormation: FormationConfig =
-    formation ||
-    FORMATIONS[normalizedKey] ||
-    FORMATIONS[getDefaultFormationForFormat(match?.format, match?.maxPlayers)] ||
-    FORMATIONS['6v6-2-2-1'] ||
-    FORMATIONS['7v7-2-3-1'] ||
-    Object.values(FORMATIONS)[0];
+  const activeFormation: FormationConfig = React.useMemo(() => {
+    if (formation) return formation;
+    if (FORMATIONS[normalizedKey]) return FORMATIONS[normalizedKey];
+    const defKey = getDefaultFormationForFormat(match?.format, match?.maxPlayers);
+    if (FORMATIONS[defKey]) return FORMATIONS[defKey];
+    const teamSize = Math.max(3, Math.floor((match?.maxPlayers || 14) / 2));
+    return {
+      label: `${teamSize}v${teamSize} (Dynamic Tactical Setup)`,
+      category: 'custom' as const,
+      slots: {
+        green: generateDynamicTacticalSlots(teamSize, 'green'),
+        blue: generateDynamicTacticalSlots(teamSize, 'blue'),
+      },
+    };
+  }, [formation, normalizedKey, match?.format, match?.maxPlayers]);
 
   const activeAssignments: Record<string, string> =
     assignments || match?.tacticalAssignments || {};
@@ -106,6 +116,7 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
   const [isOrbiting, setIsOrbiting] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [hoveredSlotKey, setHoveredSlotKey] = useState<string | null>(null);
+  const [isTouchOrbitLocked, setIsTouchOrbitLocked] = useState(false);
 
   // Target camera positions for smooth interpolation
   const targetCamPos = useRef(new THREE.Vector3(0, 42, 48));
@@ -831,12 +842,16 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
 
   // Pointer & Raycasting Interactions
   const handlePointerDown = (e: React.PointerEvent) => {
+    if (isTouchOrbitLocked && e.pointerType === 'touch') {
+      return;
+    }
     isDragging.current = true;
     prevMousePos.current = { x: e.clientX, y: e.clientY };
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (isDragging.current) {
+      if (isTouchOrbitLocked && e.pointerType === 'touch') return;
       setIsOrbiting(true);
       const deltaX = e.clientX - prevMousePos.current.x;
       const deltaY = e.clientY - prevMousePos.current.y;
@@ -985,7 +1000,9 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onWheel={handleWheel}
-        className="w-full h-full cursor-grab active:cursor-grabbing touch-none select-none"
+        className={`w-full h-full select-none ${
+          isTouchOrbitLocked ? 'touch-auto cursor-default' : 'touch-none cursor-grab active:cursor-grabbing'
+        }`}
       />
 
       {/* Floating 3D Stadium HUD Overlay */}
@@ -1077,6 +1094,20 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
             title="Zoom Out"
           >
             <ZoomOut className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Touch Orbit Lock (Mobile Ergonomics) */}
+          <button
+            type="button"
+            onClick={() => setIsTouchOrbitLocked(!isTouchOrbitLocked)}
+            className={`p-1.5 rounded-lg transition-colors cursor-pointer sm:hidden ${
+              isTouchOrbitLocked
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                : 'text-slate-400 hover:text-[#F5D794]'
+            }`}
+            title={isTouchOrbitLocked ? 'Unlock 3D Camera Orbit' : 'Lock 3D Camera (Allow Page Scroll)'}
+          >
+            {isTouchOrbitLocked ? <Lock className="w-3.5 h-3.5 text-amber-300" /> : <Unlock className="w-3.5 h-3.5" />}
           </button>
 
           {/* Fullscreen Toggle */}

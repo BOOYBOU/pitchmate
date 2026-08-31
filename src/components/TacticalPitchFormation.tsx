@@ -22,394 +22,24 @@ import { usePitchStore } from '../lib/usePitchStore';
 import { useLanguage } from '../lib/useLanguage';
 import { TacticalPitch3DWebGL } from './TacticalPitch3DWebGL';
 import { SoundEffects } from '../lib/audioService';
+import {
+  SlotDefinition,
+  FormationConfig,
+  FORMATIONS,
+  getPositionArabicLabel,
+  getDefaultFormationForFormat,
+  getNormalizedFormationKey,
+  generateDynamicTacticalSlots,
+} from '../lib/tacticalFormations';
+
+export type { SlotDefinition, FormationConfig };
+export { FORMATIONS, getPositionArabicLabel, getDefaultFormationForFormat, getNormalizedFormationKey, generateDynamicTacticalSlots };
 
 interface TacticalPitchFormationProps {
   match: SoccerMatch;
   onUpdateTactical?: (formationGreen: string, formationBlue: string, tacticalAssignments: Record<string, string>) => void;
   isHostOrAdmin?: boolean;
 }
-
-export interface SlotDefinition {
-  key: string;
-  label: string;
-  roleDescription: string;
-  position: PlayerPosition;
-  top: number; // percentage 0-100
-  left: number; // percentage 0-100
-  team: 'green' | 'blue';
-}
-
-export function getPositionArabicLabel(position: PlayerPosition, label: string): string {
-  switch (label.toUpperCase()) {
-    case 'GK':
-      return 'حارس مرمى (GK)';
-    case 'CB':
-      return 'قلب دفاع (CB)';
-    case 'LB':
-      return 'ظهير أيسر (LB)';
-    case 'RB':
-      return 'ظهير أيمن (RB)';
-    case 'CDM':
-      return 'وسط دفاعي / ارتكاز (CDM)';
-    case 'CM':
-      return 'وسط ميدان (CM)';
-    case 'CAM':
-      return 'صانع ألعاب / وسط هجومي (CAM)';
-    case 'LM':
-    case 'LW':
-    case 'LF':
-      return 'جناح أيسر / مهاجم (LW)';
-    case 'RM':
-    case 'RW':
-    case 'RF':
-      return 'جناح أيمن / مهاجم (RW)';
-    case 'ST':
-    case 'CF':
-      return 'مهاجم صريح / رأس حربة (ST)';
-    default:
-      if (position === 'GK') return 'حارس مرمى (GK)';
-      if (position === 'DEF') return 'مدافع (DEF)';
-      if (position === 'MID') return 'لاعب وسط (MID)';
-      return 'مهاجم (FWD)';
-  }
-}
-
-export interface FormationConfig {
-  label: string;
-  category: '5v5' | '6v6' | '7v7' | '8v8' | '9v9' | '10v10' | '11v11';
-  slots: { green: SlotDefinition[]; blue: SlotDefinition[] };
-}
-
-export const FORMATIONS: Record<string, FormationConfig> = {
-  // -------------------------------------------------------------
-  // 5v5 FORMATS
-  // -------------------------------------------------------------
-  '5v5-1-2-1': {
-    label: '5v5 (1-2-1 Diamond)',
-    category: '5v5',
-    slots: {
-      green: [
-        { key: 'g_gk', label: 'GK', roleDescription: 'Goalkeeper', position: 'GK', top: 89, left: 50, team: 'green' },
-        { key: 'g_cb', label: 'CB', roleDescription: 'Central Defender (DEF)', position: 'DEF', top: 75, left: 50, team: 'green' },
-        { key: 'g_lm', label: 'LM', roleDescription: 'Left Midfield (MID)', position: 'MID', top: 62, left: 24, team: 'green' },
-        { key: 'g_rm', label: 'RM', roleDescription: 'Right Midfield (MID)', position: 'MID', top: 62, left: 76, team: 'green' },
-        { key: 'g_st', label: 'ST', roleDescription: 'Striker (FWD)', position: 'FWD', top: 48, left: 50, team: 'green' },
-      ],
-      blue: [
-        { key: 'b_gk', label: 'GK', roleDescription: 'Goalkeeper', position: 'GK', top: 11, left: 50, team: 'blue' },
-        { key: 'b_cb', label: 'CB', roleDescription: 'Central Defender (DEF)', position: 'DEF', top: 25, left: 50, team: 'blue' },
-        { key: 'b_lm', label: 'LM', roleDescription: 'Left Midfield (MID)', position: 'MID', top: 38, left: 76, team: 'blue' },
-        { key: 'b_rm', label: 'RM', roleDescription: 'Right Midfield (MID)', position: 'MID', top: 38, left: 24, team: 'blue' },
-        { key: 'b_st', label: 'ST', roleDescription: 'Striker (FWD)', position: 'FWD', top: 52, left: 50, team: 'blue' },
-      ],
-    },
-  },
-  '5v5-2-1-1': {
-    label: '5v5 (2-1-1 Solid Shield)',
-    category: '5v5',
-    slots: {
-      green: [
-        { key: 'g_gk', label: 'GK', roleDescription: 'Goalkeeper', position: 'GK', top: 89, left: 50, team: 'green' },
-        { key: 'g_lcb', label: 'LB', roleDescription: 'Left Back (DEF)', position: 'DEF', top: 75, left: 32, team: 'green' },
-        { key: 'g_rcb', label: 'RB', roleDescription: 'Right Back (DEF)', position: 'DEF', top: 75, left: 68, team: 'green' },
-        { key: 'g_cm', label: 'CM', roleDescription: 'Central Mid (MID)', position: 'MID', top: 60, left: 50, team: 'green' },
-        { key: 'g_st', label: 'ST', roleDescription: 'Striker (FWD)', position: 'FWD', top: 47, left: 50, team: 'green' },
-      ],
-      blue: [
-        { key: 'b_gk', label: 'GK', roleDescription: 'Goalkeeper', position: 'GK', top: 11, left: 50, team: 'blue' },
-        { key: 'b_lcb', label: 'LB', roleDescription: 'Left Back (DEF)', position: 'DEF', top: 25, left: 68, team: 'blue' },
-        { key: 'b_rcb', label: 'RB', roleDescription: 'Right Back (DEF)', position: 'DEF', top: 25, left: 32, team: 'blue' },
-        { key: 'b_cm', label: 'CM', roleDescription: 'Central Mid (MID)', position: 'MID', top: 40, left: 50, team: 'blue' },
-        { key: 'b_st', label: 'ST', roleDescription: 'Striker (FWD)', position: 'FWD', top: 53, left: 50, team: 'blue' },
-      ],
-    },
-  },
-  '5v5-2-2': {
-    label: '5v5 (2-2 Box Attack)',
-    category: '5v5',
-    slots: {
-      green: [
-        { key: 'g_gk', label: 'GK', roleDescription: 'Goalkeeper', position: 'GK', top: 89, left: 50, team: 'green' },
-        { key: 'g_lb', label: 'LB', roleDescription: 'Left Back (DEF)', position: 'DEF', top: 74, left: 28, team: 'green' },
-        { key: 'g_rb', label: 'RB', roleDescription: 'Right Back (DEF)', position: 'DEF', top: 74, left: 72, team: 'green' },
-        { key: 'g_lf', label: 'LF', roleDescription: 'Left Forward (FWD)', position: 'FWD', top: 52, left: 30, team: 'green' },
-        { key: 'g_rf', label: 'RF', roleDescription: 'Right Forward (FWD)', position: 'FWD', top: 52, left: 70, team: 'green' },
-      ],
-      blue: [
-        { key: 'b_gk', label: 'GK', roleDescription: 'Goalkeeper', position: 'GK', top: 11, left: 50, team: 'blue' },
-        { key: 'b_lb', label: 'LB', roleDescription: 'Left Back (DEF)', position: 'DEF', top: 26, left: 72, team: 'blue' },
-        { key: 'b_rb', label: 'RB', roleDescription: 'Right Back (DEF)', position: 'DEF', top: 26, left: 28, team: 'blue' },
-        { key: 'b_lf', label: 'LF', roleDescription: 'Left Forward (FWD)', position: 'FWD', top: 48, left: 70, team: 'blue' },
-        { key: 'b_rf', label: 'RF', roleDescription: 'Right Forward (FWD)', position: 'FWD', top: 48, left: 30, team: 'blue' },
-      ],
-    },
-  },
-
-  // -------------------------------------------------------------
-  // 6v6 FORMATS
-  // -------------------------------------------------------------
-  '6v6-2-2-1': {
-    label: '6v6 (2-2-1 Balanced Pyramid)',
-    category: '6v6',
-    slots: {
-      green: [
-        { key: 'g_gk', label: 'GK', roleDescription: 'Goalkeeper', position: 'GK', top: 89, left: 50, team: 'green' },
-        { key: 'g_lb', label: 'LB', roleDescription: 'Left Defender (DEF)', position: 'DEF', top: 75, left: 28, team: 'green' },
-        { key: 'g_rb', label: 'RB', roleDescription: 'Right Defender (DEF)', position: 'DEF', top: 75, left: 72, team: 'green' },
-        { key: 'g_lm', label: 'LM', roleDescription: 'Left Midfield (MID)', position: 'MID', top: 60, left: 32, team: 'green' },
-        { key: 'g_rm', label: 'RM', roleDescription: 'Right Midfield (MID)', position: 'MID', top: 60, left: 68, team: 'green' },
-        { key: 'g_st', label: 'ST', roleDescription: 'Center Forward (FWD)', position: 'FWD', top: 47, left: 50, team: 'green' },
-      ],
-      blue: [
-        { key: 'b_gk', label: 'GK', roleDescription: 'Goalkeeper', position: 'GK', top: 11, left: 50, team: 'blue' },
-        { key: 'b_lb', label: 'LB', roleDescription: 'Left Defender (DEF)', position: 'DEF', top: 25, left: 72, team: 'blue' },
-        { key: 'b_rb', label: 'RB', roleDescription: 'Right Defender (DEF)', position: 'DEF', top: 25, left: 28, team: 'blue' },
-        { key: 'b_lm', label: 'LM', roleDescription: 'Left Midfield (MID)', position: 'MID', top: 40, left: 68, team: 'blue' },
-        { key: 'b_rm', label: 'RM', roleDescription: 'Right Midfield (MID)', position: 'MID', top: 40, left: 32, team: 'blue' },
-        { key: 'b_st', label: 'ST', roleDescription: 'Center Forward (FWD)', position: 'FWD', top: 53, left: 50, team: 'blue' },
-      ],
-    },
-  },
-  '6v6-3-1-1': {
-    label: '6v6 (3-1-1 Solid Wall)',
-    category: '6v6',
-    slots: {
-      green: [
-        { key: 'g_gk', label: 'GK', roleDescription: 'Goalkeeper', position: 'GK', top: 89, left: 50, team: 'green' },
-        { key: 'g_lcb', label: 'LCB', roleDescription: 'Left Center Defender (DEF)', position: 'DEF', top: 75, left: 20, team: 'green' },
-        { key: 'g_cb', label: 'CB', roleDescription: 'Center Defender (DEF)', position: 'DEF', top: 77, left: 50, team: 'green' },
-        { key: 'g_rcb', label: 'RCB', roleDescription: 'Right Center Defender (DEF)', position: 'DEF', top: 75, left: 80, team: 'green' },
-        { key: 'g_cm', label: 'CM', roleDescription: 'Central Midfielder (MID)', position: 'MID', top: 60, left: 50, team: 'green' },
-        { key: 'g_st', label: 'ST', roleDescription: 'Target Striker (FWD)', position: 'FWD', top: 46, left: 50, team: 'green' },
-      ],
-      blue: [
-        { key: 'b_gk', label: 'GK', roleDescription: 'Goalkeeper', position: 'GK', top: 11, left: 50, team: 'blue' },
-        { key: 'b_lcb', label: 'LCB', roleDescription: 'Left Center Defender (DEF)', position: 'DEF', top: 25, left: 80, team: 'blue' },
-        { key: 'b_cb', label: 'CB', roleDescription: 'Center Defender (DEF)', position: 'DEF', top: 23, left: 50, team: 'blue' },
-        { key: 'b_rcb', label: 'RCB', roleDescription: 'Right Center Defender (DEF)', position: 'DEF', top: 25, left: 20, team: 'blue' },
-        { key: 'b_cm', label: 'CM', roleDescription: 'Central Midfielder (MID)', position: 'MID', top: 40, left: 50, team: 'blue' },
-        { key: 'b_st', label: 'ST', roleDescription: 'Target Striker (FWD)', position: 'FWD', top: 54, left: 50, team: 'blue' },
-      ],
-    },
-  },
-  '6v6-2-1-2': {
-    label: '6v6 (2-1-2 Dual Attack)',
-    category: '6v6',
-    slots: {
-      green: [
-        { key: 'g_gk', label: 'GK', roleDescription: 'Goalkeeper', position: 'GK', top: 89, left: 50, team: 'green' },
-        { key: 'g_lb', label: 'LB', roleDescription: 'Left Defender (DEF)', position: 'DEF', top: 75, left: 28, team: 'green' },
-        { key: 'g_rb', label: 'RB', roleDescription: 'Right Defender (DEF)', position: 'DEF', top: 75, left: 72, team: 'green' },
-        { key: 'g_cm', label: 'CM', roleDescription: 'Playmaker Midfield (MID)', position: 'MID', top: 61, left: 50, team: 'green' },
-        { key: 'g_lf', label: 'LF', roleDescription: 'Left Striker (FWD)', position: 'FWD', top: 48, left: 30, team: 'green' },
-        { key: 'g_rf', label: 'RF', roleDescription: 'Right Striker (FWD)', position: 'FWD', top: 48, left: 70, team: 'green' },
-      ],
-      blue: [
-        { key: 'b_gk', label: 'GK', roleDescription: 'Goalkeeper', position: 'GK', top: 11, left: 50, team: 'blue' },
-        { key: 'b_lb', label: 'LB', roleDescription: 'Left Defender (DEF)', position: 'DEF', top: 25, left: 72, team: 'blue' },
-        { key: 'b_rb', label: 'RB', roleDescription: 'Right Defender (DEF)', position: 'DEF', top: 25, left: 28, team: 'blue' },
-        { key: 'b_cm', label: 'CM', roleDescription: 'Playmaker Midfield (MID)', position: 'MID', top: 39, left: 50, team: 'blue' },
-        { key: 'b_lf', label: 'LF', roleDescription: 'Left Striker (FWD)', position: 'FWD', top: 52, left: 70, team: 'blue' },
-        { key: 'b_rf', label: 'RF', roleDescription: 'Right Striker (FWD)', position: 'FWD', top: 52, left: 30, team: 'blue' },
-      ],
-    },
-  },
-
-  // -------------------------------------------------------------
-  // 7v7 FORMATS
-  // -------------------------------------------------------------
-  '7v7-2-3-1': {
-    label: '7v7 (2-3-1 Modern Balance)',
-    category: '7v7',
-    slots: {
-      green: [
-        { key: 'g_gk', label: 'GK', roleDescription: 'Goalkeeper', position: 'GK', top: 89, left: 50, team: 'green' },
-        { key: 'g_lb', label: 'LB', roleDescription: 'Left Back (DEF)', position: 'DEF', top: 74, left: 26, team: 'green' },
-        { key: 'g_rb', label: 'RB', roleDescription: 'Right Back (DEF)', position: 'DEF', top: 74, left: 74, team: 'green' },
-        { key: 'g_lm', label: 'LM', roleDescription: 'Left Winger (MID)', position: 'MID', top: 59, left: 18, team: 'green' },
-        { key: 'g_cm', label: 'CM', roleDescription: 'Central Midfield (MID)', position: 'MID', top: 59, left: 50, team: 'green' },
-        { key: 'g_rm', label: 'RM', roleDescription: 'Right Winger (MID)', position: 'MID', top: 59, left: 82, team: 'green' },
-        { key: 'g_st', label: 'ST', roleDescription: 'Apex Striker (FWD)', position: 'FWD', top: 46, left: 50, team: 'green' },
-      ],
-      blue: [
-        { key: 'b_gk', label: 'GK', roleDescription: 'Goalkeeper', position: 'GK', top: 11, left: 50, team: 'blue' },
-        { key: 'b_lb', label: 'LB', roleDescription: 'Left Back (DEF)', position: 'DEF', top: 26, left: 74, team: 'blue' },
-        { key: 'b_rb', label: 'RB', roleDescription: 'Right Back (DEF)', position: 'DEF', top: 26, left: 26, team: 'blue' },
-        { key: 'b_lm', label: 'LM', roleDescription: 'Left Winger (MID)', position: 'MID', top: 41, left: 82, team: 'blue' },
-        { key: 'b_cm', label: 'CM', roleDescription: 'Central Midfield (MID)', position: 'MID', top: 41, left: 50, team: 'blue' },
-        { key: 'b_rm', label: 'RM', roleDescription: 'Right Winger (MID)', position: 'MID', top: 41, left: 18, team: 'blue' },
-        { key: 'b_st', label: 'ST', roleDescription: 'Apex Striker (FWD)', position: 'FWD', top: 54, left: 50, team: 'blue' },
-      ],
-    },
-  },
-  '7v7-3-2-1': {
-    label: '7v7 (3-2-1 Solid Shield)',
-    category: '7v7',
-    slots: {
-      green: [
-        { key: 'g_gk', label: 'GK', roleDescription: 'Goalkeeper', position: 'GK', top: 89, left: 50, team: 'green' },
-        { key: 'g_lb', label: 'LB', roleDescription: 'Left Defender (DEF)', position: 'DEF', top: 75, left: 20, team: 'green' },
-        { key: 'g_cb', label: 'CB', roleDescription: 'Center Defender (DEF)', position: 'DEF', top: 76, left: 50, team: 'green' },
-        { key: 'g_rb', label: 'RB', roleDescription: 'Right Defender (DEF)', position: 'DEF', top: 75, left: 80, team: 'green' },
-        { key: 'g_lcm', label: 'LCM', roleDescription: 'Left Center Mid (MID)', position: 'MID', top: 60, left: 34, team: 'green' },
-        { key: 'g_rcm', label: 'RCM', roleDescription: 'Right Center Mid (MID)', position: 'MID', top: 60, left: 66, team: 'green' },
-        { key: 'g_st', label: 'ST', roleDescription: 'Solo Striker (FWD)', position: 'FWD', top: 46, left: 50, team: 'green' },
-      ],
-      blue: [
-        { key: 'b_gk', label: 'GK', roleDescription: 'Goalkeeper', position: 'GK', top: 11, left: 50, team: 'blue' },
-        { key: 'b_lb', label: 'LB', roleDescription: 'Left Defender (DEF)', position: 'DEF', top: 25, left: 80, team: 'blue' },
-        { key: 'b_cb', label: 'CB', roleDescription: 'Center Defender (DEF)', position: 'DEF', top: 24, left: 50, team: 'blue' },
-        { key: 'b_rb', label: 'RB', roleDescription: 'Right Defender (DEF)', position: 'DEF', top: 25, left: 20, team: 'blue' },
-        { key: 'b_lcm', label: 'LCM', roleDescription: 'Left Center Mid (MID)', position: 'MID', top: 40, left: 66, team: 'blue' },
-        { key: 'b_rcm', label: 'RCM', roleDescription: 'Right Center Mid (MID)', position: 'MID', top: 40, left: 34, team: 'blue' },
-        { key: 'b_st', label: 'ST', roleDescription: 'Solo Striker (FWD)', position: 'FWD', top: 54, left: 50, team: 'blue' },
-      ],
-    },
-  },
-
-  // -------------------------------------------------------------
-  // 8v8 & 9v9 FORMATS
-  // -------------------------------------------------------------
-  '8v8-3-3-1': {
-    label: '8v8 (3-3-1 Tactical Control)',
-    category: '8v8',
-    slots: {
-      green: [
-        { key: 'g_gk', label: 'GK', roleDescription: 'Goalkeeper', position: 'GK', top: 89, left: 50, team: 'green' },
-        { key: 'g_lb', label: 'LB', roleDescription: 'Left Back (DEF)', position: 'DEF', top: 76, left: 22, team: 'green' },
-        { key: 'g_cb', label: 'CB', roleDescription: 'Center Back (DEF)', position: 'DEF', top: 77, left: 50, team: 'green' },
-        { key: 'g_rb', label: 'RB', roleDescription: 'Right Back (DEF)', position: 'DEF', top: 76, left: 78, team: 'green' },
-        { key: 'g_lm', label: 'LM', roleDescription: 'Left Midfield (MID)', position: 'MID', top: 61, left: 20, team: 'green' },
-        { key: 'g_cm', label: 'CM', roleDescription: 'Central Midfield (MID)', position: 'MID', top: 61, left: 50, team: 'green' },
-        { key: 'g_rm', label: 'RM', roleDescription: 'Right Midfield (MID)', position: 'MID', top: 61, left: 80, team: 'green' },
-        { key: 'g_st', label: 'ST', roleDescription: 'Striker (FWD)', position: 'FWD', top: 46, left: 50, team: 'green' },
-      ],
-      blue: [
-        { key: 'b_gk', label: 'GK', roleDescription: 'Goalkeeper', position: 'GK', top: 11, left: 50, team: 'blue' },
-        { key: 'b_lb', label: 'LB', roleDescription: 'Left Back (DEF)', position: 'DEF', top: 24, left: 78, team: 'blue' },
-        { key: 'b_cb', label: 'CB', roleDescription: 'Center Back (DEF)', position: 'DEF', top: 23, left: 50, team: 'blue' },
-        { key: 'b_rb', label: 'RB', roleDescription: 'Right Back (DEF)', position: 'DEF', top: 24, left: 22, team: 'blue' },
-        { key: 'b_lm', label: 'LM', roleDescription: 'Left Midfield (MID)', position: 'MID', top: 39, left: 80, team: 'blue' },
-        { key: 'b_cm', label: 'CM', roleDescription: 'Central Midfield (MID)', position: 'MID', top: 39, left: 50, team: 'blue' },
-        { key: 'b_rm', label: 'RM', roleDescription: 'Right Midfield (MID)', position: 'MID', top: 39, left: 20, team: 'blue' },
-        { key: 'b_st', label: 'ST', roleDescription: 'Striker (FWD)', position: 'FWD', top: 54, left: 50, team: 'blue' },
-      ],
-    },
-  },
-
-  // -------------------------------------------------------------
-  // 11v11 FULL PITCH FORMATS
-  // -------------------------------------------------------------
-  '11v11-4-3-3': {
-    label: '11v11 (4-3-3 Total Football)',
-    category: '11v11',
-    slots: {
-      green: [
-        { key: 'g_gk', label: 'GK', roleDescription: 'Goalkeeper', position: 'GK', top: 90, left: 50, team: 'green' },
-        { key: 'g_lb', label: 'LB', roleDescription: 'Left Back (DEF)', position: 'DEF', top: 78, left: 16, team: 'green' },
-        { key: 'g_lcb', label: 'LCB', roleDescription: 'Left Center Back (DEF)', position: 'DEF', top: 80, left: 38, team: 'green' },
-        { key: 'g_rcb', label: 'RCB', roleDescription: 'Right Center Back (DEF)', position: 'DEF', top: 80, left: 62, team: 'green' },
-        { key: 'g_rb', label: 'RB', roleDescription: 'Right Back (DEF)', position: 'DEF', top: 78, left: 84, team: 'green' },
-        { key: 'g_cdm', label: 'CDM', roleDescription: 'Holding Midfield (MID)', position: 'MID', top: 68, left: 50, team: 'green' },
-        { key: 'g_lcm', label: 'LCM', roleDescription: 'Left Central Mid (MID)', position: 'MID', top: 60, left: 32, team: 'green' },
-        { key: 'g_rcm', label: 'RCM', roleDescription: 'Right Central Mid (MID)', position: 'MID', top: 60, left: 68, team: 'green' },
-        { key: 'g_lw', label: 'LW', roleDescription: 'Left Winger (FWD)', position: 'FWD', top: 48, left: 18, team: 'green' },
-        { key: 'g_st', label: 'ST', roleDescription: 'Striker (FWD)', position: 'FWD', top: 45, left: 50, team: 'green' },
-        { key: 'g_rw', label: 'RW', roleDescription: 'Right Winger (FWD)', position: 'FWD', top: 48, left: 82, team: 'green' },
-      ],
-      blue: [
-        { key: 'b_gk', label: 'GK', roleDescription: 'Goalkeeper', position: 'GK', top: 10, left: 50, team: 'blue' },
-        { key: 'b_lb', label: 'LB', roleDescription: 'Left Back (DEF)', position: 'DEF', top: 22, left: 84, team: 'blue' },
-        { key: 'b_lcb', label: 'LCB', roleDescription: 'Left Center Back (DEF)', position: 'DEF', top: 20, left: 62, team: 'blue' },
-        { key: 'b_rcb', label: 'RCB', roleDescription: 'Right Center Back (DEF)', position: 'DEF', top: 20, left: 38, team: 'blue' },
-        { key: 'b_rb', label: 'RB', roleDescription: 'Right Back (DEF)', position: 'DEF', top: 22, left: 16, team: 'blue' },
-        { key: 'b_cdm', label: 'CDM', roleDescription: 'Holding Midfield (MID)', position: 'MID', top: 32, left: 50, team: 'blue' },
-        { key: 'b_lcm', label: 'LCM', roleDescription: 'Left Central Mid (MID)', position: 'MID', top: 40, left: 68, team: 'blue' },
-        { key: 'b_rcm', label: 'RCM', roleDescription: 'Right Central Mid (MID)', position: 'MID', top: 40, left: 32, team: 'blue' },
-        { key: 'b_lw', label: 'LW', roleDescription: 'Left Winger (FWD)', position: 'FWD', top: 52, left: 82, team: 'blue' },
-        { key: 'b_st', label: 'ST', roleDescription: 'Striker (FWD)', position: 'FWD', top: 55, left: 50, team: 'blue' },
-        { key: 'b_rw', label: 'RW', roleDescription: 'Right Winger (FWD)', position: 'FWD', top: 52, left: 18, team: 'blue' },
-      ],
-    },
-  },
-};
-
-// Helper to get default formation key matching match format and player count
-export const getDefaultFormationForFormat = (format?: string, maxPlayers?: number): string => {
-  let resolvedFormat = format;
-  if (!resolvedFormat && maxPlayers) {
-    if (maxPlayers <= 10) resolvedFormat = '5v5';
-    else if (maxPlayers <= 12) resolvedFormat = '6v6';
-    else if (maxPlayers <= 14) resolvedFormat = '7v7';
-    else if (maxPlayers <= 16) resolvedFormat = '8v8';
-    else if (maxPlayers <= 18) resolvedFormat = '9v9';
-    else if (maxPlayers <= 20) resolvedFormat = '10v10';
-    else resolvedFormat = '11v11';
-  }
-
-  switch (resolvedFormat) {
-    case '5v5':
-      return '5v5-1-2-1';
-    case '6v6':
-      return '6v6-2-2-1';
-    case '7v7':
-      return '7v7-2-3-1';
-    case '8v8':
-      return '8v8-3-3-1';
-    case '9v9':
-      return '9v9-3-3-2';
-    case '10v10':
-      return '10v10-4-3-2';
-    case '11v11':
-      return '11v11-4-3-3';
-    default:
-      return '7v7-2-3-1';
-  }
-};
-
-// Helper to normalize formation keys with robust fallbacks matching match format
-export const getNormalizedFormationKey = (
-  key?: string,
-  format?: string,
-  maxPlayers?: number
-): string => {
-  // 1. Determine expected format category
-  let expectedFormat = format;
-  if (!expectedFormat && maxPlayers) {
-    if (maxPlayers <= 10) expectedFormat = '5v5';
-    else if (maxPlayers <= 12) expectedFormat = '6v6';
-    else if (maxPlayers <= 14) expectedFormat = '7v7';
-    else if (maxPlayers <= 16) expectedFormat = '8v8';
-    else if (maxPlayers <= 18) expectedFormat = '9v9';
-    else if (maxPlayers <= 20) expectedFormat = '10v10';
-    else expectedFormat = '11v11';
-  }
-
-  // 2. If a key is passed and exists in FORMATIONS
-  if (key && FORMATIONS[key]) {
-    // If match format is specified, verify the key actually belongs to this format
-    if (expectedFormat) {
-      if (FORMATIONS[key].category === expectedFormat) {
-        return key;
-      }
-    } else {
-      return key;
-    }
-  }
-
-  // 3. If key is a shorthand like '2-2-1' or '2-3-1', find matching key within expected category
-  if (key && expectedFormat) {
-    const matchWithCategory = Object.keys(FORMATIONS).find(
-      (k) =>
-        FORMATIONS[k].category === expectedFormat &&
-        (k.endsWith(`-${key}`) || k === `${expectedFormat}-${key}`)
-    );
-    if (matchWithCategory) return matchWithCategory;
-  }
-
-  // 4. Default strictly to the formation for this match format!
-  return getDefaultFormationForFormat(expectedFormat, maxPlayers);
-};
 
 export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
   match,
@@ -451,7 +81,21 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
     }
   }, [match.tacticalAssignments]);
 
-  const formation = FORMATIONS[formationKey] || FORMATIONS['6v6-2-2-1'] || FORMATIONS['7v7-2-3-1'];
+  const formation = React.useMemo(() => {
+    if (FORMATIONS[formationKey]) {
+      return FORMATIONS[formationKey];
+    }
+    const teamSize = Math.max(3, Math.floor((match.maxPlayers || 14) / 2));
+    return {
+      label: `${teamSize}v${teamSize} (Dynamic Tactical Setup)`,
+      category: 'custom' as const,
+      slots: {
+        green: generateDynamicTacticalSlots(teamSize, 'green'),
+        blue: generateDynamicTacticalSlots(teamSize, 'blue'),
+      },
+    };
+  }, [formationKey, match.maxPlayers]);
+
   const greenPlayers = match.roster.filter((p) => p.team === 'green');
   const bluePlayers = match.roster.filter((p) => p.team === 'blue');
 
