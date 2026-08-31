@@ -23,6 +23,7 @@ import {
 import { UserProfile, DirectMessage, SUPER_ADMIN_EMAIL } from '../types';
 import { usePitchStore } from '../lib/usePitchStore';
 import { VoiceNoteRecorder, VoiceNotePlayer } from './VoiceNotes';
+import { mediaStorage } from '../lib/mediaStorage';
 
 interface DirectMessagesModalProps {
   isOpen: boolean;
@@ -49,6 +50,7 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [messageInput, setMessageInput] = useState('');
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isUrlInputOpen, setIsUrlInputOpen] = useState(false);
   const [urlInputText, setUrlInputText] = useState('');
   const [activeLightboxImage, setActiveLightboxImage] = useState<string | null>(null);
@@ -122,7 +124,7 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
     await sendDirectVoiceMessage(selectedUserId, audioUrl, durationSeconds);
   };
 
-  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -131,19 +133,23 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Image file must be under 5MB');
+    if (file.size > 8 * 1024 * 1024) {
+      alert('Image file must be under 8MB');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (typeof event.target?.result === 'string') {
-        setAttachedImage(event.target.result);
+    try {
+      setIsUploadingImage(true);
+      const res = await mediaStorage.uploadImage(file);
+      if (res.success && res.imageUrl) {
+        setAttachedImage(res.imageUrl);
       }
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
+    } catch (err) {
+      console.error('Image upload failed:', err);
+    } finally {
+      setIsUploadingImage(false);
+      e.target.value = '';
+    }
   };
 
   const handleAddUrlImage = () => {
@@ -163,18 +169,22 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
     setIsDraggingOver(false);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDraggingOver(false);
     const file = e.dataTransfer.files?.[0];
     if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (typeof event.target?.result === 'string') {
-          setAttachedImage(event.target.result);
+      try {
+        setIsUploadingImage(true);
+        const res = await mediaStorage.uploadImage(file);
+        if (res.success && res.imageUrl) {
+          setAttachedImage(res.imageUrl);
         }
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.error('Image drop upload failed:', err);
+      } finally {
+        setIsUploadingImage(false);
+      }
     }
   };
 

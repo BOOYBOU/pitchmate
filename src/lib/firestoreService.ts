@@ -146,6 +146,7 @@ export function subscribeToAnnouncements(callback: (announcements: AdminAnnounce
         snapshot.forEach((doc) => {
           list.push({ id: doc.id, ...doc.data() } as AdminAnnouncement);
         });
+        list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         callback(list);
       },
       (err) => {
@@ -173,6 +174,9 @@ export function subscribeToComments(callback: (comments: Record<string, MatchCom
           if (!grouped[item.matchId]) grouped[item.matchId] = [];
           grouped[item.matchId].push(item);
         });
+        Object.keys(grouped).forEach((key) => {
+          grouped[key].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        });
         callback(grouped);
       },
       (err) => {
@@ -198,6 +202,7 @@ export function subscribeToDirectMessages(callback: (messages: DirectMessage[]) 
         snapshot.forEach((doc) => {
           list.push({ id: doc.id, ...doc.data() } as DirectMessage);
         });
+        list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
         callback(list);
       },
       (err) => {
@@ -223,6 +228,7 @@ export function subscribeToNotifications(callback: (notifications: InAppNotifica
         snapshot.forEach((doc) => {
           list.push({ id: doc.id, ...doc.data() } as InAppNotification);
         });
+        list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         callback(list);
       },
       (err) => {
@@ -311,6 +317,14 @@ export async function saveDirectMessageToFirestore(msg: DirectMessage): Promise<
   }
 }
 
+export async function deleteDirectMessageFromFirestore(messageId: string): Promise<void> {
+  try {
+    await deleteDoc(doc(db, COLLECTIONS.DIRECT_MESSAGES, messageId));
+  } catch (err) {
+    console.error('[Firestore] Error deleting direct message:', err);
+  }
+}
+
 export async function saveNotificationToFirestore(notif: InAppNotification): Promise<void> {
   try {
     await setDoc(doc(db, COLLECTIONS.NOTIFICATIONS, notif.id), notif);
@@ -318,3 +332,12 @@ export async function saveNotificationToFirestore(notif: InAppNotification): Pro
     console.error('[Firestore] Error saving notification:', err);
   }
 }
+
+export async function deleteNotificationFromFirestore(notifId: string): Promise<void> {
+  try {
+    await deleteDoc(doc(db, COLLECTIONS.NOTIFICATIONS, notifId));
+  } catch (err) {
+    console.error('[Firestore] Error deleting notification:', err);
+  }
+}
+

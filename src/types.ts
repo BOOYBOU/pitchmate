@@ -141,6 +141,7 @@ export interface SoccerMatch {
   recurrence?: RecurrenceConfig;
   isRecurring?: boolean;
   notes?: string;
+  pitchImageUrl?: string; // Optional pitch or stadium cover photo
   creatorId: string;
   creatorName: string;
   creatorEmail: string;

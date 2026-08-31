@@ -1,30 +1,24 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Shield,
   Mail,
   Lock,
   User,
   ArrowRight,
   ArrowLeft,
   Upload,
-  Check,
   AlertCircle,
   Eye,
   EyeOff,
   Clock,
-  MapPin,
-  CheckCircle2,
   KeyRound,
   ShieldCheck,
-  Zap,
-  Sparkles,
   Trophy,
-  Activity,
   Globe,
   Inbox,
-  LockKeyhole,
   CheckCircle,
+  CheckCircle2,
+  Sparkles,
 } from 'lucide-react';
 import { usePitchStore } from '../lib/usePitchStore';
 import { useLanguage } from '../lib/useLanguage';
@@ -34,10 +28,10 @@ import { isSuperAdminEmail } from '../types';
 const MOROCCAN_CITIES = Object.keys(MOROCCAN_CITIES_LOCALIZED);
 
 const POSITIONS = [
-  { code: 'GK', labelAr: 'حارس مرمى', labelEn: 'Goalkeeper', icon: '🧤' },
-  { code: 'DEF', labelAr: 'مدافع', labelEn: 'Defender', icon: '🛡️' },
-  { code: 'MID', labelAr: 'صانع ألعاب', labelEn: 'Midfielder', icon: '⚡' },
-  { code: 'FWD', labelAr: 'مهاجم', labelEn: 'Forward', icon: '🎯' },
+  { code: 'GK', labelAr: 'حارس', labelEn: 'GK', icon: '🧤' },
+  { code: 'DEF', labelAr: 'دفاع', labelEn: 'DEF', icon: '🛡️' },
+  { code: 'MID', labelAr: 'وسط', labelEn: 'MID', icon: '⚡' },
+  { code: 'FWD', labelAr: 'هجوم', labelEn: 'FWD', icon: '🎯' },
 ];
 
 export const AuthView: React.FC = () => {
@@ -53,6 +47,9 @@ export const AuthView: React.FC = () => {
   type AuthMode = 'signin' | 'signup' | 'verify_signup' | 'forgot' | 'verify_forgot' | 'pending';
   const [mode, setMode] = useState<AuthMode>('signin');
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  // Mouse position for subtle interactive radial glow
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   // Password visibility toggles
   const [showSignInPassword, setShowSignInPassword] = useState(false);
@@ -94,6 +91,18 @@ export const AuthView: React.FC = () => {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Handle ambient interactive parallax glow
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      setMousePos({
+        x: (e.clientX / window.innerWidth - 0.5) * 20,
+        y: (e.clientY / window.innerHeight - 0.5) * 20,
+      });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
   // Countdown timer for OTP resend
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -109,17 +118,17 @@ export const AuthView: React.FC = () => {
 
   // Password strength calculation
   const passwordStrength = useMemo(() => {
-    if (!signUpPassword) return { score: 0, label: '', color: 'bg-slate-700' };
+    if (!signUpPassword) return { score: 0, label: '', color: 'bg-slate-700', percentage: 0 };
     let score = 0;
     if (signUpPassword.length >= 6) score += 1;
     if (signUpPassword.length >= 9) score += 1;
     if (/[A-Z]/.test(signUpPassword) || /[a-z]/.test(signUpPassword)) score += 1;
     if (/[0-9]/.test(signUpPassword) || /[^A-Za-z0-9]/.test(signUpPassword)) score += 1;
 
-    if (score <= 1) return { score: 1, label: language === 'ar' ? 'ضعيفة' : 'Weak', color: 'bg-rose-500' };
-    if (score === 2) return { score: 2, label: language === 'ar' ? 'متوسطة' : 'Fair', color: 'bg-amber-500' };
-    if (score === 3) return { score: 3, label: language === 'ar' ? 'جيدة' : 'Good', color: 'bg-emerald-500' };
-    return { score: 4, label: language === 'ar' ? 'قوية جداً' : 'Very Strong', color: 'bg-emerald-400' };
+    if (score <= 1) return { score: 1, label: language === 'ar' ? 'ضعيفة' : 'Weak', color: 'bg-rose-500', percentage: 25 };
+    if (score === 2) return { score: 2, label: language === 'ar' ? 'متوسطة' : 'Fair', color: 'bg-amber-500', percentage: 50 };
+    if (score === 3) return { score: 3, label: language === 'ar' ? 'جيدة' : 'Good', color: 'bg-emerald-500', percentage: 75 };
+    return { score: 4, label: language === 'ar' ? 'قوية جداً' : 'Strong', color: 'bg-[#F5D794]', percentage: 100 };
   }, [signUpPassword, language]);
 
   // Handle OTP digit changes
@@ -261,7 +270,7 @@ export const AuthView: React.FC = () => {
         return;
       }
 
-      // Send 6-digit cryptographic verification code
+      // Send 6-digit verification code
       const otpRes = await sendVerificationOTP(cleanEmail, 'signup');
       if (!otpRes.success) {
         setSignUpError(otpRes.error || (language === 'ar' ? 'فشل إرسال رمز التحقق.' : 'Failed to send OTP.'));
@@ -455,14 +464,6 @@ export const AuthView: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
-  // Quick Demo account fill helper
-  const handleQuickDemoFill = (email: string, pass: string) => {
-    setMode('signin');
-    setSignInEmail(email);
-    setSignInPassword(pass);
-    setSignInError('');
-  };
-
   const isPendingError =
     signInError.toLowerCase().includes('admin approval') ||
     signInError.toLowerCase().includes('waitlist') ||
@@ -471,40 +472,42 @@ export const AuthView: React.FC = () => {
     signInError.includes('مراجعة');
 
   return (
-    <div className="min-h-screen w-full bg-[#030906] text-slate-100 flex flex-col justify-between relative overflow-hidden font-sans select-none antialiased">
-      {/* ================= AMBIENT PREMIUM BACKGROUND GLOWS ================= */}
+    <div className="min-h-screen w-full bg-[#020604] text-slate-100 flex flex-col justify-between relative overflow-hidden font-sans select-none antialiased">
+      {/* ================= AMBIENT LUMINESCENCE BACKGROUND ================= */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[850px] h-[550px] bg-gradient-to-b from-emerald-500/15 via-[#E5B869]/10 to-transparent rounded-full blur-[140px]" />
-        <div className="absolute bottom-0 right-1/4 w-[600px] h-[400px] bg-emerald-600/10 rounded-full blur-[160px]" />
-        <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#E5B869_1px,transparent_1px)] [background-size:24px_24px]" />
+        <div
+          className="absolute -top-40 left-1/2 w-[800px] h-[600px] bg-gradient-to-b from-emerald-500/15 via-[#E5B869]/10 to-transparent rounded-full blur-[140px] transition-transform duration-700 ease-out"
+          style={{
+            transform: `translate(calc(-50% + ${mousePos.x}px), ${mousePos.y}px)`,
+          }}
+        />
+        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-[#0E4836]/20 rounded-full blur-[160px]" />
+        
+        {/* Refined subtle mesh grid */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#0E483610_1px,transparent_1px),linear-gradient(to_bottom,#0E483610_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-60" />
       </div>
 
-      {/* ================= TOP NOTIFICATION TOAST ================= */}
+      {/* ================= FLOATING OTP DEV NOTIFICATION TOAST ================= */}
       <AnimatePresence>
         {otpSentNotification && (
           <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            initial={{ opacity: 0, y: -25, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className="relative z-50 max-w-lg mx-auto w-full px-4 pt-3"
+            exit={{ opacity: 0, y: -25, scale: 0.96 }}
+            className="fixed top-5 left-1/2 -translate-x-1/2 z-50 max-w-md w-[calc(100%-2rem)]"
           >
-            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-[#0C3325] via-[#124B38] to-[#0C3325] border border-[#E5B869]/80 text-white shadow-2xl flex items-center justify-between gap-3 backdrop-blur-xl">
+            <div className="p-3.5 rounded-2xl bg-[#071F16]/95 border border-[#E5B869]/60 text-white shadow-[0_20px_40px_rgba(0,0,0,0.8),0_0_25px_rgba(229,184,105,0.2)] flex items-center justify-between gap-3 backdrop-blur-2xl">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#04130D] border border-[#E5B869]/50 flex items-center justify-center text-[#F5D794] shrink-0">
-                  <Inbox className="w-5 h-5 animate-bounce" />
+                <div className="w-10 h-10 rounded-xl bg-[#0E4836] border border-[#E5B869]/40 flex items-center justify-center text-[#F5D794] shrink-0">
+                  <Inbox className="w-4 h-4 animate-pulse" />
                 </div>
                 <div className="text-start space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-black text-[#F5D794] uppercase tracking-wider">
-                      {language === 'ar' ? '📩 رمز التحقق (OTP)' : '📩 Verification Code'}
-                    </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#04130D] text-emerald-300 border border-[#E5B869]/30 font-mono">
-                      {otpSentNotification.email}
-                    </span>
-                  </div>
-                  <p className="text-xs text-white">
-                    {t('auth.otpDevNotice')}{' '}
-                    <span className="font-mono font-black text-[#F5D794] text-sm bg-black/50 px-2 py-0.5 rounded-lg border border-[#E5B869]/40 tracking-widest">
+                  <span className="text-[11px] font-bold text-[#F5D794] flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-[#E5B869]" />
+                    {language === 'ar' ? 'رمز التحقق السريع' : 'Verification Code'}
+                  </span>
+                  <p className="text-xs text-slate-200">
+                    <span className="font-mono font-black text-[#F5D794] text-sm bg-black/50 px-2 py-0.5 rounded-md border border-[#E5B869]/40 tracking-wider">
                       {otpSentNotification.code}
                     </span>
                   </p>
@@ -518,36 +521,34 @@ export const AuthView: React.FC = () => {
                     setOtpDigits(code.split(''));
                   }
                 }}
-                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 text-xs font-black hover:brightness-110 active:scale-95 transition-all shrink-0 cursor-pointer shadow-lg shadow-amber-950/40"
+                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 text-xs font-black hover:brightness-110 active:scale-95 transition-all shrink-0 cursor-pointer shadow-md"
               >
-                {language === 'ar' ? 'تعبئة الرمز' : 'Auto Fill'}
+                {language === 'ar' ? 'تعبئة' : 'Auto-Fill'}
               </button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* ================= HEADER ================= */}
-      <header className="relative z-20 w-full max-w-5xl mx-auto px-4 sm:px-8 py-5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-emerald-500 rounded-2xl blur-sm opacity-70 group-hover:opacity-100 transition duration-300" />
-            <div className="relative w-10 h-10 rounded-2xl bg-[#041610] border border-[#E5B869]/60 flex items-center justify-center text-[#F5D794] font-black shadow-lg">
-              <Trophy className="w-5 h-5 text-[#F5D794]" />
+      {/* ================= MINIMAL TOP BAR ================= */}
+      <header className="relative z-20 w-full max-w-5xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between">
+        {/* Brand Logo */}
+        <div className="flex items-center gap-3 group cursor-default">
+          <div className="relative">
+            <div className="absolute -inset-1 bg-gradient-to-r from-[#F5D794] to-emerald-400 rounded-xl blur-sm opacity-60 group-hover:opacity-100 transition duration-300" />
+            <div className="relative w-10 h-10 rounded-xl bg-[#041610] border border-[#E5B869]/60 flex items-center justify-center text-[#F5D794] shadow-lg">
+              <Trophy className="w-5 h-5 text-[#F5D794] group-hover:scale-105 transition-transform" />
             </div>
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xl sm:text-2xl font-black font-display tracking-tight text-white flex items-center gap-1.5">
+              <span className="text-lg sm:text-xl font-black font-display tracking-tight text-white">
                 PitchMate
               </span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-gradient-to-r from-[#0E4836] to-[#08281E] text-[#F5D794] border border-[#E5B869]/50 font-mono font-bold tracking-wider uppercase">
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#0E4836] text-[#F5D794] border border-[#E5B869]/40 font-mono font-bold uppercase">
                 PRO 🇲🇦
               </span>
             </div>
-            <p className="text-[11px] text-emerald-300/80 font-medium tracking-wide">
-              {t('brand.tagline')}
-            </p>
           </div>
         </div>
 
@@ -555,47 +556,56 @@ export const AuthView: React.FC = () => {
         <button
           type="button"
           onClick={toggleLanguage}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#07241A] border border-[#E5B869]/40 hover:border-[#E5B869] text-xs font-bold text-[#F5D794] hover:text-white transition-all cursor-pointer shadow-sm active:scale-95"
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#07241A]/90 hover:bg-[#0E4836] border border-[#E5B869]/40 hover:border-[#E5B869] text-xs font-bold text-[#F5D794] hover:text-white transition-all cursor-pointer shadow-md active:scale-95 backdrop-blur-md"
         >
-          <Globe className="w-3.5 h-3.5" />
+          <Globe className="w-3.5 h-3.5 text-[#E5B869]" />
           <span>{language === 'ar' ? 'English (EN)' : 'العربية (AR)'}</span>
         </button>
       </header>
 
-      {/* ================= MAIN AUTH TERMINAL (CENTERED SINGLE ULTRA-CLEAN CONTAINER) ================= */}
-      <main className="relative z-10 flex-1 max-w-lg mx-auto w-full px-4 py-4 sm:py-8 flex flex-col justify-center">
-        <div className="relative">
-          {/* Ambient Glow Aura */}
-          <div className="absolute -inset-1.5 bg-gradient-to-r from-[#E5B869]/30 via-emerald-500/20 to-[#F5D794]/30 rounded-[34px] blur-xl opacity-75" />
+      {/* ================= PURE CENTERED AUTHENTICATION CARD ================= */}
+      <main className="relative z-10 flex-1 max-w-md w-full mx-auto px-4 py-4 sm:py-8 flex items-center justify-center">
+        <div className="w-full relative">
+          {/* Ambient Glow behind card */}
+          <div className="absolute -inset-1 bg-gradient-to-r from-[#E5B869]/30 via-emerald-500/20 to-[#F5D794]/30 rounded-[32px] blur-xl opacity-75" />
 
-          {/* Main Glass Card with Smooth Layout Animations */}
+          {/* Masterpiece Glassmorphic Card */}
           <motion.div
             layout
             transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-            className="relative bg-gradient-to-b from-[#08261C]/95 via-[#041610]/98 to-[#020A07]/98 backdrop-blur-2xl border-2 border-[#E5B869]/45 rounded-[30px] p-6 sm:p-8 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9),0_0_40px_rgba(229,184,105,0.12)] space-y-6"
+            className="relative bg-gradient-to-b from-[#07241A]/95 via-[#041610]/98 to-[#020A07]/98 backdrop-blur-3xl border border-[#E5B869]/40 rounded-[28px] p-6 sm:p-8 shadow-[0_25px_60px_rgba(0,0,0,0.85),0_0_35px_rgba(229,184,105,0.12)] space-y-5"
           >
-            {/* Header Title & Subtitle */}
+            {/* Header Titles */}
             <div className="space-y-1.5 text-center">
-              <motion.h1
+              <motion.h2
                 key={mode + '-title'}
-                initial={{ opacity: 0, y: -8 }}
+                initial={{ opacity: 0, y: -6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.2 }}
-                className="text-2xl sm:text-3xl font-black font-display text-white tracking-tight flex items-center justify-center gap-2"
+                className="text-2xl sm:text-3xl font-black font-display text-white tracking-tight"
               >
-                {mode === 'signin' && t('auth.welcomeBack')}
-                {mode === 'signup' && t('auth.createAccount')}
+                {mode === 'signin' && (
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-emerald-100 to-[#F5D794]">
+                    {t('auth.welcomeBack')}
+                  </span>
+                )}
+                {mode === 'signup' && (
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-emerald-100 to-[#F5D794]">
+                    {t('auth.createAccount')}
+                  </span>
+                )}
                 {mode === 'verify_signup' && t('auth.verificationTitle')}
                 {mode === 'forgot' && t('auth.resetPassword')}
                 {mode === 'verify_forgot' && t('auth.forgotVerifyTitle')}
                 {mode === 'pending' && t('auth.accountPending')}
-              </motion.h1>
+              </motion.h2>
+
               <motion.p
                 key={mode + '-sub'}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.2, delay: 0.05 }}
-                className="text-xs text-emerald-300/80 max-w-sm mx-auto leading-relaxed"
+                className="text-xs text-emerald-300/80 max-w-xs mx-auto leading-relaxed"
               >
                 {mode === 'signin' && t('auth.signInSubtitle')}
                 {mode === 'signup' && t('auth.signUpSubtitle')}
@@ -608,7 +618,7 @@ export const AuthView: React.FC = () => {
 
             {/* Seamless Fluid Mode Switcher Tabs (Sign In / Sign Up) */}
             {(mode === 'signin' || mode === 'signup') && (
-              <div className="grid grid-cols-2 gap-1.5 p-1.5 bg-[#030E0A] rounded-2xl border border-[#E5B869]/30 relative">
+              <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#020A07] rounded-2xl border border-[#E5B869]/25 relative shadow-inner">
                 <button
                   id="switch-to-signin-tab"
                   type="button"
@@ -616,7 +626,7 @@ export const AuthView: React.FC = () => {
                     setMode('signin');
                     setSignInError('');
                   }}
-                  className={`relative py-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-2 z-10 ${
+                  className={`relative py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-2 z-10 ${
                     mode === 'signin'
                       ? 'text-slate-950 font-black'
                       : 'text-emerald-300/70 hover:text-white'
@@ -625,7 +635,7 @@ export const AuthView: React.FC = () => {
                   {mode === 'signin' && (
                     <motion.div
                       layoutId="activeAuthPill"
-                      className="absolute inset-0 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] rounded-xl shadow-lg shadow-amber-950/60 -z-10"
+                      className="absolute inset-0 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] rounded-xl shadow-md -z-10"
                       transition={{ type: 'spring', stiffness: 450, damping: 32 }}
                     />
                   )}
@@ -640,7 +650,7 @@ export const AuthView: React.FC = () => {
                     setMode('signup');
                     setSignUpError('');
                   }}
-                  className={`relative py-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-2 z-10 ${
+                  className={`relative py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-2 z-10 ${
                     mode === 'signup'
                       ? 'text-slate-950 font-black'
                       : 'text-emerald-300/70 hover:text-white'
@@ -649,7 +659,7 @@ export const AuthView: React.FC = () => {
                   {mode === 'signup' && (
                     <motion.div
                       layoutId="activeAuthPill"
-                      className="absolute inset-0 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] rounded-xl shadow-lg shadow-amber-950/60 -z-10"
+                      className="absolute inset-0 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] rounded-xl shadow-md -z-10"
                       transition={{ type: 'spring', stiffness: 450, damping: 32 }}
                     />
                   )}
@@ -666,7 +676,7 @@ export const AuthView: React.FC = () => {
                   <KeyRound className="w-3.5 h-3.5 text-[#E5B869]" />
                   <span>
                     {mode === 'verify_signup'
-                      ? (language === 'ar' ? 'التحقق من البريد' : 'Email Verification')
+                      ? (language === 'ar' ? 'التحقق من الحساب' : 'Email Verification')
                       : mode === 'verify_forgot'
                       ? (language === 'ar' ? 'تأكيد الرمز' : 'Verify Code')
                       : t('auth.resetPassword')}
@@ -688,32 +698,32 @@ export const AuthView: React.FC = () => {
               </div>
             )}
 
-            {/* ================= ANIMATED VIEWS WITH FLUID TRANSITIONS ================= */}
+            {/* ================= VIEWS CONTAINER ================= */}
             <AnimatePresence mode="wait">
               {/* ================= 1. SIGN IN VIEW ================= */}
               {mode === 'signin' && (
                 <motion.div
                   key="signin-tab"
-                  initial={{ opacity: 0, x: isRTL ? 20 : -20 }}
+                  initial={{ opacity: 0, x: isRTL ? 15 : -15 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: isRTL ? -20 : 20 }}
-                  transition={{ duration: 0.22, ease: 'easeInOut' }}
+                  exit={{ opacity: 0, x: isRTL ? -15 : 15 }}
+                  transition={{ duration: 0.2, ease: 'easeInOut' }}
                   className="space-y-4 text-xs"
                 >
                   {signInError && (
                     <motion.div
-                      initial={{ opacity: 0, y: -6 }}
+                      initial={{ opacity: 0, y: -5 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className={`p-3.5 rounded-2xl flex items-start gap-2.5 ${
+                      className={`p-3 rounded-2xl flex items-start gap-2.5 ${
                         isPendingError
                           ? 'bg-[#0E382A] border border-[#E5B869]/50 text-amber-200'
                           : 'bg-rose-950/80 border border-rose-500/50 text-rose-200'
                       }`}
                     >
                       {isPendingError ? (
-                        <Clock className="w-5 h-5 shrink-0 text-[#E5B869] mt-0.5" />
+                        <Clock className="w-4 h-4 shrink-0 text-[#E5B869] mt-0.5" />
                       ) : (
-                        <AlertCircle className="w-5 h-5 shrink-0 text-rose-400 mt-0.5" />
+                        <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
                       )}
                       <div className="space-y-1 text-start">
                         <span className="font-semibold block leading-snug">{signInError}</span>
@@ -721,22 +731,22 @@ export const AuthView: React.FC = () => {
                           <span className="text-[11px] text-[#F5D794] block">
                             {language === 'ar'
                               ? 'تم إشعار المشرف وسيقوم بمراجعة حسابك وتفعيله في أقرب وقت.'
-                              : 'The administrator has been notified and will review your pending account shortly.'}
+                              : 'The administrator will review and activate your account shortly.'}
                           </span>
                         )}
                       </div>
                     </motion.div>
                   )}
 
-                  {/* Google Official Button */}
+                  {/* Google Button */}
                   <button
                     id="auth-google-signin-btn"
                     type="button"
                     onClick={() => handleGoogleAuth('signin')}
                     disabled={googleLoading || isSubmitting}
-                    className="w-full py-3 px-4 bg-white hover:bg-[#F8F9FA] active:bg-[#F1F3F4] text-[#3c4043] hover:text-[#202124] border border-[#DADCE0] hover:border-[#D2E3FC] rounded-2xl font-semibold transition-all flex items-center justify-center gap-3 cursor-pointer shadow-md hover:shadow-lg active:scale-[0.99] text-xs sm:text-sm disabled:opacity-60"
+                    className="w-full py-2.5 px-4 bg-white/95 hover:bg-white active:bg-slate-100 text-[#1F2937] hover:text-black border border-white/30 rounded-xl font-bold transition-all flex items-center justify-center gap-3 cursor-pointer shadow-sm hover:shadow-md active:scale-[0.99] text-xs sm:text-sm disabled:opacity-60 group"
                   >
-                    <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 shrink-0 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
                       <path
                         fill="#4285F4"
                         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -757,21 +767,21 @@ export const AuthView: React.FC = () => {
                     <span>{googleLoading ? t('auth.signingIn') : t('auth.continueWithGoogle')}</span>
                   </button>
 
-                  <div className="flex items-center gap-3 my-3">
-                    <div className="h-px bg-[#E5B869]/25 flex-1" />
-                    <span className="text-[11px] text-emerald-300/60 uppercase font-semibold">
-                      {language === 'ar' ? 'أو عبر البريد الإلكتروني' : 'Or with Email'}
+                  <div className="flex items-center gap-3 my-2.5">
+                    <div className="h-px bg-[#E5B869]/20 flex-1" />
+                    <span className="text-[10px] text-emerald-300/60 uppercase font-semibold">
+                      {language === 'ar' ? 'أو بالبريد الإلكتروني' : 'Or with Email'}
                     </span>
-                    <div className="h-px bg-[#E5B869]/25 flex-1" />
+                    <div className="h-px bg-[#E5B869]/20 flex-1" />
                   </div>
 
                   {/* Sign In Form */}
-                  <form onSubmit={handleSignIn} className="space-y-3.5 text-start">
+                  <form onSubmit={handleSignIn} className="space-y-3 text-start">
                     <div className="space-y-1">
                       <label className="text-[11px] font-bold text-emerald-200 block">
                         {t('auth.email')}
                       </label>
-                      <div className="relative">
+                      <div className="relative group">
                         <input
                           id="signin-email-input"
                           type="email"
@@ -779,9 +789,9 @@ export const AuthView: React.FC = () => {
                           value={signInEmail}
                           onChange={(e) => setSignInEmail(e.target.value)}
                           placeholder="player@pitchmate.ma"
-                          className="w-full pl-10 pr-4 py-3 rounded-xl bg-[#030E0A] border border-[#E5B869]/30 focus:border-[#E5B869] focus:ring-1 focus:ring-[#E5B869] text-white placeholder-slate-500 text-xs transition-all outline-none"
+                          className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#020A07] border border-[#E5B869]/25 focus:border-[#E5B869] focus:ring-1 focus:ring-[#E5B869]/30 text-white placeholder-slate-500 text-xs transition-all outline-none shadow-inner"
                         />
-                        <Mail className="w-4 h-4 text-emerald-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <Mail className="w-3.5 h-3.5 text-emerald-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#F5D794] transition-colors" />
                       </div>
                     </div>
 
@@ -802,7 +812,7 @@ export const AuthView: React.FC = () => {
                           {t('auth.forgotPassword')}
                         </button>
                       </div>
-                      <div className="relative">
+                      <div className="relative group">
                         <input
                           id="signin-password-input"
                           type={showSignInPassword ? 'text' : 'password'}
@@ -810,15 +820,15 @@ export const AuthView: React.FC = () => {
                           value={signInPassword}
                           onChange={(e) => setSignInPassword(e.target.value)}
                           placeholder="••••••••"
-                          className="w-full pl-10 pr-10 py-3 rounded-xl bg-[#030E0A] border border-[#E5B869]/30 focus:border-[#E5B869] focus:ring-1 focus:ring-[#E5B869] text-white placeholder-slate-500 text-xs transition-all outline-none"
+                          className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#020A07] border border-[#E5B869]/25 focus:border-[#E5B869] focus:ring-1 focus:ring-[#E5B869]/30 text-white placeholder-slate-500 text-xs transition-all outline-none shadow-inner"
                         />
-                        <Lock className="w-4 h-4 text-emerald-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <Lock className="w-3.5 h-3.5 text-emerald-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#F5D794] transition-colors" />
                         <button
                           type="button"
                           onClick={() => setShowSignInPassword(!showSignInPassword)}
-                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
                         >
-                          {showSignInPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          {showSignInPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                         </button>
                       </div>
                     </div>
@@ -827,14 +837,18 @@ export const AuthView: React.FC = () => {
                       id="signin-submit-btn"
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full py-3.5 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 active:scale-[0.99] text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm mt-2 disabled:opacity-50"
+                      className="w-full py-3 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 active:scale-[0.99] text-slate-950 rounded-xl font-black shadow-[0_8px_20px_rgba(229,184,105,0.25)] transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm mt-2 disabled:opacity-50 group"
                     >
                       {isSubmitting ? (
-                        <div className="w-5 h-5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <>
                           <span>{t('auth.signInButton')}</span>
-                          {isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+                          {isRTL ? (
+                            <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" />
+                          ) : (
+                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                          )}
                         </>
                       )}
                     </button>
@@ -846,19 +860,19 @@ export const AuthView: React.FC = () => {
               {mode === 'signup' && (
                 <motion.div
                   key="signup-tab"
-                  initial={{ opacity: 0, x: isRTL ? -20 : 20 }}
+                  initial={{ opacity: 0, x: isRTL ? -15 : 15 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: isRTL ? 20 : -20 }}
-                  transition={{ duration: 0.22, ease: 'easeInOut' }}
-                  className="space-y-4 text-xs"
+                  exit={{ opacity: 0, x: isRTL ? 15 : -15 }}
+                  transition={{ duration: 0.2, ease: 'easeInOut' }}
+                  className="space-y-3.5 text-xs"
                 >
                   {signUpError && (
                     <motion.div
-                      initial={{ opacity: 0, y: -6 }}
+                      initial={{ opacity: 0, y: -5 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="p-3.5 rounded-2xl bg-rose-950/80 border border-rose-500/50 text-rose-200 flex items-start gap-2.5 text-start"
+                      className="p-3 rounded-2xl bg-rose-950/80 border border-rose-500/50 text-rose-200 flex items-start gap-2 text-start"
                     >
-                      <AlertCircle className="w-5 h-5 shrink-0 text-rose-400 mt-0.5" />
+                      <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
                       <span className="font-semibold">{signUpError}</span>
                     </motion.div>
                   )}
@@ -869,9 +883,9 @@ export const AuthView: React.FC = () => {
                     type="button"
                     onClick={() => handleGoogleAuth('signup')}
                     disabled={googleLoading || isSubmitting}
-                    className="w-full py-3 px-4 bg-white hover:bg-[#F8F9FA] active:bg-[#F1F3F4] text-[#3c4043] hover:text-[#202124] border border-[#DADCE0] hover:border-[#D2E3FC] rounded-2xl font-semibold transition-all flex items-center justify-center gap-3 cursor-pointer shadow-md hover:shadow-lg active:scale-[0.99] text-xs sm:text-sm disabled:opacity-60"
+                    className="w-full py-2.5 px-4 bg-white/95 hover:bg-white active:bg-slate-100 text-[#1F2937] hover:text-black border border-white/30 rounded-xl font-bold transition-all flex items-center justify-center gap-3 cursor-pointer shadow-sm hover:shadow-md active:scale-[0.99] text-xs sm:text-sm disabled:opacity-60 group"
                   >
-                    <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 shrink-0 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
                       <path
                         fill="#4285F4"
                         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -892,28 +906,28 @@ export const AuthView: React.FC = () => {
                     <span>{googleLoading ? t('auth.signingIn') : t('auth.continueWithGoogle')}</span>
                   </button>
 
-                  <div className="flex items-center gap-3 my-3">
-                    <div className="h-px bg-[#E5B869]/25 flex-1" />
-                    <span className="text-[11px] text-emerald-300/60 uppercase font-semibold">
-                      {language === 'ar' ? 'أو املأ بياناتك' : 'Or fill your profile'}
+                  <div className="flex items-center gap-3 my-2">
+                    <div className="h-px bg-[#E5B869]/20 flex-1" />
+                    <span className="text-[10px] text-emerald-300/60 uppercase font-semibold">
+                      {language === 'ar' ? 'أو بالتسجيل المباشر' : 'Or direct registration'}
                     </span>
-                    <div className="h-px bg-[#E5B869]/25 flex-1" />
+                    <div className="h-px bg-[#E5B869]/20 flex-1" />
                   </div>
 
                   {/* Sign Up Form */}
                   <form onSubmit={handleSignUpStart} className="space-y-3 text-start">
                     {/* Name & Photo Mini Bar */}
                     <div className="flex items-center gap-3">
-                      <div className="relative shrink-0">
+                      <div className="relative shrink-0 group">
                         <img
                           src={avatarPreview}
                           alt="Avatar"
-                          className="w-12 h-12 rounded-xl object-cover border-2 border-[#E5B869]"
+                          className="w-12 h-12 rounded-2xl object-cover border border-[#E5B869]/80 shadow-md group-hover:scale-105 transition-transform"
                         />
                         <button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
-                          className="absolute -bottom-1 -right-1 p-1 bg-[#04130D] rounded-full border border-[#E5B869] text-[#F5D794] hover:scale-110 transition-transform cursor-pointer"
+                          className="absolute -bottom-1 -right-1 p-1 bg-[#04130D] rounded-full border border-[#E5B869] text-[#F5D794] hover:scale-110 transition-transform cursor-pointer shadow"
                         >
                           <Upload className="w-2.5 h-2.5" />
                         </button>
@@ -938,9 +952,9 @@ export const AuthView: React.FC = () => {
                             value={signUpName}
                             onChange={(e) => setSignUpName(e.target.value)}
                             placeholder={language === 'ar' ? 'أشرف حكيمي' : 'Achraf Hakimi'}
-                            className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[#030E0A] border border-[#E5B869]/30 focus:border-[#E5B869] text-white text-xs outline-none"
+                            className="w-full pl-8 pr-3 py-2 rounded-xl bg-[#020A07] border border-[#E5B869]/25 focus:border-[#E5B869] text-white text-xs outline-none shadow-inner"
                           />
-                          <User className="w-3.5 h-3.5 text-emerald-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <User className="w-3.5 h-3.5 text-emerald-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                         </div>
                       </div>
                     </div>
@@ -958,13 +972,13 @@ export const AuthView: React.FC = () => {
                           value={signUpEmail}
                           onChange={(e) => setSignUpEmail(e.target.value)}
                           placeholder="hakimi@pitchmate.ma"
-                          className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[#030E0A] border border-[#E5B869]/30 focus:border-[#E5B869] text-white text-xs outline-none"
+                          className="w-full pl-8 pr-3 py-2 rounded-xl bg-[#020A07] border border-[#E5B869]/25 focus:border-[#E5B869] text-white text-xs outline-none shadow-inner"
                         />
-                        <Mail className="w-3.5 h-3.5 text-emerald-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <Mail className="w-3.5 h-3.5 text-emerald-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                       </div>
                     </div>
 
-                    {/* City & Position */}
+                    {/* City & Position Selectors */}
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
                         <label className="text-[11px] font-bold text-emerald-200 block">
@@ -974,10 +988,10 @@ export const AuthView: React.FC = () => {
                           id="signup-city-select"
                           value={signUpCity}
                           onChange={(e) => setSignUpCity(e.target.value)}
-                          className="w-full py-2.5 px-2.5 rounded-xl bg-[#030E0A] border border-[#E5B869]/30 focus:border-[#E5B869] text-white text-xs outline-none cursor-pointer"
+                          className="w-full py-2 px-2.5 rounded-xl bg-[#020A07] border border-[#E5B869]/25 focus:border-[#E5B869] text-white text-xs outline-none cursor-pointer"
                         >
                           {MOROCCAN_CITIES.map((city) => (
-                            <option key={city} value={city} className="bg-[#030E0A] text-white">
+                            <option key={city} value={city} className="bg-[#020A07] text-white">
                               {getCityName(city)}
                             </option>
                           ))}
@@ -992,10 +1006,10 @@ export const AuthView: React.FC = () => {
                           id="signup-position-select"
                           value={signUpPosition}
                           onChange={(e) => setSignUpPosition(e.target.value)}
-                          className="w-full py-2.5 px-2.5 rounded-xl bg-[#030E0A] border border-[#E5B869]/30 focus:border-[#E5B869] text-white text-xs outline-none cursor-pointer"
+                          className="w-full py-2 px-2.5 rounded-xl bg-[#020A07] border border-[#E5B869]/25 focus:border-[#E5B869] text-white text-xs outline-none cursor-pointer"
                         >
                           {POSITIONS.map((pos) => (
-                            <option key={pos.code} value={pos.code} className="bg-[#030E0A] text-white">
+                            <option key={pos.code} value={pos.code} className="bg-[#020A07] text-white">
                               {pos.icon} {language === 'ar' ? pos.labelAr : pos.labelEn}
                             </option>
                           ))}
@@ -1016,32 +1030,29 @@ export const AuthView: React.FC = () => {
                           value={signUpPassword}
                           onChange={(e) => setSignUpPassword(e.target.value)}
                           placeholder="••••••••"
-                          className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#030E0A] border border-[#E5B869]/30 focus:border-[#E5B869] text-white text-xs outline-none"
+                          className="w-full pl-8 pr-8 py-2 rounded-xl bg-[#020A07] border border-[#E5B869]/25 focus:border-[#E5B869] text-white text-xs outline-none shadow-inner"
                         />
-                        <Lock className="w-3.5 h-3.5 text-emerald-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <Lock className="w-3.5 h-3.5 text-emerald-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                         <button
                           type="button"
                           onClick={() => setShowSignUpPassword(!showSignUpPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
                         >
                           {showSignUpPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                         </button>
                       </div>
 
-                      {/* Password strength indicator */}
+                      {/* Password Strength Indicator */}
                       {signUpPassword && (
                         <div className="pt-1 space-y-1">
-                          <div className="flex gap-1 h-1">
-                            {[1, 2, 3, 4].map((step) => (
-                              <div
-                                key={step}
-                                className={`flex-1 rounded-full transition-all duration-300 ${
-                                  step <= passwordStrength.score ? passwordStrength.color : 'bg-slate-800'
-                                }`}
-                              />
-                            ))}
+                          <div className="w-full bg-slate-900/80 h-1.5 rounded-full overflow-hidden border border-emerald-500/20">
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: `${passwordStrength.percentage}%` }}
+                              className={`h-full ${passwordStrength.color} transition-all duration-300`}
+                            />
                           </div>
-                          <span className="text-[10px] text-emerald-300/80 block text-end font-medium">
+                          <span className="text-[10px] text-[#F5D794] block text-end font-mono font-bold">
                             {passwordStrength.label}
                           </span>
                         </div>
@@ -1052,14 +1063,18 @@ export const AuthView: React.FC = () => {
                       id="signup-submit-btn"
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full py-3.5 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 active:scale-[0.99] text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm mt-2 disabled:opacity-50"
+                      className="w-full py-3 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 active:scale-[0.99] text-slate-950 rounded-xl font-black shadow-[0_8px_20px_rgba(229,184,105,0.25)] transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm mt-2 disabled:opacity-50 group"
                     >
                       {isSubmitting ? (
-                        <div className="w-5 h-5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <>
                           <span>{t('auth.signUpButton')}</span>
-                          {isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+                          {isRTL ? (
+                            <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" />
+                          ) : (
+                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                          )}
                         </>
                       )}
                     </button>
@@ -1076,8 +1091,8 @@ export const AuthView: React.FC = () => {
                   exit={{ opacity: 0, scale: 0.96 }}
                   className="space-y-4 text-xs"
                 >
-                  <div className="p-3.5 rounded-2xl bg-[#0E382A] border border-[#E5B869]/40 text-emerald-200 text-center space-y-1">
-                    <span className="font-bold block text-white">{signUpEmail}</span>
+                  <div className="p-3 rounded-2xl bg-gradient-to-r from-[#0E382A] to-[#082218] border border-[#E5B869]/40 text-emerald-200 text-center space-y-1 shadow-sm">
+                    <span className="font-bold block text-white text-sm">{signUpEmail}</span>
                     <span className="text-[11px] text-[#F5D794] block">{t('auth.enterVerificationCode')}</span>
                   </div>
 
@@ -1103,7 +1118,7 @@ export const AuthView: React.FC = () => {
                           value={digit}
                           onChange={(e) => handleOtpChange(idx, e.target.value)}
                           onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                          className="w-11 h-12 sm:w-12 sm:h-14 text-center text-lg sm:text-xl font-mono font-black rounded-xl bg-[#030E0A] border border-[#E5B869]/40 focus:border-[#E5B869] focus:ring-2 focus:ring-[#E5B869]/30 text-white outline-none transition-all shadow-inner"
+                          className="w-10 h-12 sm:w-11 sm:h-13 text-center text-lg font-mono font-black rounded-xl bg-[#020A07] border border-[#E5B869]/40 focus:border-[#E5B869] focus:ring-2 focus:ring-[#E5B869]/20 text-white outline-none transition-all shadow-inner"
                         />
                       ))}
                     </div>
@@ -1112,10 +1127,10 @@ export const AuthView: React.FC = () => {
                       id="verify-signup-submit-btn"
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full py-3.5 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 active:scale-[0.99] text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm disabled:opacity-50"
+                      className="w-full py-3 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 active:scale-[0.99] text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm disabled:opacity-50"
                     >
                       {isSubmitting ? (
-                        <div className="w-5 h-5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <>
                           <CheckCircle className="w-4 h-4" />
@@ -1172,9 +1187,9 @@ export const AuthView: React.FC = () => {
                           value={forgotEmail}
                           onChange={(e) => setForgotEmail(e.target.value)}
                           placeholder="player@pitchmate.ma"
-                          className="w-full pl-10 pr-4 py-3 rounded-xl bg-[#030E0A] border border-[#E5B869]/30 focus:border-[#E5B869] text-white text-xs outline-none"
+                          className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#020A07] border border-[#E5B869]/25 focus:border-[#E5B869] text-white text-xs outline-none shadow-inner"
                         />
-                        <Mail className="w-4 h-4 text-emerald-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <Mail className="w-3.5 h-3.5 text-emerald-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                       </div>
                     </div>
 
@@ -1182,14 +1197,14 @@ export const AuthView: React.FC = () => {
                       id="forgot-submit-btn"
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full py-3.5 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 active:scale-[0.99] text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm disabled:opacity-50"
+                      className="w-full py-3 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 active:scale-[0.99] text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm disabled:opacity-50"
                     >
                       {isSubmitting ? (
-                        <div className="w-5 h-5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <>
                           <span>{t('auth.sendVerificationCode')}</span>
-                          {isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+                          {isRTL ? <ArrowLeft className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
                         </>
                       )}
                     </button>
@@ -1214,7 +1229,7 @@ export const AuthView: React.FC = () => {
                   )}
 
                   {forgotSuccess && (
-                    <div className="p-3.5 rounded-xl bg-emerald-950/90 border border-emerald-500/50 text-emerald-200 flex items-center gap-2">
+                    <div className="p-3 rounded-xl bg-emerald-950/90 border border-emerald-500/50 text-emerald-200 flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
                       <span>{forgotSuccess}</span>
                     </div>
@@ -1239,7 +1254,7 @@ export const AuthView: React.FC = () => {
                             value={digit}
                             onChange={(e) => handleOtpChange(idx, e.target.value)}
                             onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                            className="w-10 h-11 sm:w-11 sm:h-12 text-center text-lg font-mono font-black rounded-xl bg-[#030E0A] border border-[#E5B869]/40 focus:border-[#E5B869] text-white outline-none"
+                            className="w-10 h-12 text-center text-lg font-mono font-black rounded-xl bg-[#020A07] border border-[#E5B869]/40 focus:border-[#E5B869] text-white outline-none shadow-inner"
                           />
                         ))}
                       </div>
@@ -1258,13 +1273,13 @@ export const AuthView: React.FC = () => {
                           value={forgotNewPassword}
                           onChange={(e) => setForgotNewPassword(e.target.value)}
                           placeholder="••••••••"
-                          className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#030E0A] border border-[#E5B869]/30 focus:border-[#E5B869] text-white text-xs outline-none"
+                          className="w-full pl-8 pr-8 py-2 rounded-xl bg-[#020A07] border border-[#E5B869]/25 focus:border-[#E5B869] text-white text-xs outline-none shadow-inner"
                         />
-                        <Lock className="w-3.5 h-3.5 text-emerald-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <Lock className="w-3.5 h-3.5 text-emerald-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                         <button
                           type="button"
                           onClick={() => setShowForgotNewPassword(!showForgotNewPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
                         >
                           {showForgotNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                         </button>
@@ -1284,13 +1299,13 @@ export const AuthView: React.FC = () => {
                           value={forgotConfirmPassword}
                           onChange={(e) => setForgotConfirmPassword(e.target.value)}
                           placeholder="••••••••"
-                          className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#030E0A] border border-[#E5B869]/30 focus:border-[#E5B869] text-white text-xs outline-none"
+                          className="w-full pl-8 pr-8 py-2 rounded-xl bg-[#020A07] border border-[#E5B869]/25 focus:border-[#E5B869] text-white text-xs outline-none shadow-inner"
                         />
-                        <Lock className="w-3.5 h-3.5 text-emerald-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <Lock className="w-3.5 h-3.5 text-emerald-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                         <button
                           type="button"
                           onClick={() => setShowForgotConfirmPassword(!showForgotConfirmPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
                         >
                           {showForgotConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                         </button>
@@ -1301,10 +1316,10 @@ export const AuthView: React.FC = () => {
                       id="verify-forgot-submit-btn"
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full py-3.5 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 active:scale-[0.99] text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm disabled:opacity-50"
+                      className="w-full py-3 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 active:scale-[0.99] text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm disabled:opacity-50"
                     >
                       {isSubmitting ? (
-                        <div className="w-5 h-5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <>
                           <CheckCircle className="w-4 h-4" />
@@ -1325,9 +1340,9 @@ export const AuthView: React.FC = () => {
                   exit={{ opacity: 0, scale: 0.95 }}
                   className="space-y-4"
                 >
-                  <div className="p-5 rounded-2xl bg-gradient-to-b from-[#0E382A] to-[#082218] border border-[#E5B869]/50 text-amber-100 flex flex-col items-center text-center gap-3 shadow-xl">
-                    <div className="w-14 h-14 rounded-2xl bg-[#04130D] border-2 border-[#E5B869]/60 flex items-center justify-center text-[#F5D794] shadow-2xl">
-                      <Clock className="w-7 h-7 animate-spin text-[#F5D794]" />
+                  <div className="p-4 rounded-2xl bg-gradient-to-b from-[#0E382A] to-[#082218] border border-[#E5B869]/40 text-amber-100 flex flex-col items-center text-center gap-2.5 shadow-lg">
+                    <div className="w-12 h-12 rounded-2xl bg-[#04130D] border border-[#E5B869]/60 flex items-center justify-center text-[#F5D794] shadow-md">
+                      <Clock className="w-6 h-6 animate-spin text-[#F5D794]" />
                     </div>
 
                     <div className="space-y-1">
@@ -1338,7 +1353,7 @@ export const AuthView: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-[#030E0A] border border-[#E5B869]/30 space-y-2 text-xs text-start">
+                  <div className="p-3.5 rounded-2xl bg-[#020A07] border border-[#E5B869]/25 space-y-1.5 text-xs text-start">
                     <div className="flex items-center justify-between text-emerald-200">
                       <span className="text-emerald-300/70">{t('auth.fullName')}:</span>
                       <span className="font-bold text-white">{registeredUserName}</span>
@@ -1360,54 +1375,26 @@ export const AuthView: React.FC = () => {
                       setMode('signin');
                       setSignInError('');
                     }}
-                    className="w-full py-3.5 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 active:scale-[0.99] text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm"
+                    className="w-full py-3 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 active:scale-[0.99] text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm"
                   >
                     <span>{t('auth.backToSignIn')}</span>
-                    {isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
+                    {isRTL ? <ArrowLeft className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
                   </button>
                 </motion.div>
               )}
             </AnimatePresence>
-
-            {/* Quick Demo Fill Bar */}
-            <div className="pt-2 border-t border-[#E5B869]/20">
-              <div className="flex items-center justify-between text-[11px] text-emerald-300/80 mb-2">
-                <span className="flex items-center gap-1 font-semibold">
-                  <Zap className="w-3 h-3 text-[#E5B869]" />
-                  <span>{language === 'ar' ? 'حسابات التجربة السريعة:' : 'Quick Demo Fill:'}</span>
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleQuickDemoFill('mustapha@pitchmate.ma', 'SuperAdmin2025!')}
-                  className="px-2.5 py-2 rounded-xl bg-[#030E0A] hover:bg-[#07241A] border border-[#E5B869]/25 hover:border-[#E5B869] text-start transition-all text-[11px] cursor-pointer"
-                >
-                  <div className="font-bold text-[#F5D794] truncate">Mustapha (Admin)</div>
-                  <div className="text-[10px] text-slate-400 truncate">mustapha@...</div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickDemoFill('player@pitchmate.ma', 'Player2025!')}
-                  className="px-2.5 py-2 rounded-xl bg-[#030E0A] hover:bg-[#07241A] border border-[#E5B869]/25 hover:border-[#E5B869] text-start transition-all text-[11px] cursor-pointer"
-                >
-                  <div className="font-bold text-white truncate">Star Player</div>
-                  <div className="text-[10px] text-slate-400 truncate">player@...</div>
-                </button>
-              </div>
-            </div>
           </motion.div>
         </div>
       </main>
 
-      {/* ================= FOOTER ================= */}
-      <footer className="relative z-20 w-full max-w-5xl mx-auto px-4 py-4 text-center text-xs text-emerald-300/60 flex items-center justify-between">
-        <div className="flex items-center gap-1">
-          <ShieldCheck className="w-4 h-4 text-[#E5B869]" />
-          <span>PitchMate PRO • High Security Authentication</span>
+      {/* ================= MINIMAL FOOTER ================= */}
+      <footer className="relative z-20 w-full max-w-5xl mx-auto px-4 sm:px-6 py-4 text-center text-xs text-emerald-300/60 flex items-center justify-between border-t border-emerald-900/20">
+        <div className="flex items-center gap-1.5">
+          <ShieldCheck className="w-3.5 h-3.5 text-[#E5B869]" />
+          <span>PitchMate PRO</span>
         </div>
-        <div className="text-[11px] font-mono text-[#F5D794]">
-          {language === 'ar' ? 'المغرب 🇲🇦' : 'Morocco 🇲🇦'}
+        <div className="flex items-center gap-2 text-[11px] font-mono text-[#F5D794]">
+          <span>{language === 'ar' ? 'المملكة المغربية 🇲🇦' : 'Morocco 🇲🇦'}</span>
         </div>
       </footer>
     </div>

@@ -36,10 +36,11 @@ const DATA_DIR = path.join(process.cwd(), 'data');
 const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 const AUDIO_DIR = path.join(UPLOADS_DIR, 'audio');
 const AVATAR_DIR = path.join(UPLOADS_DIR, 'avatars');
+const IMAGES_DIR = path.join(UPLOADS_DIR, 'images');
 const DB_FILE = path.join(DATA_DIR, 'pitchmate_db.json');
 
 // Ensure all upload directories exist
-[DATA_DIR, UPLOADS_DIR, AUDIO_DIR, AVATAR_DIR].forEach((dir) => {
+[DATA_DIR, UPLOADS_DIR, AUDIO_DIR, AVATAR_DIR, IMAGES_DIR].forEach((dir) => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -199,7 +200,8 @@ for (const u of db.users) {
     sanitizedUsers.push({
       ...u,
       isAdmin: isSuperAdminEmail(u.email) || u.isAdmin === true,
-      status: (isSuperAdminEmail(u.email) || u.isAdmin === true) ? ('approved' as const) : (u.status || 'approved'),
+      status: u.isBanned ? 'rejected' : 'approved',
+      approvedAt: u.approvedAt || new Date().toISOString(),
     });
   }
 }
@@ -442,9 +444,9 @@ async function startServer() {
   });
 
   // ---------------------------------------------------------
-  // MEDIA UPLOADS (AUDIO & AVATARS TO DISK)
+  // MEDIA UPLOADS (AUDIO, AVATARS & IMAGES TO DISK)
   // ---------------------------------------------------------
-  app.post('/api/upload/audio', requireAuth, async (req: AuthenticatedRequest, res) => {
+  app.post('/api/upload/audio', async (req: AuthenticatedRequest, res) => {
     try {
       const { base64Data, format } = req.body;
       if (!base64Data) {
@@ -466,7 +468,7 @@ async function startServer() {
     }
   });
 
-  app.post('/api/upload/avatar', requireAuth, async (req: AuthenticatedRequest, res) => {
+  app.post('/api/upload/avatar', async (req: AuthenticatedRequest, res) => {
     try {
       const { base64Data } = req.body;
       if (!base64Data) {
@@ -484,6 +486,27 @@ async function startServer() {
     } catch (err) {
       console.error('[Upload Error]:', err);
       res.status(500).json({ success: false, error: 'Failed to save avatar image' });
+    }
+  });
+
+  app.post('/api/upload/image', async (req: AuthenticatedRequest, res) => {
+    try {
+      const { base64Data } = req.body;
+      if (!base64Data) {
+        return res.status(400).json({ success: false, error: 'No image data provided' });
+      }
+
+      const filename = `img_${Date.now()}_${Math.random().toString(36).substring(2, 6)}.jpg`;
+      const filePath = path.join(IMAGES_DIR, filename);
+
+      const buffer = Buffer.from(base64Data.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+      await fs.promises.writeFile(filePath, buffer);
+
+      const imageUrl = `/uploads/images/${filename}`;
+      res.json({ success: true, imageUrl });
+    } catch (err) {
+      console.error('[Upload Error]:', err);
+      res.status(500).json({ success: false, error: 'Failed to save image file' });
     }
   });
 
@@ -618,8 +641,8 @@ async function startServer() {
       passwordHash,
       passwordSalt: passwordSalt || '',
       isAdmin: isMustapha,
-      status: isMustapha ? 'approved' : 'pending',
-      approvedAt: isMustapha ? new Date().toISOString() : undefined,
+      status: 'approved',
+      approvedAt: new Date().toISOString(),
       matchesPlayed: 0,
       createdAt: new Date().toISOString(),
     };
@@ -632,9 +655,9 @@ async function startServer() {
         db.notifications.unshift({
           id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
           userId: mustaphaUser.id,
-          title: 'New Player Registration Pending',
-          message: `${cleanName} (${cleanEmail} - ${city || 'Casablanca'}) registered and is awaiting your approval.`,
-          type: 'approval',
+          title: 'New Player Joined PitchMate',
+          message: `${cleanName} (${cleanEmail} - ${city || 'Casablanca'}) joined the community!`,
+          type: 'system',
           linkId: newUser.id,
           createdAt: new Date().toISOString(),
           read: false,
@@ -699,24 +722,14 @@ async function startServer() {
         });
       }
 
-      if (action === 'signin' && existingUser.status === 'pending' && !isMustapha) {
-        return res.status(403).json({
-          success: false,
-          code: 'PENDING_APPROVAL',
-          pendingApproval: true,
-          user: existingUser,
-          error: 'حسابك في قائمة الانتظار بانتظار موافقة المشرف العام يدوياً.',
-        });
-      }
-
       existingUser.isGoogleAuth = true;
       existingUser.emailVerified = true;
+      existingUser.status = existingUser.isBanned ? 'rejected' : 'approved';
       if (avatarUrl && (!existingUser.avatarUrl || existingUser.avatarUrl.includes('dicebear'))) {
         existingUser.avatarUrl = avatarUrl;
       }
       if (isMustapha) {
         existingUser.isAdmin = true;
-        existingUser.status = 'approved';
       }
 
       broadcastSSE('SYNC_USERS', { users: db.users });
@@ -749,8 +762,8 @@ async function startServer() {
       isGoogleAuth: true,
       emailVerified: true,
       isAdmin: isMustapha,
-      status: isMustapha ? 'approved' : 'pending',
-      approvedAt: isMustapha ? new Date().toISOString() : undefined,
+      status: 'approved',
+      approvedAt: new Date().toISOString(),
       matchesPlayed: 0,
       createdAt: new Date().toISOString(),
     };
@@ -763,9 +776,9 @@ async function startServer() {
         db.notifications.unshift({
           id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
           userId: mustaphaUser.id,
-          title: 'Google Player Registration',
-          message: `${cleanName} (${cleanEmail}) signed up via Google (Verified Account) and is awaiting your match approval.`,
-          type: 'approval',
+          title: 'New Player Joined via Google',
+          message: `${cleanName} (${cleanEmail}) joined the community!`,
+          type: 'system',
           linkId: newUser.id,
           createdAt: new Date().toISOString(),
           read: false,
@@ -1636,14 +1649,23 @@ async function startServer() {
     const currentList = db.comments[matchId] || [];
     const newComment = {
       ...comment,
-      id: comment.id || `comm_${Date.now()}`,
+      id: comment.id || `comm_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       userId: req.user?.id || comment.userId,
       userName: req.user?.name || comment.userName,
       userEmail: req.user?.email || comment.userEmail,
       userAvatar: req.user?.avatarUrl || comment.userAvatar,
-      createdAt: new Date().toISOString(),
+      createdAt: comment.createdAt || new Date().toISOString(),
     };
-    db.comments[matchId] = [...currentList, newComment];
+
+    const existingIdx = currentList.findIndex((c) => c.id === newComment.id);
+    if (existingIdx >= 0) {
+      currentList[existingIdx] = newComment;
+    } else {
+      currentList.push(newComment);
+    }
+    // Maintain chronological ordering
+    currentList.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    db.comments[matchId] = currentList;
 
     broadcastSSE('SYNC_COMMENTS', db.comments);
     res.json({ success: true, comment: newComment });
@@ -1704,10 +1726,18 @@ async function startServer() {
       senderId: req.user?.id || msg.senderId,
       senderName: req.user?.name || msg.senderName,
       senderAvatar: req.user?.avatarUrl || msg.senderAvatar,
-      createdAt: new Date().toISOString(),
+      createdAt: msg.createdAt || new Date().toISOString(),
       read: false,
     };
-    db.directMessages.push(newMsg);
+
+    const existingMsgIdx = db.directMessages.findIndex((m) => m.id === newMsg.id);
+    if (existingMsgIdx >= 0) {
+      db.directMessages[existingMsgIdx] = newMsg;
+    } else {
+      db.directMessages.push(newMsg);
+    }
+    // Maintain chronological ordering
+    db.directMessages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
     broadcastSSE('SYNC_DIRECT_MESSAGES', db.directMessages);
     res.json({ success: true, message: newMsg });

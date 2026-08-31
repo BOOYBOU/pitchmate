@@ -162,6 +162,25 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
           )}
         </div>
 
+        {/* Optional Match Pitch Cover Photo */}
+        {match.pitchImageUrl && (
+          <div className="relative w-full h-36 rounded-xl overflow-hidden border border-[#E5B869]/30 shadow-md">
+            <img
+              src={match.pitchImageUrl}
+              alt={match.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              referrerPolicy="no-referrer"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+            <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-xs text-white">
+              <span className="font-bold flex items-center gap-1 drop-shadow-md">
+                <MapPin className="w-3 h-3 text-[#E5B869]" />
+                {match.location.venueName}
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Title & Live Score Banner */}
         <div>
           <div className="flex items-center justify-between gap-2">

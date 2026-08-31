@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Calendar,
   Clock,
@@ -9,16 +9,40 @@ import {
   PlusCircle,
   Navigation,
   FileText,
+  Image as ImageIcon,
+  Camera,
+  Upload,
+  Check,
 } from 'lucide-react';
 import { MatchLocation } from '../types';
 import { usePitchStore } from '../lib/usePitchStore';
 import { useLanguage } from '../lib/useLanguage';
+import { mediaStorage } from '../lib/mediaStorage';
 import {
   parsePrice,
   derivePlayerPriceFromTotal,
   deriveTotalFromPlayerPrice,
 } from '../lib/matchPricing';
 import { getDefaultFormationForFormat } from './TacticalPitchFormation';
+
+const PITCH_PRESET_IMAGES = [
+  {
+    name: 'Casablanca Oasis Turf',
+    url: 'https://images.unsplash.com/photo-1529900245534-47fbf8221565?w=800&auto=format&fit=crop&q=80',
+  },
+  {
+    name: 'Floodlit Night Stadium',
+    url: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&auto=format&fit=crop&q=80',
+  },
+  {
+    name: 'Marrakech Red Arena',
+    url: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&auto=format&fit=crop&q=80',
+  },
+  {
+    name: 'Rabat Coastal Complex',
+    url: 'https://images.unsplash.com/photo-1489944440615-453fc2b6a9a9?w=800&auto=format&fit=crop&q=80',
+  },
+];
 
 interface CreateMatchModalProps {
   isOpen: boolean;
@@ -47,8 +71,11 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
   const [locationLink, setLocationLink] = useState('https://maps.google.com/?q=33.5592,-7.6321');
   const [venueName, setVenueName] = useState('Oasis Sports Club');
   const [city, setCity] = useState('Casablanca');
+  const [pitchImageUrl, setPitchImageUrl] = useState<string>(PITCH_PRESET_IMAGES[0].url);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
 
   if (!isOpen) return null;
 
@@ -75,6 +102,22 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
     setTotalPitchCost(total);
     if (maxPlayers > 0) {
       setPricePerPlayer(derivePlayerPriceFromTotal(total, maxPlayers));
+    }
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsUploadingPhoto(true);
+      const res = await mediaStorage.uploadImage(file);
+      if (res.success && res.imageUrl) {
+        setPitchImageUrl(res.imageUrl);
+      }
+    } catch (err) {
+      console.error('Pitch photo upload failed:', err);
+    } finally {
+      setIsUploadingPhoto(false);
     }
   };
 
@@ -127,6 +170,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
         pricePerPlayer: finalPrice,
         currency: 'MAD',
         totalPitchCost: finalTotalCost,
+        pitchImageUrl: pitchImageUrl || undefined,
         formationGreen: defaultFormation,
         formationBlue: defaultFormation,
       });
@@ -217,6 +261,67 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
                 onChange={(e) => setCity(e.target.value)}
                 className="w-full px-3 py-2 bg-[#081813] border border-[#E5B869]/30 rounded-xl text-sm text-white placeholder-emerald-400/40 focus:outline-none focus:border-[#E5B869] font-medium focus:ring-1 focus:ring-[#E5B869]/40"
               />
+            </div>
+          </div>
+
+          {/* Pitch Cover Photo (Presets or Custom Upload) */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-emerald-200 flex items-center gap-1.5">
+                <ImageIcon className="w-3.5 h-3.5 text-[#E5B869]" />
+                <span>{language === 'ar' ? 'صورة الملعب أو غلاف المباراة' : 'Pitch Photo / Cover'}</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                disabled={isUploadingPhoto}
+                className="text-[11px] font-bold text-[#F5D794] hover:text-[#E5B869] flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <Upload className="w-3 h-3" />
+                <span>{isUploadingPhoto ? (language === 'ar' ? 'جاري الرفع...' : 'Uploading...') : (language === 'ar' ? 'رفع صورة من جهازك' : 'Upload custom photo')}</span>
+              </button>
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handlePhotoUpload}
+              />
+            </div>
+
+            {/* Presets Grid */}
+            <div className="grid grid-cols-4 gap-2">
+              {PITCH_PRESET_IMAGES.map((preset) => {
+                const isSelected = pitchImageUrl === preset.url;
+                return (
+                  <button
+                    key={preset.name}
+                    type="button"
+                    onClick={() => setPitchImageUrl(preset.url)}
+                    className={`relative h-16 rounded-xl overflow-hidden border-2 transition-all cursor-pointer group ${
+                      isSelected
+                        ? 'border-[#E5B869] ring-2 ring-[#E5B869]/50 scale-[1.02]'
+                        : 'border-white/10 opacity-70 hover:opacity-100 hover:border-white/30'
+                    }`}
+                  >
+                    <img
+                      src={preset.url}
+                      alt={preset.name}
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors" />
+                    {isSelected && (
+                      <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#E5B869] text-slate-950 flex items-center justify-center text-[10px] font-black">
+                        <Check className="w-2.5 h-2.5 stroke-[3]" />
+                      </div>
+                    )}
+                    <span className="absolute bottom-1 left-1 right-1 text-[9px] font-bold text-white truncate drop-shadow">
+                      {preset.name}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 

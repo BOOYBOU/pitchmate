@@ -204,13 +204,19 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
           reader.readAsDataURL(audioBlob);
         }
       } catch {
-        const fallbackUrl = URL.createObjectURL(audioBlob);
-        SoundEffects.playSentSound();
-        if (onSendVoiceNote) {
-          onSendVoiceNote(fallbackUrl, finalDuration);
-        } else if (onSendAudio) {
-          onSendAudio(fallbackUrl, finalDuration);
-        }
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64Audio = (reader.result as string) || '';
+          if (base64Audio) {
+            SoundEffects.playSentSound();
+            if (onSendVoiceNote) {
+              onSendVoiceNote(base64Audio, finalDuration);
+            } else if (onSendAudio) {
+              onSendAudio(base64Audio, finalDuration);
+            }
+          }
+        };
+        reader.readAsDataURL(audioBlob);
       }
     };
 

@@ -40,7 +40,9 @@ import {
   saveAnnouncementToFirestore,
   deleteAnnouncementFromFirestore,
   saveDirectMessageToFirestore,
-  saveNotificationToFirestore
+  deleteDirectMessageFromFirestore,
+  saveNotificationToFirestore,
+  deleteNotificationFromFirestore
 } from './firestoreService';
 
 const STORAGE_KEYS = {
@@ -633,13 +635,6 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return { success: false, error: `Account suspended: ${targetUser.banReason || 'Contact administrator'}` };
     }
 
-    if (targetUser.status === 'pending') {
-      return {
-        success: false,
-        error: 'Your account is on the waitlist awaiting manual Admin approval before you can sign in.',
-      };
-    }
-
     if (targetUser.status === 'rejected') {
       return {
         success: false,
@@ -650,7 +645,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (targetUser.isGoogleAuth && !targetUser.passwordHash && !targetUser.password) {
       return {
         success: false,
-        error: 'This account was registered using Google. Please click "Sign In with Google" using your approved Google account.',
+        error: 'This account was registered using Google. Please click "Sign In with Google" using your Google account.',
       };
     }
 
@@ -789,17 +784,14 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const newUser = data.user;
 
       setUsers((prev) => [...prev.filter((u) => u.id !== newUser.id), newUser]);
+      saveUserToFirestore(newUser);
 
-      if (isMustapha) {
-        setCurrentUserId(newUser.id);
-        setIsAuthenticated(true);
-        const token = `pitchmate_token_${newUser.id}_${Date.now()}`;
-        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
-        localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, newUser.id);
-        return { success: true, pendingApproval: false };
-      }
-
-      return { success: true, pendingApproval: true };
+      setCurrentUserId(newUser.id);
+      setIsAuthenticated(true);
+      const token = `pitchmate_token_${newUser.id}_${Date.now()}`;
+      localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+      localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, newUser.id);
+      return { success: true, pendingApproval: false };
     } catch {
       return { success: false, error: 'Network error occurred during registration.' };
     }
@@ -871,7 +863,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const result = await signInWithPopup(auth, provider);
         gUser = result.user;
       } catch (popupErr: any) {
-        console.error('Firebase Google signInWithPopup error details:', popupErr);
+        console.error('Firebase Google signInWithPopup error:', popupErr);
 
         if (
           popupErr.code === 'auth/popup-closed-by-user' ||
@@ -880,44 +872,13 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           return {
             success: false,
             code: 'USER_CANCELLED',
-            error: 'تم إلغاء نافذة اختيار الحساب من قِبل المستخدم.',
-          };
-        }
-
-        if (
-          popupErr.code === 'auth/unauthorized-domain' ||
-          popupErr.message?.includes('unauthorized-domain')
-        ) {
-          const currentHostname = typeof window !== 'undefined' ? window.location.hostname : '';
-          return {
-            success: false,
-            code: 'UNAUTHORIZED_DOMAIN',
-            error: currentHostname
-              ? `النطاق (${currentHostname}) لم يتم اعتماده بعد في Firebase Authentication. يرجى إضافته في Authorized Domains.`
-              : 'النطاق الحالي غير مصرح به في Firebase Authentication.',
-          };
-        }
-
-        if (popupErr.code === 'auth/popup-blocked') {
-          return {
-            success: false,
-            code: 'POPUP_BLOCKED',
-            error: 'قام المتصفح بحظر النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة (Pop-ups) أو فتح الموقع في نافذة مستقلة.',
-          };
-        }
-
-        if (popupErr.code === 'auth/operation-not-allowed') {
-          return {
-            success: false,
-            code: 'OPERATION_NOT_ALLOWED',
-            error: 'موفر تسجيل الدخول عبر Google غير مفعل في Firebase Console. يرجى تفعيله من Authentication -> Sign-in method -> Google.',
           };
         }
 
         return {
           success: false,
           code: popupErr.code,
-          error: `[Google Auth Error: ${popupErr.code || 'UNKNOWN'}]: ${popupErr.message || 'فشل الاتصال بخدمة Google.'}`,
+          error: popupErr.message || 'فشل الاتصال بخدمة Google.',
         };
       }
 
@@ -949,22 +910,12 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           };
         }
 
-        if (existingUser.status === 'pending' && !isMustapha) {
-          return {
-            success: false,
-            code: 'PENDING_APPROVAL',
-            pendingApproval: true,
-            user: existingUser,
-            error: 'حسابك في قائمة الانتظار بانتظار موافقة المشرف العام (Mustapha Bouhbous) يدوياً. يرجى الانتظار حتى تتم مراجعة واعتماد حسابك.',
-          };
-        }
-
         const updatedUser: UserProfile = {
           ...existingUser,
           isGoogleAuth: true,
           emailVerified: true,
           isAdmin: isMustapha ? true : existingUser.isAdmin,
-          status: isMustapha ? 'approved' : existingUser.status,
+          status: existingUser.isBanned ? 'rejected' : 'approved',
           avatarUrl: (!existingUser.avatarUrl || existingUser.avatarUrl.includes('dicebear')) ? gPhoto : existingUser.avatarUrl,
         };
 
@@ -1000,8 +951,8 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         isGoogleAuth: true,
         emailVerified: true,
         isAdmin: isMustapha,
-        status: isMustapha ? 'approved' : 'pending',
-        approvedAt: isMustapha ? new Date().toISOString() : undefined,
+        status: 'approved',
+        approvedAt: new Date().toISOString(),
         matchesPlayed: 0,
         createdAt: new Date().toISOString(),
       };
@@ -1021,16 +972,12 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }),
       }).catch(() => {});
 
-      if (isMustapha) {
-        setCurrentUserId(newGoogleUser.id);
-        setIsAuthenticated(true);
-        const token = `pitchmate_token_${newGoogleUser.id}_${Date.now()}`;
-        localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
-        localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, newGoogleUser.id);
-        return { success: true, pendingApproval: false, user: newGoogleUser };
-      }
-
-      return { success: true, pendingApproval: true, user: newGoogleUser };
+      setCurrentUserId(newGoogleUser.id);
+      setIsAuthenticated(true);
+      const token = `pitchmate_token_${newGoogleUser.id}_${Date.now()}`;
+      localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+      localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, newGoogleUser.id);
+      return { success: true, pendingApproval: false, user: newGoogleUser };
     } catch (err: any) {
       if (err.code === 'auth/popup-closed-by-user') {
         return { success: false, error: 'تم إلغاء نافذة تسجيل الدخول بـ Google.' };
@@ -2019,7 +1966,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const deleteDirectMessage = useCallback((messageId: string) => {
     setDirectMessages((prev) => prev.filter((m) => m.id !== messageId));
-    deleteCommentFromFirestore(messageId);
+    deleteDirectMessageFromFirestore(messageId);
     fetch(`/api/messages/${messageId}`, { method: 'DELETE', headers: getAuthHeaders() }).catch(() => {});
   }, [getAuthHeaders]);
 
