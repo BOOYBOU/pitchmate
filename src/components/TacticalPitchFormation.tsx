@@ -416,7 +416,14 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
   onUpdateTactical,
   isHostOrAdmin,
 }) => {
-  const { currentUser, assignPlayerTacticalSlot, joinMatch, assignPlayerTeam } = usePitchStore();
+  const {
+    currentUser,
+    assignPlayerTacticalSlot,
+    claimTacticalSlot,
+    releaseTacticalSlot,
+    joinMatch,
+    assignPlayerTeam,
+  } = usePitchStore();
   const { t, language, isRTL } = useLanguage();
 
   const [formationKey, setFormationKey] = useState<string>(
@@ -429,6 +436,7 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
   const [viewMode, setViewMode] = useState<'full' | 'green' | 'blue'>('full');
   const [isConfirmingPosition, setIsConfirmingPosition] = useState(false);
   const [confirmationSuccessMsg, setConfirmationSuccessMsg] = useState<string | null>(null);
+  const [slotErrorMsg, setSlotErrorMsg] = useState<string | null>(null);
 
   // Sync state if match format, match ID, or formation changes
   React.useEffect(() => {
@@ -464,45 +472,63 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
     } else {
       setSelectedSlotKey(slotKey);
       setConfirmationSuccessMsg(null);
+      setSlotErrorMsg(null);
     }
   };
 
-  // Primary Position Confirmation Function
+  // Primary Position Confirmation Function with Concurrency Protection
   const handleConfirmMyPosition = async (slot: SlotDefinition) => {
+    const currentOccupant = assignments[slot.key];
+    if (currentOccupant && currentOccupant !== currentUser.id && !isHostOrAdmin) {
+      const occupant = match.roster.find((p) => p.userId === currentOccupant);
+      const occupantName = occupant ? occupant.name : 'another player';
+      setSlotErrorMsg(
+        language === 'ar'
+          ? `🔒 عذراً، هذا المركز (${slot.label}) محجوز ومثبت مسبقاً للاعب ${occupantName}. لا يمكن حجزه إلا إذا ألغى اللاعب حجزه أو قام المنظم بتفريغه.`
+          : `🔒 This position (${slot.label}) is already locked and reserved for ${occupantName}. Only this player or the match organizer can release it.`
+      );
+      setTimeout(() => setSlotErrorMsg(null), 6000);
+      return;
+    }
+
     setIsConfirmingPosition(true);
+    setSlotErrorMsg(null);
     try {
       // 1. Join match roster if not already joined
       if (!isUserInRoster) {
         await joinMatch(match.id, slot.team);
       } else if (userTeam !== slot.team) {
-        // Switch team side if user is on opposite team
         await assignPlayerTeam(match.id, currentUser.id, slot.team);
       }
 
-      // 2. Prepare new assignments
+      // 2. Claim tactical slot with atomic concurrency lock
+      const claimResult = await claimTacticalSlot(match.id, slot.key, currentUser.id, slot.position, slot.team);
+      if (!claimResult.success) {
+        setSlotErrorMsg(
+          claimResult.error ||
+            (language === 'ar' ? 'تعذر حجز وتثبيت المركز.' : 'Could not reserve position due to a conflict.')
+        );
+        setTimeout(() => setSlotErrorMsg(null), 6000);
+        return;
+      }
+
       const next = { ...assignments };
-      // Remove current user from any previous position
       Object.keys(next).forEach((key) => {
         if (next[key] === currentUser.id) delete next[key];
       });
       next[slot.key] = currentUser.id;
       setAssignments(next);
-
-      // 3. Assign tactical slot in store
-      await assignPlayerTacticalSlot(match.id, slot.key, currentUser.id, slot.position);
       onUpdateTactical?.(formationKey, formationKey, next);
 
-      // 4. Trigger audio fanfare and success state
       SoundEffects.playJoin();
       const posLabel = getPositionArabicLabel(slot.position, slot.label);
       const teamLabel = slot.team === 'green' ? (language === 'ar' ? 'الفريق الأخضر' : 'Team Green') : (language === 'ar' ? 'الفريق الأزرق' : 'Team Blue');
-      
+
       const successText = language === 'ar'
-        ? `✅ تم تثبيت وتأكيد مركزك في الملعب: ${slot.label} - ${posLabel} في ${teamLabel}!`
-        : `✅ Position confirmed & locked: ${slot.label} - ${posLabel} in ${teamLabel}!`;
+        ? `🔒 تم تثبيت وقفل مركزك في الملعب بنجاح: ${slot.label} - ${posLabel} في ${teamLabel}!`
+        : `🔒 Position successfully locked & reserved: ${slot.label} - ${posLabel} in ${teamLabel}!`;
 
       setConfirmationSuccessMsg(successText);
-
       setTimeout(() => {
         setConfirmationSuccessMsg(null);
       }, 5000);
@@ -520,27 +546,32 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
 
   // Host/Admin Assign Player
   const handleAssignPlayer = async (slotKey: string, userId: string, position: PlayerPosition) => {
+    const claimRes = await claimTacticalSlot(match.id, slotKey, userId, position);
+    if (!claimRes.success && claimRes.error) {
+      setSlotErrorMsg(claimRes.error);
+      setTimeout(() => setSlotErrorMsg(null), 5000);
+      return;
+    }
+
     const next = { ...assignments };
-    // Remove user from other slots
     Object.keys(next).forEach((key) => {
       if (next[key] === userId) delete next[key];
     });
     next[slotKey] = userId;
     setAssignments(next);
-
-    await assignPlayerTacticalSlot(match.id, slotKey, userId, position);
     onUpdateTactical?.(formationKey, formationKey, next);
   };
 
-  // Clear Slot
+  // Clear / Release Slot
   const handleClearSlot = async (slotKey: string) => {
+    await releaseTacticalSlot(match.id, slotKey);
+
     const next = { ...assignments };
     delete next[slotKey];
     setAssignments(next);
     setSelectedSlotKey(null);
     setConfirmationSuccessMsg(null);
-
-    await assignPlayerTacticalSlot(match.id, slotKey, '');
+    setSlotErrorMsg(null);
     onUpdateTactical?.(formationKey, formationKey, next);
   };
 
@@ -717,6 +748,35 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
         </div>
       </div>
 
+      {/* Error / Concurrency Conflict Alert Banner */}
+      {slotErrorMsg && (
+        <div
+          id="position-concurrency-error-banner"
+          className="bg-amber-950/90 border-2 border-amber-500/80 rounded-2xl p-4 shadow-2xl flex items-center justify-between gap-3 text-white animate-in shake duration-200"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0">
+              <Lock className="w-6 h-6 text-amber-400" />
+            </div>
+            <div>
+              <div className="text-xs font-black uppercase tracking-wider text-amber-300">
+                {language === 'ar' ? 'تنبيه: المركز محجوز' : 'Position Locked'}
+              </div>
+              <div className="text-sm font-bold text-slate-100 mt-0.5">
+                {slotErrorMsg}
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSlotErrorMsg(null)}
+            className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 text-xs font-bold rounded-xl border border-amber-500/30 cursor-pointer"
+          >
+            {language === 'ar' ? 'إغلاق' : 'Dismiss'}
+          </button>
+        </div>
+      )}
+
       {/* Confirmation Success Toast / Banner */}
       {confirmationSuccessMsg && (
         <div
@@ -789,62 +849,81 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
                 <div className="text-xs text-slate-300 mt-1 font-medium flex items-center gap-2">
                   <span>{selectedSlot.roleDescription}</span>
                   {currentOccupantPlayer && (
-                    <span className="text-slate-400 text-[11px]">
-                      • {language === 'ar' ? 'يشغله حالياً:' : 'Currently:'} <strong className="text-white">{currentOccupantPlayer.name}</strong>
+                    <span className="text-slate-300 text-[11px] flex items-center gap-1">
+                      • {language === 'ar' ? 'يشغله ومثبت لـ:' : 'Locked by:'}{' '}
+                      <strong className={currentOccupantPlayer.userId === currentUser.id ? 'text-emerald-400 font-bold' : 'text-amber-300 font-bold'}>
+                        {currentOccupantPlayer.name} {currentOccupantPlayer.userId === currentUser.id && (language === 'ar' ? '(أنت)' : '(You)')}
+                      </strong>
                     </span>
                   )}
                   {!currentOccupantPlayer && (
-                    <span className="text-[#E5B869] text-[11px] font-bold">
-                      • {language === 'ar' ? 'مركز شاغر ومتاح' : 'Vacant Role'}
+                    <span className="text-emerald-400 text-[11px] font-bold flex items-center gap-1">
+                      • <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" /> {language === 'ar' ? 'مركز شاغر ومتاح للحجز' : 'Open & Available to Lock'}
                     </span>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* DIRECT ACTION BUTTONS (CONFIRM POSITION BUTTON) */}
+            {/* DIRECT ACTION BUTTONS (LOCK / UNLOCK POSITION BUTTONS) */}
             <div className="flex items-center gap-2.5 flex-wrap">
-              {/* PRIMARY POSITION CONFIRMATION BUTTON */}
-              <button
-                id="confirm-tactical-position-btn"
-                type="button"
-                disabled={isConfirmingPosition}
-                onClick={() => handleConfirmMyPosition(selectedSlot)}
-                className={`px-5 py-3 rounded-2xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 shadow-xl cursor-pointer active:scale-95 ${
-                  isSelectedSlotOccupiedByMe
-                    ? 'bg-[#E5B869] text-slate-950 ring-2 ring-[#F5D794] shadow-amber-950/30'
-                    : 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 text-slate-950 shadow-amber-950/30 border border-[#F5D794]'
-                }`}
-              >
-                {isConfirmingPosition ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
-                    <span>{language === 'ar' ? 'جارٍ تأكيد المركز...' : 'Confirming Position...'}</span>
-                  </>
-                ) : isSelectedSlotOccupiedByMe ? (
-                  <>
-                    <CheckCircle2 className="w-5 h-5 text-slate-950" />
-                    <span>{language === 'ar' ? `تم حجز مركزك (${selectedSlot.label})` : `Confirmed Position (${selectedSlot.label})`}</span>
-                  </>
-                ) : (
-                  <>
-                    <Check className="w-5 h-5" />
-                    <span>{language === 'ar' ? `تأكيد واختيار المركز (${selectedSlot.label})` : `Confirm Position (${selectedSlot.label})`}</span>
-                  </>
-                )}
-              </button>
-
-              {/* Clear Slot (Host/Admin or Current Player) */}
-              {assignments[selectedSlot.key] && (isHostOrAdmin || assignments[selectedSlot.key] === currentUser.id) && (
+              {currentOccupantPlayer && currentOccupantPlayer.userId !== currentUser.id && !isHostOrAdmin ? (
+                /* Slot is locked by someone else */
+                <div className="px-4 py-3 rounded-2xl bg-amber-500/15 border-2 border-amber-500/40 text-amber-300 text-xs sm:text-sm font-black flex items-center gap-2 shadow-lg">
+                  <Lock className="w-4 h-4 text-amber-400" />
+                  <span>{language === 'ar' ? `محجوز ومثبت لـ ${currentOccupantPlayer.name}` : `Locked by ${currentOccupantPlayer.name}`}</span>
+                </div>
+              ) : isSelectedSlotOccupiedByMe ? (
+                /* Slot is locked by current user */
+                <div className="flex items-center gap-2">
+                  <div className="px-4 py-3 bg-emerald-500/20 border-2 border-emerald-500/60 rounded-2xl text-xs sm:text-sm font-black text-emerald-300 flex items-center gap-2 shadow-lg">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>{language === 'ar' ? `مركزك المثبت (${selectedSlot.label})` : `Your Locked Spot (${selectedSlot.label})`}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleClearSlot(selectedSlot.key)}
+                    className="px-3.5 py-3 bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/40 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                    title={language === 'ar' ? 'إلغاء حجز وتفريغ مركزي' : 'Release my position'}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>{language === 'ar' ? 'إلغاء الحجز' : 'Release'}</span>
+                  </button>
+                </div>
+              ) : (
+                /* Slot is open for locking */
                 <button
-                  id="clear-slot-btn"
+                  id="confirm-tactical-position-btn"
+                  type="button"
+                  disabled={isConfirmingPosition}
+                  onClick={() => handleConfirmMyPosition(selectedSlot)}
+                  className="px-5 py-3 rounded-2xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 shadow-xl cursor-pointer active:scale-95 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 text-slate-950 shadow-amber-950/30 border border-[#F5D794]"
+                >
+                  {isConfirmingPosition ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
+                      <span>{language === 'ar' ? 'جارٍ قفل وتثبيت المركز...' : 'Locking Position...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-4 h-4" />
+                      <span>{language === 'ar' ? `قفل وتثبيت المركز (${selectedSlot.label})` : `Lock & Reserve Position (${selectedSlot.label})`}</span>
+                    </>
+                  )}
+                </button>
+              )}
+
+              {/* Host/Admin can clear any slot */}
+              {isHostOrAdmin && assignments[selectedSlot.key] && !isSelectedSlotOccupiedByMe && (
+                <button
+                  id="admin-clear-slot-btn"
                   type="button"
                   onClick={() => handleClearSlot(selectedSlot.key)}
                   className="px-3.5 py-3 bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/40 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-                  title={language === 'ar' ? 'إلغاء تعيين المركز' : 'Clear position assignment'}
+                  title={language === 'ar' ? 'تفريغ المركز بواسطة المنظم' : 'Admin: Vacate position'}
                 >
                   <Trash2 className="w-4 h-4" />
-                  <span>{language === 'ar' ? 'تفريغ' : 'Clear'}</span>
+                  <span>{language === 'ar' ? 'تفريغ المركز' : 'Vacate Slot'}</span>
                 </button>
               )}
             </div>

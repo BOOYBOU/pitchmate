@@ -1161,10 +1161,29 @@ async function startServer() {
 
       const userProfile = db.users.find((u) => u.id === playerItem.userId);
 
+      // Handle tactical slot lock if requested during join
+      const requestedSlot: string | undefined = playerItem.tacticalSlot;
+      const assignments = { ...(match.tacticalAssignments || {}) };
+      let assignedSlotKey: string | undefined = undefined;
+
+      if (requestedSlot) {
+        const currentOccupant = assignments[requestedSlot];
+        if (!currentOccupant || currentOccupant === playerItem.userId) {
+          // Free slot, lock it for this player
+          Object.keys(assignments).forEach((k) => {
+            if (assignments[k] === playerItem.userId) delete assignments[k];
+          });
+          assignments[requestedSlot] = playerItem.userId;
+          assignedSlotKey = requestedSlot;
+          match.tacticalAssignments = assignments;
+        }
+      }
+
       const newPlayerItem: PlayerRosterItem = {
         ...playerItem,
         team,
         position: playerItem.position || userProfile?.preferredPosition || 'MID',
+        tacticalSlot: assignedSlotKey || playerItem.tacticalSlot,
         reliabilityScore: userProfile?.reliabilityScore ?? 100,
         rating: userProfile?.skillRating ?? 4.5,
         paymentStatus: 'unpaid',
@@ -1339,6 +1358,122 @@ async function startServer() {
 
     broadcastSSE('SYNC_MATCHES', db.matches);
     res.json({ success: true, match });
+  });
+
+  // Claim or Release Tactical Position (Protected by withMatchLock concurrency protection)
+  app.post('/api/matches/:id/claim-slot', requireAuth, async (req: AuthenticatedRequest, res) => {
+    const matchId = req.params.id;
+    const { slotKey, userId, rolePosition, teamSide } = req.body;
+    const callerId = req.user?.id;
+
+    if (!callerId) {
+      return res.status(401).json({ success: false, error: 'Authentication required' });
+    }
+
+    const targetUserId = userId || callerId;
+
+    const result = await withMatchLock(matchId, async () => {
+      const match = db.matches.find((m) => m.id === matchId);
+      if (!match) return { status: 404, data: { success: false, error: 'Match not found' } };
+
+      if (match.isLocked && !req.user?.isAdmin && match.creatorId !== callerId) {
+        return { status: 403, data: { success: false, error: 'This match roster is locked by the host.' } };
+      }
+
+      const assignments = { ...(match.tacticalAssignments || {}) };
+
+      // 1. If releasing the slot (userId is empty string or null)
+      if (!userId) {
+        const currentOccupantId = assignments[slotKey];
+        if (currentOccupantId && currentOccupantId !== callerId && !req.user?.isAdmin && match.creatorId !== callerId) {
+          return { status: 403, data: { success: false, error: "Cannot release another player's position." } };
+        }
+
+        delete assignments[slotKey];
+        match.tacticalAssignments = assignments;
+
+        match.roster = match.roster.map((p) =>
+          p.tacticalSlot === slotKey ? { ...p, tacticalSlot: undefined } : p
+        );
+        match.updatedAt = new Date().toISOString();
+
+        broadcastSSE('SYNC_MATCHES', db.matches);
+        return { status: 200, data: { success: true, match } };
+      }
+
+      // 2. If claiming the slot: Check if already locked by someone else
+      const currentOccupantId = assignments[slotKey];
+      if (currentOccupantId && currentOccupantId !== targetUserId) {
+        const occupant = match.roster.find((p) => p.userId === currentOccupantId) || db.users.find((u) => u.id === currentOccupantId);
+        const occupantName = occupant ? occupant.name : 'another player';
+        return {
+          status: 409,
+          data: {
+            success: false,
+            code: 'SLOT_ALREADY_LOCKED',
+            error: `This position is already locked and reserved for ${occupantName}.`,
+            occupantName,
+            occupantId: currentOccupantId,
+            match,
+          },
+        };
+      }
+
+      // Check if player is in roster; if not, add them to roster
+      const playerInRoster = match.roster.find((p) => p.userId === targetUserId);
+      const userProfile = db.users.find((u) => u.id === targetUserId);
+
+      if (!playerInRoster) {
+        if (match.roster.length >= match.maxPlayers) {
+          return { status: 400, data: { success: false, error: 'Match roster is already full.' } };
+        }
+        const newPlayer: PlayerRosterItem = {
+          userId: targetUserId,
+          name: userProfile?.name || req.user?.name || 'Player',
+          email: userProfile?.email || req.user?.email || '',
+          avatarUrl: userProfile?.avatarUrl || req.user?.avatarUrl,
+          team: teamSide || 'green',
+          position: rolePosition || userProfile?.preferredPosition || 'MID',
+          tacticalSlot: slotKey,
+          reliabilityScore: userProfile?.reliabilityScore ?? 100,
+          rating: userProfile?.skillRating ?? 4.5,
+          paymentStatus: 'unpaid',
+          joinedAt: new Date().toISOString(),
+        };
+        match.roster.push(newPlayer);
+      } else {
+        // Update existing roster item
+        match.roster = match.roster.map((p) => {
+          if (p.userId === targetUserId) {
+            return {
+              ...p,
+              team: teamSide || p.team,
+              position: rolePosition || p.position,
+              tacticalSlot: slotKey,
+            };
+          }
+          if (p.tacticalSlot === slotKey) {
+            return { ...p, tacticalSlot: undefined };
+          }
+          return p;
+        });
+      }
+
+      // Remove target user from any other slot in tacticalAssignments
+      Object.keys(assignments).forEach((key) => {
+        if (assignments[key] === targetUserId) {
+          delete assignments[key];
+        }
+      });
+      assignments[slotKey] = targetUserId;
+      match.tacticalAssignments = assignments;
+      match.updatedAt = new Date().toISOString();
+
+      broadcastSSE('SYNC_MATCHES', db.matches);
+      return { status: 200, data: { success: true, match } };
+    });
+
+    res.status(result.status).json(result.data);
   });
 
   // Smart Auto-Balance Teams

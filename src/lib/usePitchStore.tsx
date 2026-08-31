@@ -153,6 +153,17 @@ interface PitchStoreContextType {
     userId: string,
     rolePosition?: PlayerPosition
   ) => Promise<boolean>;
+  claimTacticalSlot: (
+    matchId: string,
+    slotKey: string,
+    userId: string,
+    rolePosition?: PlayerPosition,
+    teamSide?: TeamSide
+  ) => Promise<{ success: boolean; error?: string }>;
+  releaseTacticalSlot: (
+    matchId: string,
+    slotKey: string
+  ) => Promise<{ success: boolean; error?: string }>;
   markMatchAttendance: (
     matchId: string,
     attendedPlayerIds: string[],
@@ -1448,6 +1459,153 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return updateMatch(matchId, { formationGreen, formationBlue, tacticalAssignments });
   }, [updateMatch]);
 
+  const claimTacticalSlot = useCallback(async (
+    matchId: string,
+    slotKey: string,
+    userId: string,
+    rolePosition?: PlayerPosition,
+    teamSide?: TeamSide
+  ): Promise<{ success: boolean; error?: string }> => {
+    const match = matches.find((m) => m.id === matchId);
+    if (!match) return { success: false, error: 'Match not found' };
+
+    // Concurrency Lock Check: Is slot already reserved by another player?
+    const currentAssignments = { ...(match.tacticalAssignments || {}) };
+    const existingOccupantId = currentAssignments[slotKey];
+    if (existingOccupantId && existingOccupantId !== userId) {
+      const occupant = match.roster.find((p) => p.userId === existingOccupantId) || users.find((u) => u.id === existingOccupantId);
+      const occupantName = occupant ? occupant.name : 'another player';
+      return {
+        success: false,
+        error: `This position is already locked and reserved for ${occupantName}.`,
+      };
+    }
+
+    // Audio chime on successful selection
+    SoundEffects.playJoin();
+
+    // Prepare updated assignments: release user from previous slots and assign to this slot
+    const nextAssignments = { ...currentAssignments };
+    Object.keys(nextAssignments).forEach((k) => {
+      if (nextAssignments[k] === userId) delete nextAssignments[k];
+    });
+    nextAssignments[slotKey] = userId;
+
+    // Update roster item
+    const playerInRoster = match.roster.find((p) => p.userId === userId);
+    let nextRoster = [...match.roster];
+
+    if (!playerInRoster) {
+      const userProfile = users.find((u) => u.id === userId) || currentUser;
+      const newPlayer: PlayerRosterItem = {
+        userId,
+        name: userProfile.name,
+        email: userProfile.email,
+        avatarUrl: userProfile.avatarUrl,
+        team: teamSide || 'green',
+        position: rolePosition || userProfile.preferredPosition || 'MID',
+        tacticalSlot: slotKey,
+        reliabilityScore: userProfile.reliabilityScore ?? 100,
+        rating: userProfile.skillRating ?? 4.5,
+        paymentStatus: 'unpaid',
+        joinedAt: new Date().toISOString(),
+      };
+      nextRoster.push(newPlayer);
+    } else {
+      nextRoster = nextRoster.map((p) => {
+        if (p.userId === userId) {
+          return {
+            ...p,
+            team: teamSide || p.team,
+            position: rolePosition || p.position,
+            tacticalSlot: slotKey,
+          };
+        }
+        if (p.tacticalSlot === slotKey) {
+          return { ...p, tacticalSlot: undefined };
+        }
+        return p;
+      });
+    }
+
+    const updatedMatch: SoccerMatch = {
+      ...match,
+      tacticalAssignments: nextAssignments,
+      roster: nextRoster,
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Instant optimistic update
+    setMatches((prev) => prev.map((m) => (m.id === matchId ? updatedMatch : m)));
+    // Direct Realtime Firestore sync
+    saveMatchToFirestore(updatedMatch);
+
+    // Call server with atomic mutex concurrency protection
+    try {
+      const res = await fetch(`/api/matches/${matchId}/claim-slot`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ slotKey, userId, rolePosition, teamSide }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        if (data.match) {
+          setMatches((prev) => prev.map((m) => (m.id === matchId ? data.match : m)));
+          saveMatchToFirestore(data.match);
+        }
+        return { success: false, error: data.error || 'Position could not be claimed.' };
+      }
+      if (data.match) {
+        setMatches((prev) => prev.map((m) => (m.id === matchId ? data.match : m)));
+        saveMatchToFirestore(data.match);
+      }
+      return { success: true };
+    } catch {
+      return { success: true };
+    }
+  }, [matches, users, currentUser, getAuthHeaders]);
+
+  const releaseTacticalSlot = useCallback(async (
+    matchId: string,
+    slotKey: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    const match = matches.find((m) => m.id === matchId);
+    if (!match) return { success: false, error: 'Match not found' };
+
+    const nextAssignments = { ...(match.tacticalAssignments || {}) };
+    delete nextAssignments[slotKey];
+
+    const nextRoster = match.roster.map((p) =>
+      p.tacticalSlot === slotKey ? { ...p, tacticalSlot: undefined } : p
+    );
+
+    const updatedMatch: SoccerMatch = {
+      ...match,
+      tacticalAssignments: nextAssignments,
+      roster: nextRoster,
+      updatedAt: new Date().toISOString(),
+    };
+
+    setMatches((prev) => prev.map((m) => (m.id === matchId ? updatedMatch : m)));
+    saveMatchToFirestore(updatedMatch);
+
+    try {
+      const res = await fetch(`/api/matches/${matchId}/claim-slot`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ slotKey, userId: '' }),
+      });
+      const data = await res.json();
+      if (data.match) {
+        setMatches((prev) => prev.map((m) => (m.id === matchId ? data.match : m)));
+        saveMatchToFirestore(data.match);
+      }
+      return { success: true };
+    } catch {
+      return { success: true };
+    }
+  }, [matches, getAuthHeaders]);
+
   const assignPlayerTacticalSlot = useCallback(async (
     matchId: string,
     slotKey: string,
@@ -1455,56 +1613,13 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     rolePosition?: PlayerPosition
   ): Promise<boolean> => {
     if (userId) {
-      SoundEffects.playJoin();
-    }
-
-    const match = matches.find((m) => m.id === matchId);
-    if (!match) return false;
-
-    const nextAssignments = { ...(match.tacticalAssignments || {}) };
-    if (userId) {
-      Object.keys(nextAssignments).forEach((key) => {
-        if (nextAssignments[key] === userId) {
-          delete nextAssignments[key];
-        }
-      });
-      nextAssignments[slotKey] = userId;
+      const res = await claimTacticalSlot(matchId, slotKey, userId, rolePosition);
+      return res.success;
     } else {
-      delete nextAssignments[slotKey];
+      const res = await releaseTacticalSlot(matchId, slotKey);
+      return res.success;
     }
-
-    const updatedRoster = match.roster.map((p) => {
-      if (p.userId === userId) {
-        return {
-          ...p,
-          tacticalSlot: slotKey,
-          position: rolePosition || p.position,
-        };
-      }
-      if (!userId && p.tacticalSlot === slotKey) {
-        return { ...p, tacticalSlot: undefined };
-      }
-      return p;
-    });
-
-    setMatches((prev) =>
-      prev.map((m) =>
-        m.id === matchId
-          ? {
-              ...m,
-              tacticalAssignments: nextAssignments,
-              roster: updatedRoster,
-              updatedAt: new Date().toISOString(),
-            }
-          : m
-      )
-    );
-
-    return updateMatch(matchId, {
-      tacticalAssignments: nextAssignments,
-      roster: updatedRoster,
-    });
-  }, [matches, updateMatch]);
+  }, [claimTacticalSlot, releaseTacticalSlot]);
 
   const markMatchAttendance = useCallback(async (
     matchId: string,
@@ -2225,6 +2340,8 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     autoBalanceTeams,
     updateTacticalFormation,
     assignPlayerTacticalSlot,
+    claimTacticalSlot,
+    releaseTacticalSlot,
     markMatchAttendance,
     updateMatchScore,
     recordMatchGoal,
@@ -2292,6 +2409,8 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     autoBalanceTeams,
     updateTacticalFormation,
     assignPlayerTacticalSlot,
+    claimTacticalSlot,
+    releaseTacticalSlot,
     markMatchAttendance,
     updateMatchScore,
     recordMatchGoal,

@@ -1125,21 +1125,47 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
                       <span>{activeSlot.team === 'green' ? 'Team Green' : 'Team Blue'}</span>
                       <span>• {activeSlot.label} ({activeSlot.roleDescription})</span>
                     </div>
-                    <div className="text-[11px] text-slate-300">
-                      {occupant ? `Current: ${occupant.name}` : 'Vacant Position (Available to lock)'}
+                    <div className="text-[11px] text-slate-300 flex items-center gap-1.5 mt-0.5">
+                      {occupant ? (
+                        occupant.userId === currentUser.id ? (
+                          <span className="text-emerald-400 font-bold flex items-center gap-1">
+                            <Check className="w-3 h-3" /> Locked by You
+                          </span>
+                        ) : (
+                          <span className="text-amber-300 font-medium flex items-center gap-1">
+                            <Lock className="w-3 h-3 text-amber-400" /> Locked & Reserved by {occupant.name}
+                          </span>
+                        )
+                      ) : (
+                        <span className="text-emerald-300 font-semibold flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" /> Open Position (Available to lock)
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
 
                 {onSelfClaimSlot && (
-                  <button
-                    type="button"
-                    onClick={() => onSelfClaimSlot(activeSlot)}
-                    className="px-3.5 py-1.5 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:opacity-90 text-slate-950 text-xs font-black rounded-xl shadow-lg border border-[#F5D794] flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
-                  >
-                    <Check className="w-3.5 h-3.5 text-slate-950" />
-                    <span>Confirm Position</span>
-                  </button>
+                  occupant && occupant.userId !== currentUser.id ? (
+                    <div className="px-3 py-1.5 bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs font-bold rounded-xl flex items-center gap-1.5">
+                      <Lock className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Position Reserved</span>
+                    </div>
+                  ) : occupant && occupant.userId === currentUser.id ? (
+                    <div className="px-3.5 py-1.5 bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 text-xs font-black rounded-xl shadow-lg flex items-center gap-1.5">
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Your Locked Spot</span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onSelfClaimSlot(activeSlot)}
+                      className="px-3.5 py-1.5 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:opacity-90 text-slate-950 text-xs font-black rounded-xl shadow-lg border border-[#F5D794] flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                    >
+                      <Lock className="w-3.5 h-3.5 text-slate-950" />
+                      <span>Lock & Reserve Position</span>
+                    </button>
+                  )
                 )}
               </div>
             );
