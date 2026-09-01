@@ -16,6 +16,7 @@ import {
   SUPER_ADMIN_EMAILS,
   SUPER_ADMIN_EMAIL,
   SUPER_ADMIN_PASSWORD,
+  MESSI_AVATAR_URL,
   DEFAULT_CURRENCY,
   isSuperAdminEmail,
   verifySuperAdminMasterPassword,
@@ -89,25 +90,15 @@ function getInitialData(): DatabaseSchema {
           userId: 'user_mustapha',
           userName: 'Mustapha Bouhbous',
           userEmail: SUPER_ADMIN_EMAIL,
-          userAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+          userAvatar: MESSI_AVATAR_URL,
           text: 'Terrain 2 at Oasis Soccer Club is booked and confirmed! 50 MAD fee per player. Bibs and match balls ready.',
           createdAt: new Date(Date.now() - 3600000).toISOString(),
-        },
-        {
-          id: 'c2',
-          matchId: 'match_01_casablanca_lights',
-          userId: 'user_yassine',
-          userName: 'Yassine Bounou',
-          userEmail: 'yassine.bounou@pitchmate.ma',
-          userAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-          text: 'Salam Captain! I sent my 50 MAD share via CIH Bank. Looking forward to keeping a clean sheet.',
-          createdAt: new Date(Date.now() - 1800000).toISOString(),
         },
       ],
     },
     announcements: INITIAL_ANNOUNCEMENTS,
-    directMessages: INITIAL_DIRECT_MESSAGES,
-    notifications: INITIAL_NOTIFICATIONS,
+    directMessages: [],
+    notifications: [],
   };
 }
 
@@ -189,41 +180,105 @@ try {
   db = getInitialData();
 }
 
-// Ensure unique users list and ensure only the authorized super admin (bouhbousmustapha@gmail.com) has administrative privileges
+// Ensure unique users list, remove old mock users, and ensure only the authorized super admin (bouhbousmustapha@gmail.com) has administrative privileges
+const MOCK_IDS_TO_REMOVE = new Set([
+  'user_yassine',
+  'user_achraf',
+  'user_sofyan',
+  'user_youssef',
+  'user_admin_likobig',
+  'user_admin_main',
+  'user_mustapha_alt',
+]);
+
 const seenEmails = new Set<string>();
 const sanitizedUsers: UserProfile[] = [];
 
-for (const u of db.users) {
+for (const u of db.users || []) {
   const emailNorm = (u.email || '').toLowerCase().trim();
+  if (MOCK_IDS_TO_REMOVE.has(u.id) || emailNorm.endsWith('@pitchmate.ma')) {
+    continue; // Remove legacy mock player accounts
+  }
+
   if (emailNorm && !seenEmails.has(emailNorm)) {
     seenEmails.add(emailNorm);
+    const isMustapha = isSuperAdminEmail(u.email);
     sanitizedUsers.push({
       ...u,
-      isAdmin: isSuperAdminEmail(u.email),
-      status: u.isBanned ? 'rejected' : 'approved',
-      approvedAt: u.approvedAt || new Date().toISOString(),
+      id: isMustapha ? 'user_mustapha' : u.id,
+      name: isMustapha ? 'Mustapha Bouhbous' : u.name,
+      avatarUrl: isMustapha ? MESSI_AVATAR_URL : u.avatarUrl,
+      isAdmin: isMustapha,
+      status: isMustapha ? 'approved' : (u.status || 'pending'),
+      approvedAt: isMustapha ? (u.approvedAt || new Date().toISOString()) : u.approvedAt,
     });
   }
 }
 
-for (const sEmail of SUPER_ADMIN_EMAILS) {
-  const emailNorm = sEmail.toLowerCase().trim();
-  if (!seenEmails.has(emailNorm)) {
-    seenEmails.add(emailNorm);
-    sanitizedUsers.unshift({
-      id: `user_admin_${sEmail.replace(/[^a-zA-Z0-9]/g, '_')}`,
-      email: sEmail,
-      name: 'Mustapha Bouhbous',
-      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      isAdmin: true,
-      status: 'approved',
-      matchesPlayed: 50,
-      createdAt: new Date().toISOString(),
-    });
-  }
+// Ensure Super Admin Mustapha exists in user list
+if (!seenEmails.has(SUPER_ADMIN_EMAIL.toLowerCase())) {
+  sanitizedUsers.unshift({
+    id: 'user_mustapha',
+    email: SUPER_ADMIN_EMAIL,
+    name: 'Mustapha Bouhbous',
+    avatarUrl: MESSI_AVATAR_URL,
+    phone: '+212 661-234567',
+    city: 'Casablanca',
+    isAdmin: true,
+    status: 'approved',
+    preferredPosition: 'MID',
+    skillRating: 5.0,
+    reliabilityScore: 100,
+    matchesAttended: 50,
+    matchesPlayed: 50,
+    mvpCount: 8,
+    goalsCount: 24,
+    createdAt: new Date().toISOString(),
+    approvedAt: new Date().toISOString(),
+  });
 }
 
 db.users = sanitizedUsers;
+
+// Clean DMs from removed users
+if (Array.isArray(db.directMessages)) {
+  const validUserIds = new Set(sanitizedUsers.map((u) => u.id));
+  db.directMessages = db.directMessages.filter(
+    (dm) => validUserIds.has(dm.senderId) && validUserIds.has(dm.receiverId)
+  );
+}
+
+// Clean matches rosters from removed users
+if (Array.isArray(db.matches)) {
+  const validUserIds = new Set(sanitizedUsers.map((u) => u.id));
+  db.matches = db.matches.map((m) => {
+    const cleanedRoster = (m.roster || []).filter((p) => validUserIds.has(p.userId));
+    return {
+      ...m,
+      roster: cleanedRoster.length > 0 ? cleanedRoster : [
+        {
+          userId: 'user_mustapha',
+          name: 'Mustapha Bouhbous',
+          email: SUPER_ADMIN_EMAIL,
+          avatarUrl: MESSI_AVATAR_URL,
+          joinedAt: new Date().toISOString(),
+          team: 'green' as const,
+          position: 'MID',
+          jerseyNumber: 10,
+          isHost: true,
+          reliabilityScore: 100,
+          rating: 5.0,
+          paymentStatus: 'paid' as const,
+          paymentMethod: 'cash' as const,
+        },
+      ],
+      paidPlayerIds: (m.paidPlayerIds || []).filter((id) => validUserIds.has(id)),
+      score: m.score || { green: 0, blue: 0 },
+      goals: (m.goals || []).filter((g) => validUserIds.has(g.scorerId)),
+    };
+  });
+}
+
 saveDatabaseDebounced();
 
 // Server-Sent Events (SSE) Client Connections

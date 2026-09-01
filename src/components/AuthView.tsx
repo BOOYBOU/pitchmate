@@ -23,7 +23,7 @@ import {
 import { usePitchStore } from '../lib/usePitchStore';
 import { useLanguage } from '../lib/useLanguage';
 import { MOROCCAN_CITIES_LOCALIZED } from '../lib/translations';
-import { isSuperAdminEmail } from '../types';
+import { isSuperAdminEmail, MESSI_AVATAR_URL } from '../types';
 
 const MOROCCAN_CITIES = Object.keys(MOROCCAN_CITIES_LOCALIZED);
 
@@ -45,7 +45,7 @@ export const AuthView: React.FC = () => {
   const { language, toggleLanguage, t, isRTL, getCityName } = useLanguage();
 
   type AuthMode = 'signin' | 'signup' | 'verify_signup' | 'forgot' | 'verify_forgot' | 'pending';
-  const [mode, setMode] = useState<AuthMode>('signin');
+  const [mode, setMode] = useState<AuthMode>('signup');
   const [googleLoading, setGoogleLoading] = useState(false);
 
   // Mouse position for subtle interactive radial glow
@@ -69,7 +69,7 @@ export const AuthView: React.FC = () => {
   const [signUpCity, setSignUpCity] = useState(MOROCCAN_CITIES[0] || 'الدار البيضاء (Casablanca)');
   const [signUpPosition, setSignUpPosition] = useState('MID');
   const [signUpPassword, setSignUpPassword] = useState('');
-  const [avatarPreview, setAvatarPreview] = useState('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80');
+  const [avatarPreview, setAvatarPreview] = useState('https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=300&auto=format&fit=crop&q=80');
   const [signUpError, setSignUpError] = useState('');
   const [registeredUserEmail, setRegisteredUserEmail] = useState('');
   const [registeredUserName, setRegisteredUserName] = useState('');
@@ -260,7 +260,7 @@ export const AuthView: React.FC = () => {
           signUpName.trim(),
           cleanEmail,
           signUpPassword,
-          avatarPreview,
+          MESSI_AVATAR_URL,
           signUpCity,
           signUpPosition
         );

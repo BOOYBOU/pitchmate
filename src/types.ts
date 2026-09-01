@@ -238,6 +238,7 @@ export const SUPER_ADMIN_EMAILS: readonly string[] = [
 
 export const SUPER_ADMIN_EMAIL = 'bouhbousmustapha@gmail.com';
 export const SUPER_ADMIN_PASSWORD = 'AZRouww@#$&&$#@9934';
+export const MESSI_AVATAR_URL = 'https://upload.wikimedia.org/wikipedia/commons/b/b4/Lionel-Messi-Argentina-2022-FIFA-World-Cup_%28cropped%29.jpg';
 export const DEFAULT_CURRENCY = 'MAD';
 export const MOROCCO_TIMEZONE = 'Africa/Casablanca';
 

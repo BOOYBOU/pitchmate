@@ -18,6 +18,7 @@ import {
   verifySuperAdminMasterPassword,
   getDefaultFormationForMatch,
   MatchGoal,
+  MESSI_AVATAR_URL,
 } from '../types';
 import { INITIAL_MATCHES, INITIAL_USERS, INITIAL_DIRECT_MESSAGES, INITIAL_NOTIFICATIONS, INITIAL_ANNOUNCEMENTS } from './mockData';
 import { SoundEffects } from './audioService';
@@ -260,10 +261,14 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.USERS);
       const parsed: UserProfile[] = saved ? JSON.parse(saved) : INITIAL_USERS;
-      return parsed.map((u) => ({
+      const MOCK_IDS = new Set(['user_yassine', 'user_achraf', 'user_sofyan', 'user_youssef', 'user_admin_likobig', 'user_admin_main', 'user_mustapha_alt']);
+      const filtered = parsed.filter((u) => !MOCK_IDS.has(u.id) && !(u.email || '').endsWith('@pitchmate.ma'));
+      const list = filtered.length > 0 ? filtered : INITIAL_USERS;
+      return list.map((u) => ({
         ...u,
         isAdmin: isSuperAdminEmail(u.email),
         status: isSuperAdminEmail(u.email) ? ('approved' as const) : (u.status || 'approved'),
+        avatarUrl: isSuperAdminEmail(u.email) ? MESSI_AVATAR_URL : u.avatarUrl,
       }));
     } catch {
       return INITIAL_USERS;
@@ -272,20 +277,21 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const [currentUserId, setCurrentUserId] = useState<string>(() => {
     try {
+      const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
       const saved = localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID);
-      return saved || 'user_mustapha';
+      if (!token) return '';
+      return saved || '';
     } catch {
-      return 'user_mustapha';
+      return '';
     }
   });
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     try {
       const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
-      if (!token) return true; // Default signed-in for seamless preview
-      return true;
+      return Boolean(token);
     } catch {
-      return true;
+      return false;
     }
   });
 
@@ -391,7 +397,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       id: 'user_mustapha',
       email: 'bouhbousmustapha@gmail.com',
       name: 'Mustapha Bouhbous',
-      avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      avatarUrl: MESSI_AVATAR_URL,
       phone: '+212 661-234567',
       city: 'Casablanca',
       isAdmin: true,
@@ -677,7 +683,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           id: 'user_mustapha',
           email: SUPER_ADMIN_EMAIL,
           name: 'Mustapha Bouhbous',
-          avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+          avatarUrl: MESSI_AVATAR_URL,
           isAdmin: true,
           status: 'approved',
           matchesPlayed: 50,
@@ -700,6 +706,13 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     if (targetUser.isBanned) {
       return { success: false, error: `Account suspended: ${targetUser.banReason || 'Contact administrator'}` };
+    }
+
+    if (targetUser.status === 'pending') {
+      return {
+        success: false,
+        error: 'حسابك في لائحة الانتظار قيد المراجعة من قِبل المشرف العام. يرجى الانتظار حتى يتم قبول طلبك.',
+      };
     }
 
     if (targetUser.status === 'rejected') {
@@ -849,9 +862,14 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       const data = await res.json();
       const newUser = data.user;
+      const isPending = !isMustapha;
 
       setUsers((prev) => [...prev.filter((u) => u.id !== newUser.id), newUser]);
       saveUserToFirestore(newUser);
+
+      if (isPending) {
+        return { success: true, pendingApproval: true };
+      }
 
       setCurrentUserId(newUser.id);
       setIsAuthenticated(true);
@@ -986,13 +1004,22 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           };
         }
 
+        if (existingUser.status === 'pending' && !isMustapha) {
+          return {
+            success: false,
+            pendingApproval: true,
+            user: existingUser,
+            error: 'حسابك في لائحة الانتظار قيد المراجعة من قِبل المشرف العام. يرجى الانتظار حتى يتم قبول طلبك.',
+          };
+        }
+
         const updatedUser: UserProfile = {
           ...existingUser,
           isGoogleAuth: true,
           emailVerified: true,
           isAdmin: isMustapha,
-          status: existingUser.isBanned ? 'rejected' : 'approved',
-          avatarUrl: (!existingUser.avatarUrl || existingUser.avatarUrl.includes('dicebear')) ? gPhoto : existingUser.avatarUrl,
+          status: 'approved',
+          avatarUrl: isMustapha ? MESSI_AVATAR_URL : ((!existingUser.avatarUrl || existingUser.avatarUrl.includes('dicebear')) ? gPhoto : existingUser.avatarUrl),
         };
 
         setUsers((prev) => prev.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
@@ -1005,12 +1032,12 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         return { success: true, pendingApproval: false, user: updatedUser };
       }
 
-      // If user is brand new (auto-register seamlessly):
+      // If user is brand new:
       const newGoogleUser: UserProfile = {
         id: isMustapha ? 'user_mustapha' : `user_g_${gUid}`,
         name: gName,
         email: gEmail,
-        avatarUrl: gPhoto,
+        avatarUrl: isMustapha ? MESSI_AVATAR_URL : gPhoto,
         city: 'Casablanca',
         bio: 'Verified Google Player',
         preferredPosition: 'MID',
@@ -1027,8 +1054,8 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         isGoogleAuth: true,
         emailVerified: true,
         isAdmin: isMustapha,
-        status: 'approved',
-        approvedAt: new Date().toISOString(),
+        status: isMustapha ? 'approved' : 'pending',
+        approvedAt: isMustapha ? new Date().toISOString() : undefined,
         matchesPlayed: 0,
         createdAt: new Date().toISOString(),
       };
@@ -1043,10 +1070,14 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           uid: gUid,
           name: gName,
           email: gEmail,
-          avatarUrl: gPhoto,
+          avatarUrl: newGoogleUser.avatarUrl,
           action: action,
         }),
       }).catch(() => {});
+
+      if (!isMustapha) {
+        return { success: true, pendingApproval: true, user: newGoogleUser };
+      }
 
       setCurrentUserId(newGoogleUser.id);
       setIsAuthenticated(true);
@@ -1067,6 +1098,8 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const logout = useCallback(() => {
     localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER_ID);
+    setCurrentUserId('');
     setIsAuthenticated(false);
   }, []);
 
@@ -2385,10 +2418,12 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     fetch('/api/reset-data', { method: 'POST', headers: getAuthHeaders() }).catch(() => {});
     setMatches(INITIAL_MATCHES);
     setUsers(INITIAL_USERS);
-    setDirectMessages(INITIAL_DIRECT_MESSAGES);
-    setNotifications(INITIAL_NOTIFICATIONS);
-    setCurrentUserId('user_admin_main');
-    setIsAuthenticated(true);
+    setDirectMessages([]);
+    setNotifications([]);
+    localStorage.removeItem(STORAGE_KEYS.AUTH_TOKEN);
+    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER_ID);
+    setCurrentUserId('');
+    setIsAuthenticated(false);
   }, [getAuthHeaders]);
 
   const contextValue = useMemo<PitchStoreContextType>(() => ({
