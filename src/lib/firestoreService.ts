@@ -241,13 +241,43 @@ export function subscribeToNotifications(callback: (notifications: InAppNotifica
   }
 }
 
+/**
+ * Helper to recursively remove undefined properties from objects
+ * to prevent Firestore setDoc "Unsupported field value: undefined" errors.
+ */
+function sanitizeForFirestore<T extends Record<string, any>>(obj: T): Record<string, any> {
+  if (obj === null || obj === undefined) return {};
+  const cleaned: Record<string, any> = {};
+  
+  for (const [key, value] of Object.entries(obj)) {
+    if (value === undefined) {
+      continue;
+    }
+    if (value !== null && typeof value === 'object') {
+      if (Array.isArray(value)) {
+        cleaned[key] = value
+          .filter((item) => item !== undefined)
+          .map((item) => (typeof item === 'object' && item !== null ? sanitizeForFirestore(item) : item));
+      } else if (value instanceof Date) {
+        cleaned[key] = value.toISOString();
+      } else {
+        cleaned[key] = sanitizeForFirestore(value);
+      }
+    } else {
+      cleaned[key] = value;
+    }
+  }
+  return cleaned;
+}
+
 // ----------------------------------------------------
 // Firestore Direct Mutation Helpers
 // ----------------------------------------------------
 
 export async function saveMatchToFirestore(match: SoccerMatch): Promise<void> {
   try {
-    await setDoc(doc(db, COLLECTIONS.MATCHES, match.id), match, { merge: true });
+    const cleanData = sanitizeForFirestore(match);
+    await setDoc(doc(db, COLLECTIONS.MATCHES, match.id), cleanData, { merge: true });
   } catch (err) {
     console.error('[Firestore] Error saving match:', err);
   }
@@ -263,7 +293,8 @@ export async function deleteMatchFromFirestore(matchId: string): Promise<void> {
 
 export async function saveUserToFirestore(user: UserProfile): Promise<void> {
   try {
-    await setDoc(doc(db, COLLECTIONS.USERS, user.id), user, { merge: true });
+    const cleanData = sanitizeForFirestore(user);
+    await setDoc(doc(db, COLLECTIONS.USERS, user.id), cleanData, { merge: true });
   } catch (err) {
     console.error('[Firestore] Error saving user:', err);
   }
@@ -279,7 +310,8 @@ export async function deleteUserFromFirestore(userId: string): Promise<void> {
 
 export async function saveCommentToFirestore(comment: MatchComment): Promise<void> {
   try {
-    await setDoc(doc(db, COLLECTIONS.COMMENTS, comment.id), comment);
+    const cleanData = sanitizeForFirestore(comment);
+    await setDoc(doc(db, COLLECTIONS.COMMENTS, comment.id), cleanData, { merge: true });
   } catch (err) {
     console.error('[Firestore] Error saving comment:', err);
   }
@@ -295,7 +327,8 @@ export async function deleteCommentFromFirestore(commentId: string): Promise<voi
 
 export async function saveAnnouncementToFirestore(announcement: AdminAnnouncement): Promise<void> {
   try {
-    await setDoc(doc(db, COLLECTIONS.ANNOUNCEMENTS, announcement.id), announcement);
+    const cleanData = sanitizeForFirestore(announcement);
+    await setDoc(doc(db, COLLECTIONS.ANNOUNCEMENTS, announcement.id), cleanData, { merge: true });
   } catch (err) {
     console.error('[Firestore] Error saving announcement:', err);
   }
@@ -311,7 +344,28 @@ export async function deleteAnnouncementFromFirestore(announcementId: string): P
 
 export async function saveDirectMessageToFirestore(msg: DirectMessage): Promise<void> {
   try {
-    await setDoc(doc(db, COLLECTIONS.DIRECT_MESSAGES, msg.id), msg);
+    const cleanData = sanitizeForFirestore(msg);
+    await setDoc(doc(db, COLLECTIONS.DIRECT_MESSAGES, msg.id), cleanData, { merge: true });
+
+    // Also trigger instant InAppNotification document in Firestore for receiver
+    if (msg.receiverId && !msg.read) {
+      const notifId = `notif_dm_${msg.id}`;
+      const notifData: InAppNotification = {
+        id: notifId,
+        userId: msg.receiverId,
+        title: `Message from ${msg.senderName || 'Teammate'}`,
+        message: msg.audioUrl
+          ? '🎤 Sent you a voice note'
+          : msg.imageUrl
+          ? '📷 Sent you a photo'
+          : msg.text || 'Sent you a message',
+        type: 'direct_message',
+        linkId: msg.senderId,
+        createdAt: msg.createdAt || new Date().toISOString(),
+        read: false,
+      };
+      await setDoc(doc(db, COLLECTIONS.NOTIFICATIONS, notifId), sanitizeForFirestore(notifData), { merge: true });
+    }
   } catch (err) {
     console.error('[Firestore] Error saving direct message:', err);
   }
@@ -327,7 +381,8 @@ export async function deleteDirectMessageFromFirestore(messageId: string): Promi
 
 export async function saveNotificationToFirestore(notif: InAppNotification): Promise<void> {
   try {
-    await setDoc(doc(db, COLLECTIONS.NOTIFICATIONS, notif.id), notif);
+    const cleanData = sanitizeForFirestore(notif);
+    await setDoc(doc(db, COLLECTIONS.NOTIFICATIONS, notif.id), cleanData, { merge: true });
   } catch (err) {
     console.error('[Firestore] Error saving notification:', err);
   }

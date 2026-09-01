@@ -51,6 +51,36 @@ class SoundEffectsService {
   }
 
   /**
+   * Plays a pleasant dual-tone chime when a message or voice note is received in real time
+   */
+  playMessageReceived() {
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      const tones = [587.33, 880]; // D5, A5
+      tones.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.09);
+
+        gain.gain.setValueAtTime(0.1, now + idx * 0.09);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.09 + 0.22);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start(now + idx * 0.09);
+        osc.stop(now + idx * 0.09 + 0.25);
+      });
+    } catch {
+      // Ignored
+    }
+  }
+
+  /**
    * Plays an uplifting chord when a player joins match or locks tactical position
    */
   playJoin() {

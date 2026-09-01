@@ -262,8 +262,8 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       const parsed: UserProfile[] = saved ? JSON.parse(saved) : INITIAL_USERS;
       return parsed.map((u) => ({
         ...u,
-        isAdmin: isSuperAdminEmail(u.email) || u.isAdmin === true,
-        status: isSuperAdminEmail(u.email) || u.isAdmin === true ? ('approved' as const) : (u.status || 'approved'),
+        isAdmin: isSuperAdminEmail(u.email),
+        status: isSuperAdminEmail(u.email) ? ('approved' as const) : (u.status || 'approved'),
       }));
     } catch {
       return INITIAL_USERS;
@@ -273,9 +273,9 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [currentUserId, setCurrentUserId] = useState<string>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID);
-      return saved || 'user_admin_main';
+      return saved || 'user_mustapha';
     } catch {
-      return 'user_admin_main';
+      return 'user_mustapha';
     }
   });
 
@@ -347,6 +347,12 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   });
 
   const [isLoading] = useState(false);
+  const knownMsgIdsRef = useRef<Set<string>>(new Set());
+  const currentUserIdRef = useRef(currentUserId);
+
+  useEffect(() => {
+    currentUserIdRef.current = currentUserId;
+  }, [currentUserId]);
 
   // Background non-blocking localStorage caching
   useEffect(() => {
@@ -382,8 +388,8 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const found = users.find((u) => u.id === currentUserId);
     if (found) return found;
     return {
-      id: 'user_admin_main',
-      email: 'topreviewsamazon2025@gmail.com',
+      id: 'user_mustapha',
+      email: 'bouhbousmustapha@gmail.com',
       name: 'Mustapha Bouhbous',
       avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
       phone: '+212 661-234567',
@@ -437,20 +443,16 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const getAuthHeaders = useCallback(() => {
     const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) || `pitchmate_token_${currentUserId}_${Date.now()}`;
-    const isAdminUser = Boolean(
-      isSuperAdminEmail(currentUser.email) ||
-      currentUser.isAdmin ||
-      currentUser.name?.toLowerCase().includes('mustapha')
-    );
+    const isAdminUser = Boolean(isSuperAdminEmail(currentUser.email));
     return {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`,
       'x-user-id': currentUserId,
       'x-user-email': currentUser.email,
       'x-is-admin': isAdminUser ? 'true' : 'false',
-      'x-admin-password': SUPER_ADMIN_PASSWORD,
+      ...(isAdminUser ? { 'x-admin-password': SUPER_ADMIN_PASSWORD } : {}),
     };
-  }, [currentUserId, currentUser.email, currentUser.isAdmin, currentUser.name]);
+  }, [currentUserId, currentUser.email]);
 
   const fetchGlobalState = useCallback(async () => {
     try {
@@ -505,6 +507,16 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     const unsubMessages = subscribeToDirectMessages((cloudMessages) => {
       if (cloudMessages) {
+        // Detect newly arrived messages for current user
+        if (knownMsgIdsRef.current.size > 0) {
+          const hasNewForMe = cloudMessages.some(
+            (m) => !knownMsgIdsRef.current.has(m.id) && m.receiverId === currentUserIdRef.current && !m.read
+          );
+          if (hasNewForMe) {
+            SoundEffects.playMessageReceived();
+          }
+        }
+        cloudMessages.forEach((m) => knownMsgIdsRef.current.add(m.id));
         setDirectMessages(cloudMessages);
       }
     });
@@ -553,7 +565,18 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 if (payload) setAnnouncements(payload);
                 break;
               case 'SYNC_DIRECT_MESSAGES':
-                if (payload) setDirectMessages(payload);
+                if (payload && Array.isArray(payload)) {
+                  if (knownMsgIdsRef.current.size > 0) {
+                    const hasNewForMe = payload.some(
+                      (m: DirectMessage) => !knownMsgIdsRef.current.has(m.id) && m.receiverId === currentUserIdRef.current && !m.read
+                    );
+                    if (hasNewForMe) {
+                      SoundEffects.playMessageReceived();
+                    }
+                  }
+                  payload.forEach((m: DirectMessage) => knownMsgIdsRef.current.add(m.id));
+                  setDirectMessages(payload);
+                }
                 break;
               case 'SYNC_NOTIFICATIONS':
                 if (payload) setNotifications(payload);
@@ -967,7 +990,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           ...existingUser,
           isGoogleAuth: true,
           emailVerified: true,
-          isAdmin: isMustapha ? true : existingUser.isAdmin,
+          isAdmin: isMustapha,
           status: existingUser.isBanned ? 'rejected' : 'approved',
           avatarUrl: (!existingUser.avatarUrl || existingUser.avatarUrl.includes('dicebear')) ? gPhoto : existingUser.avatarUrl,
         };
@@ -2073,6 +2096,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       read: false,
     };
 
+    SoundEffects.playSentSound();
     setDirectMessages((prev) => [...prev, newMsg]);
 
     // Realtime Firestore direct sync
@@ -2105,6 +2129,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       read: false,
     };
 
+    SoundEffects.playSentSound();
     setDirectMessages((prev) => [...prev, newMsg]);
 
     // Realtime Firestore direct sync

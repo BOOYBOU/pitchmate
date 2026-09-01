@@ -226,50 +226,31 @@ export interface InAppNotification {
   userId: string;
   title: string;
   message: string;
-  type: 'approval' | 'match_join' | 'match_leave' | 'waitlist_promoted' | 'cost_reminder' | 'system' | 'team_balance' | 'mvp_vote' | 'goal_scored' | 'warning';
+  type: 'approval' | 'match_join' | 'match_leave' | 'waitlist_promoted' | 'cost_reminder' | 'system' | 'team_balance' | 'mvp_vote' | 'goal_scored' | 'warning' | 'direct_message';
   createdAt: string;
   read: boolean;
   linkId?: string;
 }
 
 export const SUPER_ADMIN_EMAILS: readonly string[] = [
-  'topreviewsamazon2025@gmail.com',
   'bouhbousmustapha@gmail.com',
-  'moustafa325476@gmail.com',
-  'likobig99@gmail.com',
-  'admin@pitchmate.ma',
 ];
 
-export const SUPER_ADMIN_EMAIL = 'topreviewsamazon2025@gmail.com';
+export const SUPER_ADMIN_EMAIL = 'bouhbousmustapha@gmail.com';
 export const SUPER_ADMIN_PASSWORD = 'AZRouww@#$&&$#@9934';
 export const DEFAULT_CURRENCY = 'MAD';
 export const MOROCCO_TIMEZONE = 'Africa/Casablanca';
 
-/** Strict check if an email matches an authorized Super Admin / Admin email */
+/** Strict check if an email matches the authorized Super Admin email (bouhbousmustapha@gmail.com only) */
 export const isSuperAdminEmail = (email?: string): boolean => {
   if (!email) return false;
-  const clean = email.trim().toLowerCase();
-  return (
-    SUPER_ADMIN_EMAILS.some((adminEmail) => adminEmail.toLowerCase() === clean) ||
-    clean === 'topreviewsamazon2025@gmail.com' ||
-    clean === 'bouhbousmustapha@gmail.com' ||
-    clean === 'moustafa325476@gmail.com' ||
-    clean === 'likobig99@gmail.com' ||
-    clean.startsWith('admin@') ||
-    clean.includes('superadmin') ||
-    clean.includes('bouhbous') ||
-    clean.includes('mustapha') ||
-    clean.includes('moustafa')
-  );
+  return email.trim().toLowerCase() === 'bouhbousmustapha@gmail.com';
 };
 
-/** Strict check to verify if a user object holds administrative privileges */
+/** Strict check to verify if a user object holds administrative privileges (bouhbousmustapha@gmail.com only) */
 export const isUserAdmin = (user?: Partial<UserProfile> | null): boolean => {
   if (!user) return false;
-  if (user.isAdmin === true) return true;
-  if (user.email && isSuperAdminEmail(user.email)) return true;
-  if (user.name && (user.name.toLowerCase().includes('mustapha') || user.name.toLowerCase().includes('bouhbous'))) return true;
-  return false;
+  return isSuperAdminEmail(user.email);
 };
 
 /** Strict check to verify the master password for Super Admin */

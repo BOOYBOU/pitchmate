@@ -189,7 +189,7 @@ try {
   db = getInitialData();
 }
 
-// Ensure unique users list and ensure all super admin accounts exist with full administrative privileges
+// Ensure unique users list and ensure only the authorized super admin (bouhbousmustapha@gmail.com) has administrative privileges
 const seenEmails = new Set<string>();
 const sanitizedUsers: UserProfile[] = [];
 
@@ -199,7 +199,7 @@ for (const u of db.users) {
     seenEmails.add(emailNorm);
     sanitizedUsers.push({
       ...u,
-      isAdmin: isSuperAdminEmail(u.email) || u.isAdmin === true,
+      isAdmin: isSuperAdminEmail(u.email),
       status: u.isBanned ? 'rejected' : 'approved',
       approvedAt: u.approvedAt || new Date().toISOString(),
     });
@@ -341,7 +341,7 @@ function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunctio
 }
 
 function requireAdmin(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-  const isSuper = req.user && (isSuperAdminEmail(req.user.email) || req.user.isAdmin === true);
+  const isSuper = Boolean(req.user && isSuperAdminEmail(req.user.email));
   if (!isSuper) {
     return res.status(403).json({
       success: false,
@@ -354,7 +354,7 @@ function requireAdmin(req: AuthenticatedRequest, res: Response, next: NextFuncti
 function requireAdminOrHost(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const matchId = req.params.id || req.params.matchId;
   const targetMatch = db.matches.find((m) => m.id === matchId);
-  const isSuper = req.user && (isSuperAdminEmail(req.user.email) || req.user.isAdmin === true);
+  const isSuper = Boolean(req.user && isSuperAdminEmail(req.user.email));
   const isHost = req.user && targetMatch && targetMatch.creatorId === req.user.id;
 
   if (!isSuper && !isHost) {
@@ -728,9 +728,7 @@ async function startServer() {
       if (avatarUrl && (!existingUser.avatarUrl || existingUser.avatarUrl.includes('dicebear'))) {
         existingUser.avatarUrl = avatarUrl;
       }
-      if (isMustapha) {
-        existingUser.isAdmin = true;
-      }
+      existingUser.isAdmin = isMustapha;
 
       broadcastSSE('SYNC_USERS', { users: db.users });
       return res.json({ success: true, user: existingUser });
@@ -1928,14 +1926,23 @@ async function startServer() {
 
   app.post('/api/messages', requireAuth, (req: AuthenticatedRequest, res) => {
     const msg = req.body;
+    const senderId = req.user?.id || msg.senderId;
+    const senderName = req.user?.name || msg.senderName || 'Teammate';
+    const senderAvatar = req.user?.avatarUrl || msg.senderAvatar;
+
     const newMsg: DirectMessage = {
       ...msg,
       id: msg.id || `dm_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      senderId: req.user?.id || msg.senderId,
-      senderName: req.user?.name || msg.senderName,
-      senderAvatar: req.user?.avatarUrl || msg.senderAvatar,
+      senderId,
+      senderName,
+      senderAvatar,
+      receiverId: msg.receiverId,
+      text: msg.text || '',
+      imageUrl: msg.imageUrl || undefined,
+      audioUrl: msg.audioUrl || undefined,
+      audioDuration: msg.audioDuration || undefined,
       createdAt: msg.createdAt || new Date().toISOString(),
-      read: false,
+      read: Boolean(msg.read),
     };
 
     const existingMsgIdx = db.directMessages.findIndex((m) => m.id === newMsg.id);
@@ -1947,7 +1954,28 @@ async function startServer() {
     // Maintain chronological ordering
     db.directMessages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
+    // Generate real-time notification for receiver
+    if (newMsg.receiverId && !newMsg.read) {
+      const notifId = `notif_dm_${newMsg.id}`;
+      const notifData: InAppNotification = {
+        id: notifId,
+        userId: newMsg.receiverId,
+        title: `رسالة من ${senderName}`,
+        message: newMsg.audioUrl
+          ? '🎤 أرسل لك رسالة صوتية'
+          : newMsg.imageUrl
+          ? '📷 أرسل لك صورة'
+          : newMsg.text || 'أرسل لك رسالة جديدة',
+        type: 'direct_message',
+        linkId: senderId,
+        createdAt: newMsg.createdAt,
+        read: false,
+      };
+      db.notifications = [notifData, ...db.notifications.filter((n) => n.id !== notifId).slice(0, 49)];
+    }
+
     broadcastSSE('SYNC_DIRECT_MESSAGES', db.directMessages);
+    broadcastSSE('SYNC_NOTIFICATIONS', db.notifications);
     res.json({ success: true, message: newMsg });
   });
 

@@ -18,7 +18,7 @@ import { AuthView } from './components/AuthView';
 import { DirectMessagesModal } from './components/DirectMessagesModal';
 import { NotificationDrawer } from './components/NotificationDrawer';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { SoccerMatch, SUPER_ADMIN_EMAIL } from './types';
+import { SoccerMatch, isSuperAdminEmail } from './types';
 import { Shield, Sparkles, MapPin, Database, Heart } from 'lucide-react';
 
 function PitchMateApp() {
@@ -109,7 +109,7 @@ function PitchMateApp() {
           />
         )}
 
-        {activeTab === 'admin' && (
+        {activeTab === 'admin' && isSuperAdminEmail(currentUser?.email) && (
           <AdminPanel
             onOpenMatchDetails={handleOpenMatchDetails}
             onOpenCreateMatch={() => setIsCreateModalOpen(true)}

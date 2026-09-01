@@ -110,8 +110,8 @@ export const Header: React.FC<HeaderProps> = ({
               <span>{t('nav.profile')}</span>
             </button>
 
-            {/* Admin Panel (Visible to Super Admin Mustapha) */}
-            {isMustapha ? (
+            {/* Admin Panel (Visible EXCLUSIVELY to Super Admin Mustapha) */}
+            {isMustapha && (
               <button
                 id="nav-tab-admin"
                 type="button"
@@ -125,21 +125,6 @@ export const Header: React.FC<HeaderProps> = ({
                 <Shield className="w-4 h-4 text-[#E5B869]" />
                 <span>{t('nav.admin')}</span>
                 <span className="w-2 h-2 rounded-full bg-[#E5B869] shadow-sm shadow-amber-400 animate-pulse" />
-              </button>
-            ) : (
-              <button
-                id="nav-tab-admin-locked"
-                type="button"
-                onClick={() => setActiveTab('admin')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  activeTab === 'admin'
-                    ? 'bg-[#0D241C] text-slate-200 border border-slate-700'
-                    : 'text-slate-500 hover:text-slate-400 hover:bg-[#0D241C]/40'
-                }`}
-                title="Super Admin restricted to Mustapha"
-              >
-                <Shield className="w-4 h-4 text-slate-500" />
-                <span>{t('nav.admin')}</span>
               </button>
             )}
           </nav>
@@ -372,7 +357,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Mobile Navigation Drawer */}
         {isMobileMenuOpen && (
           <div className="md:hidden py-3 border-t border-[#E5B869]/20 space-y-2 animate-in fade-in">
-            <div className="grid grid-cols-4 gap-1.5">
+            <div className={`grid ${isMustapha ? 'grid-cols-4' : 'grid-cols-3'} gap-1.5`}>
               <button
                 onClick={() => {
                   setActiveTab('matches');
@@ -415,21 +400,21 @@ export const Header: React.FC<HeaderProps> = ({
                 {t('nav.profile')}
               </button>
 
-              <button
-                onClick={() => {
-                  setActiveTab('admin');
-                  setIsMobileMenuOpen(false);
-                }}
-                className={`py-2 rounded-xl text-xs font-bold text-center ${
-                  activeTab === 'admin'
-                    ? isMustapha
+              {isMustapha && (
+                <button
+                  onClick={() => {
+                    setActiveTab('admin');
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className={`py-2 rounded-xl text-xs font-bold text-center ${
+                    activeTab === 'admin'
                       ? 'bg-[#0A3A2A] text-[#F5D794] font-black border border-[#E5B869]'
-                      : 'bg-slate-700 text-white'
-                    : 'bg-[#0B211A] text-[#F5D794] border border-[#E5B869]/20'
-                }`}
-              >
-                {t('nav.admin')} {isMustapha ? '' : '🔒'}
-              </button>
+                      : 'bg-[#0B211A] text-[#F5D794] border border-[#E5B869]/20'
+                  }`}
+                >
+                  {t('nav.admin')}
+                </button>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-2 pt-1">
