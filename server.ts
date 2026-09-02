@@ -609,9 +609,13 @@ async function startServer() {
   app.post('/api/auth/send-otp', (req, res) => {
     const { email, type } = req.body;
     const cleanEmail = (email || '').trim().toLowerCase();
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
-    if (!cleanEmail || !cleanEmail.includes('@')) {
-      return res.status(400).json({ success: false, error: 'Valid email address is required.' });
+    if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+      return res.status(400).json({
+        success: false,
+        error: 'الرجاء إدخال بريد إلكتروني صالح بالصيغة الصحيحة (مثال: name@domain.com).',
+      });
     }
 
     const existing = db.users.find((u) => u.email.toLowerCase() === cleanEmail);
@@ -745,21 +749,9 @@ async function startServer() {
 
     const isMustapha = isSuperAdminEmail(cleanEmail);
 
-    // If not super admin bypass, strictly verify 6-digit OTP code before creating user
-    if (!isMustapha) {
-      if (!otpCode) {
-        return res.status(400).json({ success: false, error: 'رمز التحقق الأمني المكون من 6 أرقام مطلوب لتأكيد ملكية البريد الإلكتروني.' });
-      }
-      const session = otpSessions.get(cleanEmail);
-      if (!session || session.code !== (otpCode || '').trim() || Date.now() > session.expiresAt) {
-        return res.status(400).json({ success: false, error: 'رمز التحقق غير صحيح أو انتهت صلاحيته. يرجى طلب رمز جديد.' });
-      }
-      otpSessions.delete(cleanEmail);
-    }
-
     const existing = db.users.find((u) => u.email.toLowerCase() === cleanEmail);
     if (existing) {
-      return res.status(400).json({ success: false, error: 'An account with this email already exists.' });
+      return res.status(400).json({ success: false, error: 'يوجد حساب مسجل مسبقاً بهذا البريد الإلكتروني. يرجى تسجيل الدخول مباشرة.' });
     }
 
     const userId = isMustapha ? 'user_mustapha' : `user_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;

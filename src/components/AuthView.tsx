@@ -363,7 +363,7 @@ export const AuthView: React.FC = () => {
     }
   };
 
-  // Sign Up: Step 1 - Send 6-Digit Verification Code to User's Email
+  // Sign Up: Direct registration with Super Admin Approval Flow
   const handleSignUpStart = async (e: React.FormEvent) => {
     e.preventDefault();
     setSignUpError('');
@@ -375,8 +375,9 @@ export const AuthView: React.FC = () => {
     }
 
     const cleanEmail = signUpEmail.trim().toLowerCase();
-    if (!cleanEmail || !cleanEmail.includes('@')) {
-      setSignUpError(language === 'ar' ? 'الرجاء إدخال بريد إلكتروني صالح.' : 'Valid email is required.');
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+      setSignUpError(language === 'ar' ? 'الرجاء إدخال بريد إلكتروني صالح بالصيغة الصحيحة (مثال: name@domain.com).' : 'Please enter a valid email address.');
       return;
     }
 
@@ -391,102 +392,17 @@ export const AuthView: React.FC = () => {
       const cleanName = signUpName.trim();
       const isMustapha = isSuperAdminEmail(cleanEmail);
 
-      // Super Admin bypasses OTP with verified master password
-      if (isMustapha) {
-        const res = await signupWithCredentials(
-          cleanName,
-          cleanEmail,
-          signUpPassword,
-          MESSI_AVATAR_URL,
-          signUpCity,
-          signUpPosition
-        );
-        if (!res.success) {
-          setSignUpError(res.error || (language === 'ar' ? 'فشل إنشاء الحساب.' : 'Failed to register.'));
-        }
-        return;
-      }
-
-      // Standard user: Send 6-digit OTP code to verify real email ownership first
-      const otpRes = await sendVerificationOTP(cleanEmail, 'signup');
-      if (!otpRes.success) {
-        setSignUpError(otpRes.error || (language === 'ar' ? 'تعذر إرسال رمز التحقق لهذا البريد الإلكتروني.' : 'Failed to send verification code.'));
-        return;
-      }
-
-      setSignUpActiveOTPCode(otpRes.code || '');
-      setSignUpOtpDigits(['', '', '', '', '', '']);
-      setSignUpResendTimer(60);
-      setMode('verify_signup');
-    } catch {
-      setSignUpError(language === 'ar' ? 'حدث خطأ أثناء إرسال رمز التحقق.' : 'An error occurred during registration.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Resend 6-Digit OTP for Sign Up
-  const handleResendSignUpOTP = async () => {
-    if (signUpResendTimer > 0 || isSignUpResending) return;
-    setIsSignUpResending(true);
-    setSignUpError('');
-    setSignUpSuccess('');
-
-    try {
-      const cleanEmail = signUpEmail.trim().toLowerCase();
-      const res = await sendVerificationOTP(cleanEmail, 'signup');
-      if (res.success) {
-        setSignUpActiveOTPCode(res.code || '');
-        setSignUpResendTimer(60);
-        setSignUpSuccess(language === 'ar' ? 'تم إرسال رمز تحقق جديد بنجاح إلى بريدك!' : 'New verification code sent successfully to your email!');
-      } else {
-        setSignUpError(res.error || (language === 'ar' ? 'فشل إعادة إرسال الرمز.' : 'Failed to resend code.'));
-      }
-    } catch {
-      setSignUpError(language === 'ar' ? 'تعذر إعادة إرسال الرمز.' : 'Could not resend code.');
-    } finally {
-      setIsSignUpResending(false);
-    }
-  };
-
-  // Sign Up: Step 2 - Verify 6-digit OTP and complete registration
-  const handleVerifyAndCompleteSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSignUpError('');
-    setSignUpSuccess('');
-
-    const fullCode = signUpOtpDigits.join('').trim();
-    if (fullCode.length !== 6) {
-      setSignUpError(
-        language === 'ar'
-          ? 'الرجاء إدخال رمز التحقق كاملاً المكون من 6 أرقام.'
-          : 'Please enter the complete 6-digit verification code.'
-      );
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const cleanName = signUpName.trim();
-      const cleanEmail = signUpEmail.trim().toLowerCase();
-
       const res = await signupWithCredentials(
         cleanName,
         cleanEmail,
         signUpPassword,
-        avatarPreview,
+        avatarPreview || (isMustapha ? MESSI_AVATAR_URL : undefined),
         signUpCity,
-        signUpPosition,
-        fullCode
+        signUpPosition
       );
 
       if (!res.success) {
-        setSignUpError(
-          res.error ||
-            (language === 'ar'
-              ? 'رمز التحقق غير صحيح أو انتهت صلاحيته.'
-              : 'Invalid or expired verification code.')
-        );
+        setSignUpError(res.error || (language === 'ar' ? 'فشل إنشاء الحساب.' : 'Failed to register.'));
         return;
       }
 
@@ -504,68 +420,63 @@ export const AuthView: React.FC = () => {
         setSignUpName('');
         setSignUpEmail('');
         setSignUpPassword('');
-        setSignUpActiveOTPCode('');
-        setSignUpOtpDigits(['', '', '', '', '', '']);
       }
     } catch {
-      setSignUpError(language === 'ar' ? 'حدث خطأ أثناء إتمام إنشاء الحساب.' : 'An error occurred while completing registration.');
+      setSignUpError(language === 'ar' ? 'حدث خطأ أثناء إتمام إنشاء الحساب.' : 'An error occurred during registration.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Forgot Password: Send 6-Digit Verification Code to User's Email
+  // Forgot Password: Send Real Official Firebase Password Reset Email to User's Gmail
   const handleForgotStart = async (e: React.FormEvent) => {
     e.preventDefault();
     setForgotError('');
     setForgotSuccess('');
 
     const cleanEmail = forgotEmail.trim().toLowerCase();
-    if (!cleanEmail || !cleanEmail.includes('@')) {
-      setForgotError(language === 'ar' ? 'يرجى إدخال بريد إلكتروني صالح.' : 'Valid email required.');
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+      setForgotError(language === 'ar' ? 'يرجى إدخال بريد إلكتروني صالح بالصيغة الصحيحة (مثال: name@domain.com).' : 'Please enter a valid email address.');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const res = await sendVerificationOTP(cleanEmail, 'forgot_password');
+      const res = await sendFirebasePasswordReset(cleanEmail);
       if (!res.success) {
-        setForgotError(res.error || (language === 'ar' ? 'فشل إرسال رمز التحقق.' : 'Failed to send verification code.'));
+        setForgotError(res.error || (language === 'ar' ? 'فشل إرسال رابط استعادة كلمة المرور.' : 'Failed to send reset link.'));
         return;
       }
 
       setResetSentEmail(cleanEmail);
-      setActiveOTPCode(res.code || '');
-      setOtpDigits(['', '', '', '', '', '']);
-      setForgotNewPassword('');
-      setForgotConfirmPassword('');
       setResendTimer(60);
-      setMode('verify_forgot');
+      setMode('reset_sent');
     } catch {
-      setForgotError(language === 'ar' ? 'حدث خطأ أثناء إرسال رمز التحقق.' : 'Error sending verification code.');
+      setForgotError(language === 'ar' ? 'حدث خطأ أثناء إرسال رابط استعادة كلمة المرور.' : 'Error sending password reset link.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Resend 6-Digit OTP Code
-  const handleResendForgotOTP = async () => {
+  // Resend Real Firebase Password Reset Email
+  const handleResendForgotEmail = async () => {
     if (resendTimer > 0 || isResendingEmail) return;
     setIsResendingEmail(true);
     setForgotError('');
     setForgotSuccess('');
 
     try {
-      const res = await sendVerificationOTP(resetSentEmail || forgotEmail, 'forgot_password');
+      const cleanEmail = resetSentEmail || forgotEmail;
+      const res = await sendFirebasePasswordReset(cleanEmail);
       if (res.success) {
-        setActiveOTPCode(res.code || '');
         setResendTimer(60);
-        setForgotSuccess(language === 'ar' ? 'تم إرسال رمز تحقق جديد بنجاح!' : 'New verification code sent successfully!');
+        setForgotSuccess(language === 'ar' ? 'تمت إعادة إرسال رابط استعادة كلمة المرور إلى بريدك بنجاح!' : 'Password reset link resent successfully!');
       } else {
-        setForgotError(res.error || (language === 'ar' ? 'فشل إعادة إرسال الرمز.' : 'Failed to resend code.'));
+        setForgotError(res.error || (language === 'ar' ? 'فشل إعادة إرسال الرابط.' : 'Failed to resend link.'));
       }
     } catch {
-      setForgotError(language === 'ar' ? 'تعذر إعادة إرسال الرمز.' : 'Could not resend code.');
+      setForgotError(language === 'ar' ? 'تعذر إعادة إرسال الرابط.' : 'Could not resend link.');
     } finally {
       setIsResendingEmail(false);
     }
@@ -823,6 +734,10 @@ export const AuthView: React.FC = () => {
                   onClick={() => {
                     setMode('signin');
                     setSignInError('');
+                    setSignUpError('');
+                    setSignUpSuccess('');
+                    setForgotError('');
+                    setForgotSuccess('');
                   }}
                   className={`relative py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-2 z-10 ${
                     mode === 'signin'
@@ -846,7 +761,11 @@ export const AuthView: React.FC = () => {
                   type="button"
                   onClick={() => {
                     setMode('signup');
+                    setSignInError('');
                     setSignUpError('');
+                    setSignUpSuccess('');
+                    setForgotError('');
+                    setForgotSuccess('');
                   }}
                   className={`relative py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-2 z-10 ${
                     mode === 'signup'
@@ -997,6 +916,9 @@ export const AuthView: React.FC = () => {
                             setForgotEmail(signInEmail);
                             setMode('forgot');
                             setSignInError('');
+                            setForgotError('');
+                            setForgotSuccess('');
+                            setOtpDigits(['', '', '', '', '', '']);
                           }}
                           className="text-[11px] text-[#F5D794] hover:underline cursor-pointer font-medium"
                         >
@@ -1303,37 +1225,13 @@ export const AuthView: React.FC = () => {
                         setMode('signup');
                         setSignUpError('');
                         setSignUpSuccess('');
+                        setSignUpOtpDigits(['', '', '', '', '', '']);
                       }}
                       className="px-2.5 py-1 rounded-lg bg-[#020A07] border border-[#E5B869]/25 hover:border-[#E5B869] text-[11px] font-bold text-slate-300 hover:text-white transition-colors cursor-pointer shrink-0"
                     >
                       {language === 'ar' ? 'تعديل' : 'Edit'}
                     </button>
                   </div>
-
-                  {/* Active Code Display / Testing Helper */}
-                  {signUpActiveOTPCode && (
-                    <div className="p-2.5 rounded-xl bg-[#03140C] border border-[#E5B869]/30 text-amber-200 text-xs flex items-center justify-between shadow-inner">
-                      <div className="flex items-center gap-2">
-                        <KeyRound className="w-4 h-4 text-[#F5D794] shrink-0" />
-                        <span className="font-medium text-[11px] text-emerald-200">
-                          {language === 'ar' ? 'رمز الأمان (OTP):' : 'Security OTP Code:'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-black text-sm tracking-widest text-[#F5D794] bg-[#020A07] px-2.5 py-0.5 rounded-lg border border-[#E5B869]/40">
-                          {signUpActiveOTPCode}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleCopySignUpOtp(signUpActiveOTPCode)}
-                          className="p-1 rounded-lg hover:bg-emerald-900/40 text-[#F5D794] transition-colors cursor-pointer"
-                          title={language === 'ar' ? 'نسخ وملء الرمز' : 'Copy & Auto-fill'}
-                        >
-                          {signUpCopiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                        </button>
-                      </div>
-                    </div>
-                  )}
 
                   {signUpError && (
                     <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-200 flex items-center gap-2">
@@ -1520,37 +1418,14 @@ export const AuthView: React.FC = () => {
                       onClick={() => {
                         setMode('forgot');
                         setForgotError('');
+                        setForgotSuccess('');
+                        setOtpDigits(['', '', '', '', '', '']);
                       }}
                       className="px-2.5 py-1 rounded-lg bg-[#020A07] border border-[#E5B869]/25 hover:border-[#E5B869] text-[11px] font-bold text-slate-300 hover:text-white transition-colors cursor-pointer shrink-0"
                     >
                       {language === 'ar' ? 'تعديل' : 'Edit'}
                     </button>
                   </div>
-
-                  {/* Active Code Display / Testing Helper */}
-                  {activeOTPCode && (
-                    <div className="p-2.5 rounded-xl bg-[#03140C] border border-[#E5B869]/30 text-amber-200 text-xs flex items-center justify-between shadow-inner">
-                      <div className="flex items-center gap-2">
-                        <KeyRound className="w-4 h-4 text-[#F5D794] shrink-0" />
-                        <span className="font-medium text-[11px] text-emerald-200">
-                          {language === 'ar' ? 'رمز الأمان (OTP):' : 'Security OTP Code:'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-black text-sm tracking-widest text-[#F5D794] bg-[#020A07] px-2.5 py-0.5 rounded-lg border border-[#E5B869]/40">
-                          {activeOTPCode}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleCopyOtp(activeOTPCode)}
-                          className="p-1 rounded-lg hover:bg-emerald-900/40 text-[#F5D794] transition-colors cursor-pointer"
-                          title={language === 'ar' ? 'نسخ وملء الرمز' : 'Copy & Auto-fill'}
-                        >
-                          {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                        </button>
-                      </div>
-                    </div>
-                  )}
 
                   {forgotError && (
                     <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-200 flex items-center gap-2">
@@ -1709,7 +1584,7 @@ export const AuthView: React.FC = () => {
                 </motion.div>
               )}
 
-              {/* ================= 5. RESET EMAIL DISPATCHED VIEW (LEGACY/FALLBACK) ================= */}
+              {/* ================= 5. RESET EMAIL DISPATCHED VIEW (OFFICIAL GOOGLE FIREBASE EMAIL) ================= */}
               {mode === 'reset_sent' && (
                 <motion.div
                   key="reset-sent"
@@ -1720,22 +1595,53 @@ export const AuthView: React.FC = () => {
                 >
                   <div className="p-4 rounded-2xl bg-gradient-to-b from-[#0E382A] to-[#082218] border border-[#E5B869]/40 text-amber-100 flex flex-col items-center text-center gap-2.5 shadow-lg">
                     <div className="w-12 h-12 rounded-2xl bg-[#04130D] border border-emerald-500/40 flex items-center justify-center text-emerald-400 shadow-md">
-                      <Inbox className="w-6 h-6 text-[#F5D794]" />
+                      <Mail className="w-6 h-6 text-[#F5D794]" />
                     </div>
 
                     <div className="space-y-1">
                       <h3 className="text-base font-black text-[#F5D794]">
-                        {t('auth.resetEmailSentTitle')}
+                        {language === 'ar' ? 'تم إرسال رابط استعادة الحساب!' : 'Password Reset Link Sent!'}
                       </h3>
                       <p className="text-xs text-emerald-100 leading-relaxed font-medium">
-                        {t('auth.resetEmailSentSubtitle')}
+                        {language === 'ar'
+                          ? 'أرسل نظام Google Firebase رسالة رسمية تتضمن رابطاً آمناً لإعادة تعيين كلمة المرور إلى بريدك الإلكتروني:'
+                          : 'An official password reset link has been dispatched via Google Firebase to:'}
                       </p>
                     </div>
 
                     <div className="w-full p-2.5 rounded-xl bg-[#020A07] border border-[#E5B869]/30 text-center font-mono text-sm text-[#F5D794] font-bold">
                       {resetSentEmail || forgotEmail}
                     </div>
+
+                    <div className="p-2.5 rounded-xl bg-[#020A07]/80 border border-emerald-500/20 text-emerald-200/90 text-[11px] text-start space-y-1 w-full">
+                      <div className="flex items-center gap-1.5 font-bold text-amber-200">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        <span>{language === 'ar' ? 'تعليمات المتابعة:' : 'Instructions:'}</span>
+                      </div>
+                      <p>
+                        {language === 'ar'
+                          ? '1. افتح تطبيق Gmail أو بريدك الإلكتروني.'
+                          : '1. Open your Gmail or email inbox.'}
+                      </p>
+                      <p>
+                        {language === 'ar'
+                          ? '2. اضغط على رابط إعادة التعيين الوارد في الرسالة لتعيين كلمة المرور الجديدة.'
+                          : '2. Click the secure link in the email to set your new password.'}
+                      </p>
+                      <p className="text-[10px] text-emerald-400/70">
+                        {language === 'ar'
+                          ? '* إذا لم تظهر الرسالة، يرجى فحص مجلد الرسائل غير المرغوب فيها (Spam / Junk).'
+                          : '* Check your Spam/Junk folder if you cannot find the message in Inbox.'}
+                      </p>
+                    </div>
                   </div>
+
+                  {forgotSuccess && (
+                    <div className="p-3 rounded-xl bg-emerald-950/90 border border-emerald-500/50 text-emerald-200 flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                      <span>{forgotSuccess}</span>
+                    </div>
+                  )}
 
                   {forgotError && (
                     <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-200 flex items-center gap-2">
@@ -1745,6 +1651,24 @@ export const AuthView: React.FC = () => {
                   )}
 
                   <div className="space-y-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleResendForgotEmail}
+                      disabled={resendTimer > 0 || isResendingEmail}
+                      className="w-full py-2.5 rounded-xl bg-emerald-950/60 border border-[#E5B869]/30 hover:border-[#E5B869] text-[#F5D794] font-bold text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
+                    >
+                      {isResendingEmail ? (
+                        <div className="w-3.5 h-3.5 border-2 border-[#F5D794] border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-3.5 h-3.5" />
+                      )}
+                      <span>
+                        {resendTimer > 0
+                          ? `${language === 'ar' ? 'إعادة الإرسال بعد' : 'Resend link in'} (${resendTimer}s)`
+                          : (language === 'ar' ? 'إعادة إرسال رابط الاستعادة' : 'Resend Reset Link')}
+                      </span>
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => {

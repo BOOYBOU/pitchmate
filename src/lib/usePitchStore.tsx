@@ -760,8 +760,9 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     type: 'signup' | 'forgot_password' = 'signup'
   ): Promise<{ success: boolean; code?: string; error?: string }> => {
     const cleanEmail = sanitizeInput(email).toLowerCase();
-    if (!cleanEmail || !cleanEmail.includes('@')) {
-      return { success: false, error: 'الرجاء إدخال بريد إلكتروني صالح.' };
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+      return { success: false, error: 'الرجاء إدخال بريد إلكتروني صالح بالصيغة الصحيحة (مثال: name@domain.com).' };
     }
 
     try {
@@ -771,7 +772,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         body: JSON.stringify({ email: cleanEmail, type }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.success) {
         return { success: false, error: data.error || 'فشل في إرسال رمز التحقق.' };
       }
@@ -786,12 +787,8 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       return { success: true, code: generatedCode };
     } catch (err) {
-      console.warn('[PitchStore] Send OTP error:', err);
-      // Fallback local/Firestore generation if backend is busy
-      const fallbackCode = Math.floor(100000 + Math.random() * 900000).toString();
-      const expiresAt = Date.now() + 10 * 60 * 1000;
-      await storePasswordResetOTPInFirestore(cleanEmail, fallbackCode, expiresAt, type);
-      return { success: true, code: fallbackCode };
+      console.warn('[PitchStore] Send OTP network error:', err);
+      return { success: false, error: 'تعذر الاتصال بالخادم لإرسال رمز التحقق. يرجى المحاولة لاحقاً.' };
     }
   }, []);
 
