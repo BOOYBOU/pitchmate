@@ -36,6 +36,7 @@ export const COLLECTIONS = {
   ANNOUNCEMENTS: 'announcements',
   DIRECT_MESSAGES: 'direct_messages',
   NOTIFICATIONS: 'notifications',
+  PASSWORD_RESETS: 'password_resets',
 };
 
 /**
@@ -393,6 +394,87 @@ export async function deleteNotificationFromFirestore(notifId: string): Promise<
     await deleteDoc(doc(db, COLLECTIONS.NOTIFICATIONS, notifId));
   } catch (err) {
     console.error('[Firestore] Error deleting notification:', err);
+  }
+}
+
+/**
+ * Store 6-digit OTP code in Firestore with expiration timestamp
+ */
+export async function storePasswordResetOTPInFirestore(
+  email: string,
+  code: string,
+  expiresAt: number,
+  type: 'signup' | 'forgot_password' = 'forgot_password'
+): Promise<void> {
+  try {
+    const cleanEmail = email.trim().toLowerCase();
+    const docId = `otp_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    await setDoc(doc(db, COLLECTIONS.PASSWORD_RESETS, docId), {
+      email: cleanEmail,
+      code: code.trim(),
+      expiresAt,
+      type,
+      createdAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error('[Firestore] Error saving OTP to Firestore:', err);
+  }
+}
+
+/**
+ * Verify 6-digit OTP code in Firestore
+ */
+export async function verifyPasswordResetOTPInFirestore(
+  email: string,
+  code: string
+): Promise<{ valid: boolean; error?: string }> {
+  try {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanCode = code.trim();
+    const docId = `otp_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const snap = await getDocs(query(collection(db, COLLECTIONS.PASSWORD_RESETS), where('email', '==', cleanEmail)));
+    
+    if (snap.empty) {
+      return { valid: false, error: 'No verification code found for this email.' };
+    }
+
+    let matchingDoc: any = null;
+    snap.forEach((d) => {
+      const data = d.data();
+      if (data.email === cleanEmail) {
+        matchingDoc = data;
+      }
+    });
+
+    if (!matchingDoc) {
+      return { valid: false, error: 'No verification code found for this email.' };
+    }
+
+    if (Date.now() > matchingDoc.expiresAt) {
+      return { valid: false, error: 'Verification code has expired. Please request a new one.' };
+    }
+
+    if (matchingDoc.code !== cleanCode) {
+      return { valid: false, error: 'Invalid verification code. Please check and try again.' };
+    }
+
+    return { valid: true };
+  } catch (err) {
+    console.error('[Firestore] Error verifying OTP in Firestore:', err);
+    return { valid: false, error: 'Verification failed.' };
+  }
+}
+
+/**
+ * Delete consumed OTP from Firestore
+ */
+export async function clearPasswordResetOTPInFirestore(email: string): Promise<void> {
+  try {
+    const cleanEmail = email.trim().toLowerCase();
+    const docId = `otp_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    await deleteDoc(doc(db, COLLECTIONS.PASSWORD_RESETS, docId));
+  } catch (err) {
+    console.error('[Firestore] Error clearing OTP from Firestore:', err);
   }
 }
 

@@ -43,5 +43,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true;
     }
+
+    // Password resets and OTP verification collection
+    match /password_resets/{resetId} {
+      allow read: if true;
+      allow write: if true;
+    }
   }
 }

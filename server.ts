@@ -424,8 +424,8 @@ function requireAdminOrHost(req: AuthenticatedRequest, res: Response, next: Next
 async function startServer() {
   const app = express();
 
-  app.use(express.json({ limit: '25mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '25mb' }));
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
   // Static file serving for uploaded audio and avatars
   app.use('/uploads', express.static(UPLOADS_DIR));
@@ -508,11 +508,20 @@ async function startServer() {
         return res.status(400).json({ success: false, error: 'No audio data provided' });
       }
 
-      const ext = format === 'wav' ? 'wav' : 'webm';
+      let ext = format === 'wav' ? 'wav' : 'webm';
+      if (base64Data.startsWith('data:audio/wav')) {
+        ext = 'wav';
+      } else if (base64Data.startsWith('data:audio/mp4') || base64Data.startsWith('data:audio/m4a')) {
+        ext = 'mp4';
+      } else if (base64Data.startsWith('data:audio/ogg')) {
+        ext = 'ogg';
+      }
+
       const filename = `audio_${Date.now()}_${Math.random().toString(36).substring(2, 6)}.${ext}`;
       const filePath = path.join(AUDIO_DIR, filename);
 
-      const buffer = Buffer.from(base64Data.replace(/^data:audio\/\w+;base64,/, ''), 'base64');
+      const base64Pure = base64Data.replace(/^data:[^;]+;base64,/, '');
+      const buffer = Buffer.from(base64Pure, 'base64');
       await fs.promises.writeFile(filePath, buffer);
 
       const audioUrl = `/uploads/audio/${filename}`;
@@ -530,10 +539,20 @@ async function startServer() {
         return res.status(400).json({ success: false, error: 'No image data provided' });
       }
 
-      const filename = `avatar_${Date.now()}_${Math.random().toString(36).substring(2, 6)}.jpg`;
+      let ext = 'jpg';
+      if (base64Data.startsWith('data:image/png')) {
+        ext = 'png';
+      } else if (base64Data.startsWith('data:image/webp')) {
+        ext = 'webp';
+      } else if (base64Data.startsWith('data:image/gif')) {
+        ext = 'gif';
+      }
+
+      const filename = `avatar_${Date.now()}_${Math.random().toString(36).substring(2, 6)}.${ext}`;
       const filePath = path.join(AVATAR_DIR, filename);
 
-      const buffer = Buffer.from(base64Data.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+      const base64Pure = base64Data.replace(/^data:[^;]+;base64,/, '');
+      const buffer = Buffer.from(base64Pure, 'base64');
       await fs.promises.writeFile(filePath, buffer);
 
       const avatarUrl = `/uploads/avatars/${filename}`;
@@ -551,10 +570,20 @@ async function startServer() {
         return res.status(400).json({ success: false, error: 'No image data provided' });
       }
 
-      const filename = `img_${Date.now()}_${Math.random().toString(36).substring(2, 6)}.jpg`;
+      let ext = 'jpg';
+      if (base64Data.startsWith('data:image/png')) {
+        ext = 'png';
+      } else if (base64Data.startsWith('data:image/webp')) {
+        ext = 'webp';
+      } else if (base64Data.startsWith('data:image/gif')) {
+        ext = 'gif';
+      }
+
+      const filename = `img_${Date.now()}_${Math.random().toString(36).substring(2, 6)}.${ext}`;
       const filePath = path.join(IMAGES_DIR, filename);
 
-      const buffer = Buffer.from(base64Data.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+      const base64Pure = base64Data.replace(/^data:[^;]+;base64,/, '');
+      const buffer = Buffer.from(base64Pure, 'base64');
       await fs.promises.writeFile(filePath, buffer);
 
       const imageUrl = `/uploads/images/${filename}`;
@@ -613,14 +642,20 @@ async function startServer() {
       type: type || 'signup',
     });
 
-    console.log(`[PITCHMATE EMAIL OTP] Sent verification code [${code}] to email: ${cleanEmail}`);
+    console.log(`\n============================================================`);
+    console.log(`📧 [PITCHMATE OTP DISPATCH TO EMAIL]`);
+    console.log(`To: ${cleanEmail}`);
+    console.log(`Type: ${type === 'forgot_password' ? 'Password Reset (استعادة كلمة المرور)' : 'Account Verification'}`);
+    console.log(`Security Code: [ ${code} ]`);
+    console.log(`Expires in: 10 minutes (${new Date(expiresAt).toLocaleTimeString()})`);
+    console.log(`============================================================\n`);
 
     res.json({
       success: true,
       email: cleanEmail,
-      code, // returned so the app can display the secure email notification banner in preview
+      code, // returned so the app can display the security notification banner in preview
       expiresAt,
-      message: 'Verification code sent successfully.',
+      message: 'Verification code sent successfully to email.',
     });
   });
 
@@ -651,6 +686,54 @@ async function startServer() {
     res.json({ success: true, verified: true, email: cleanEmail });
   });
 
+  // Reset Password via Verified 6-Digit OTP Code
+  app.post('/api/auth/reset-password', (req, res) => {
+    const { email, code, newPassword, passwordHash, passwordSalt } = req.body;
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanCode = (code || '').trim();
+
+    if (!cleanEmail || !cleanCode) {
+      return res.status(400).json({ success: false, error: 'Email and 6-digit verification code are required.' });
+    }
+
+    const session = otpSessions.get(cleanEmail);
+    if (!session) {
+      return res.status(400).json({ success: false, error: 'No active verification session found. Please request a new code.' });
+    }
+
+    if (Date.now() > session.expiresAt) {
+      otpSessions.delete(cleanEmail);
+      return res.status(400).json({ success: false, error: 'Verification code has expired. Please request a new one.' });
+    }
+
+    if (session.code !== cleanCode) {
+      return res.status(400).json({ success: false, error: 'Invalid 6-digit verification code.' });
+    }
+
+    const targetUserIndex = db.users.findIndex((u) => u.email.toLowerCase() === cleanEmail);
+    if (targetUserIndex === -1 && !isSuperAdminEmail(cleanEmail)) {
+      return res.status(404).json({ success: false, error: 'User account not found.' });
+    }
+
+    if (targetUserIndex !== -1) {
+      const targetUser = db.users[targetUserIndex];
+      targetUser.passwordHash = passwordHash || targetUser.passwordHash;
+      targetUser.passwordSalt = passwordSalt || targetUser.passwordSalt;
+      if (newPassword && !passwordHash) {
+        targetUser.password = newPassword;
+      }
+      db.users[targetUserIndex] = targetUser;
+    }
+
+    // Invalidate OTP session once used
+    otpSessions.delete(cleanEmail);
+    saveDatabaseDebounced();
+    broadcastSSE('SYNC_USERS', db.users);
+
+    console.log(`[PITCHMATE] Password successfully reset for user: ${cleanEmail}`);
+    res.json({ success: true, message: 'Password has been updated successfully.' });
+  });
+
   app.post('/api/users/register', (req, res) => {
     const { name, email, passwordHash, passwordSalt, avatarUrl, bio, city, preferredPosition, skillRating, otpCode } = req.body;
     const cleanName = (name || '').trim();
@@ -662,11 +745,14 @@ async function startServer() {
 
     const isMustapha = isSuperAdminEmail(cleanEmail);
 
-    // If not super admin bypass, verify OTP
-    if (!isMustapha && otpCode) {
+    // If not super admin bypass, strictly verify 6-digit OTP code before creating user
+    if (!isMustapha) {
+      if (!otpCode) {
+        return res.status(400).json({ success: false, error: 'رمز التحقق الأمني المكون من 6 أرقام مطلوب لتأكيد ملكية البريد الإلكتروني.' });
+      }
       const session = otpSessions.get(cleanEmail);
       if (!session || session.code !== (otpCode || '').trim() || Date.now() > session.expiresAt) {
-        return res.status(400).json({ success: false, error: 'Invalid or expired verification code.' });
+        return res.status(400).json({ success: false, error: 'رمز التحقق غير صحيح أو انتهت صلاحيته. يرجى طلب رمز جديد.' });
       }
       otpSessions.delete(cleanEmail);
     }
@@ -696,8 +782,8 @@ async function startServer() {
       passwordHash,
       passwordSalt: passwordSalt || '',
       isAdmin: isMustapha,
-      status: 'approved',
-      approvedAt: new Date().toISOString(),
+      status: isMustapha ? 'approved' : 'pending',
+      approvedAt: isMustapha ? new Date().toISOString() : undefined,
       matchesPlayed: 0,
       createdAt: new Date().toISOString(),
     };
@@ -710,8 +796,8 @@ async function startServer() {
         db.notifications.unshift({
           id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
           userId: mustaphaUser.id,
-          title: 'New Player Joined PitchMate',
-          message: `${cleanName} (${cleanEmail} - ${city || 'Casablanca'}) joined the community!`,
+          title: 'طلب انضمام لاعب جديد',
+          message: `اللاعب ${cleanName} (${cleanEmail} - ${city || 'الدار البيضاء'}) بانتظار موافقتك للانضمام للمنصة.`,
           type: 'system',
           linkId: newUser.id,
           createdAt: new Date().toISOString(),
@@ -725,7 +811,7 @@ async function startServer() {
       notifications: db.notifications,
     });
 
-    res.json({ success: true, user: newUser });
+    res.json({ success: true, user: newUser, pendingApproval: !isMustapha });
   });
 
   // Google Sign-In & Authentication Route
@@ -777,9 +863,17 @@ async function startServer() {
         });
       }
 
+      if (action === 'signin' && existingUser.status === 'pending' && !isMustapha) {
+        return res.status(403).json({
+          success: false,
+          code: 'ACCOUNT_PENDING',
+          pendingApproval: true,
+          error: 'حسابك ما زال قيد الانتظار والمراجعة من قِبل المشرف العام (Mustapha Bouhbous). يرجى الانتظار حتى يتم قبول طلبك.',
+        });
+      }
+
       existingUser.isGoogleAuth = true;
       existingUser.emailVerified = true;
-      existingUser.status = existingUser.isBanned ? 'rejected' : 'approved';
       if (avatarUrl && (!existingUser.avatarUrl || existingUser.avatarUrl.includes('dicebear'))) {
         existingUser.avatarUrl = avatarUrl;
       }
@@ -815,8 +909,8 @@ async function startServer() {
       isGoogleAuth: true,
       emailVerified: true,
       isAdmin: isMustapha,
-      status: 'approved',
-      approvedAt: new Date().toISOString(),
+      status: isMustapha ? 'approved' : 'pending',
+      approvedAt: isMustapha ? new Date().toISOString() : undefined,
       matchesPlayed: 0,
       createdAt: new Date().toISOString(),
     };
@@ -829,8 +923,8 @@ async function startServer() {
         db.notifications.unshift({
           id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
           userId: mustaphaUser.id,
-          title: 'New Player Joined via Google',
-          message: `${cleanName} (${cleanEmail}) joined the community!`,
+          title: 'طلب انضمام جديد عبر Google',
+          message: `اللاعب ${cleanName} (${cleanEmail}) أنشأ حساباً وينتظر موافقتك.`,
           type: 'system',
           linkId: newUser.id,
           createdAt: new Date().toISOString(),
@@ -844,7 +938,7 @@ async function startServer() {
       notifications: db.notifications,
     });
 
-    res.json({ success: true, user: newUser });
+    res.json({ success: true, user: newUser, pendingApproval: !isMustapha });
   });
 
   // User Approval

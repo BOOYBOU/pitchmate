@@ -27,6 +27,24 @@ export const db = (() => {
 // Initialize Firebase Auth
 export const auth = getAuth(app);
 
+// Helper for sending real Firebase Password Reset Email
+export const sendFirebasePasswordReset = async (email: string) => {
+  const { sendPasswordResetEmail } = await import('firebase/auth');
+  return sendPasswordResetEmail(auth, email);
+};
+
+// Helper for verifying Firebase Password Reset Code from action link
+export const verifyFirebaseResetCode = async (actionCode: string) => {
+  const { verifyPasswordResetCode } = await import('firebase/auth');
+  return verifyPasswordResetCode(auth, actionCode);
+};
+
+// Helper for confirming password reset with action code
+export const confirmFirebasePasswordReset = async (actionCode: string, newPass: string) => {
+  const { confirmPasswordReset } = await import('firebase/auth');
+  return confirmPasswordReset(auth, actionCode, newPass);
+};
+
 // Initialize Firebase Cloud Storage
 export const storage = getStorage(app);
 

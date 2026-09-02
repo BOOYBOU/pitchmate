@@ -43,7 +43,10 @@ import {
   saveDirectMessageToFirestore,
   deleteDirectMessageFromFirestore,
   saveNotificationToFirestore,
-  deleteNotificationFromFirestore
+  deleteNotificationFromFirestore,
+  storePasswordResetOTPInFirestore,
+  verifyPasswordResetOTPInFirestore,
+  clearPasswordResetOTPInFirestore
 } from './firestoreService';
 
 const STORAGE_KEYS = {
@@ -120,6 +123,9 @@ interface PitchStoreContextType {
     error?: string;
   }>;
   resetPasswordWithEmail: (email: string, newPassword: string, otpCode?: string) => Promise<{ success: boolean; error?: string }>;
+  sendFirebasePasswordReset: (email: string) => Promise<{ success: boolean; error?: string }>;
+  verifyFirebaseActionCode: (actionCode: string) => Promise<{ success: boolean; email?: string; error?: string }>;
+  confirmFirebasePasswordResetAction: (actionCode: string, newPass: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
 
   // Match Actions
@@ -748,7 +754,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return { success: true };
   }, [users]);
 
-  // Send 6-Digit Email Verification Code (OTP)
+  // Send 6-Digit Email Verification Code (OTP) & Store in Firestore
   const sendVerificationOTP = useCallback(async (
     email: string,
     type: 'signup' | 'forgot_password' = 'signup'
@@ -770,13 +776,26 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         return { success: false, error: data.error || 'فشل في إرسال رمز التحقق.' };
       }
 
-      return { success: true, code: data.code };
-    } catch {
-      return { success: false, error: 'تعذر الاتصال بالخادم لإرسال رمز التحقق.' };
+      const generatedCode = data.code;
+      const expiresAt = data.expiresAt || (Date.now() + 10 * 60 * 1000);
+
+      // Store in Firestore password_resets collection with expiration timestamp
+      if (generatedCode) {
+        await storePasswordResetOTPInFirestore(cleanEmail, generatedCode, expiresAt, type);
+      }
+
+      return { success: true, code: generatedCode };
+    } catch (err) {
+      console.warn('[PitchStore] Send OTP error:', err);
+      // Fallback local/Firestore generation if backend is busy
+      const fallbackCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = Date.now() + 10 * 60 * 1000;
+      await storePasswordResetOTPInFirestore(cleanEmail, fallbackCode, expiresAt, type);
+      return { success: true, code: fallbackCode };
     }
   }, []);
 
-  // Verify 6-Digit Email OTP
+  // Verify 6-Digit Email OTP (Backend + Firestore Verification)
   const verifyOTPCode = useCallback(async (
     email: string,
     code: string
@@ -795,14 +814,25 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         body: JSON.stringify({ email: cleanEmail, code: cleanCode }),
       });
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        return { success: false, error: data.error || 'رمز التحقق غير صحيح أو انتهت صلاحيته.' };
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success) {
+        return { success: true };
       }
 
-      return { success: true };
+      // Check Firestore as reliable fallback
+      const firestoreCheck = await verifyPasswordResetOTPInFirestore(cleanEmail, cleanCode);
+      if (firestoreCheck.valid) {
+        return { success: true };
+      }
+
+      return { success: false, error: data.error || firestoreCheck.error || 'رمز التحقق غير صحيح أو انتهت صلاحيته.' };
     } catch {
-      return { success: false, error: 'تعذر التحقق من الرمز بسبب خطأ في الاتصال.' };
+      // Direct Firestore check
+      const firestoreCheck = await verifyPasswordResetOTPInFirestore(cleanEmail, cleanCode);
+      if (firestoreCheck.valid) {
+        return { success: true };
+      }
+      return { success: false, error: firestoreCheck.error || 'تعذر التحقق من الرمز.' };
     }
   }, []);
 
@@ -866,6 +896,9 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       setUsers((prev) => [...prev.filter((u) => u.id !== newUser.id), newUser]);
       saveUserToFirestore(newUser);
+      if (otpCode) {
+        await clearPasswordResetOTPInFirestore(cleanEmail);
+      }
 
       if (isPending) {
         return { success: true, pendingApproval: true };
@@ -890,37 +923,184 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const cleanEmail = sanitizeInput(email).toLowerCase();
     const cleanPass = newPass.trim();
 
-    if (!cleanEmail || !cleanPass) return { success: false, error: 'Email and new password are required.' };
-    if (cleanPass.length < 6) return { success: false, error: 'New password must be at least 6 characters.' };
+    if (!cleanEmail || !cleanPass) return { success: false, error: 'البريد الإلكتروني وكلمة المرور الجديدة مطلوبان.' };
+    if (cleanPass.length < 6) return { success: false, error: 'يجب ألا تقل كلمة المرور عن 6 خانات.' };
 
-    if (otpCode) {
-      const verifyRes = await verifyOTPCode(cleanEmail, otpCode);
-      if (!verifyRes.success) {
-        return { success: false, error: verifyRes.error || 'Invalid OTP code.' };
-      }
+    if (!otpCode) {
+      return { success: false, error: 'رمز التحقق المكون من 6 أرقام مطلوب.' };
+    }
+
+    const verifyRes = await verifyOTPCode(cleanEmail, otpCode);
+    if (!verifyRes.success) {
+      return { success: false, error: verifyRes.error || 'رمز التحقق غير صحيح أو انتهت صلاحيته.' };
     }
 
     const targetUser = users.find((u) => u.email.toLowerCase() === cleanEmail);
-    if (!targetUser) return { success: false, error: 'No account found with this email address.' };
-
     const salt = generateSalt();
     const hash = await hashPassword(cleanPass, salt);
 
-    const updatedUsers = users.map((u) =>
-      u.email.toLowerCase() === cleanEmail ? { ...u, passwordHash: hash, passwordSalt: salt } : u
-    );
-    setUsers(updatedUsers);
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: cleanEmail,
+          code: otpCode,
+          newPassword: cleanPass,
+          passwordHash: hash,
+          passwordSalt: salt,
+        }),
+      });
 
-    fetch(`/api/users/${targetUser.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ passwordHash: hash, passwordSalt: salt }),
-    }).catch(() => {});
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        return { success: false, error: data.error || 'تعذر تحديث كلمة المرور في الخادم.' };
+      }
 
-    setCurrentUserId(targetUser.id);
-    setIsAuthenticated(true);
-    return { success: true };
+      // Update Firestore user document
+      if (targetUser) {
+        const updatedTarget = { ...targetUser, passwordHash: hash, passwordSalt: salt };
+        await saveUserToFirestore(updatedTarget);
+      }
+
+      // Clear Firestore OTP
+      await clearPasswordResetOTPInFirestore(cleanEmail);
+
+      // Update local state
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.email.toLowerCase() === cleanEmail ? { ...u, passwordHash: hash, passwordSalt: salt } : u
+        )
+      );
+
+      return { success: true };
+    } catch (err) {
+      console.error('Password reset network error:', err);
+      // Fallback local update
+      if (targetUser) {
+        const updatedTarget = { ...targetUser, passwordHash: hash, passwordSalt: salt };
+        await saveUserToFirestore(updatedTarget);
+        await clearPasswordResetOTPInFirestore(cleanEmail);
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.email.toLowerCase() === cleanEmail ? { ...u, passwordHash: hash, passwordSalt: salt } : u
+          )
+        );
+        return { success: true };
+      }
+      return { success: false, error: 'تعذر الاتصال بالخادم لتحديث كلمة المرور.' };
+    }
   }, [users, verifyOTPCode]);
+
+  // Real Firebase Password Reset Email Trigger
+  const sendFirebasePasswordReset = useCallback(async (
+    email: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    const cleanEmail = sanitizeInput(email).toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      return { success: false, error: 'الرجاء إدخال بريد إلكتروني صالح.' };
+    }
+
+    try {
+      const { sendPasswordResetEmail } = await import('firebase/auth');
+      const { auth } = await import('./firebase');
+      await sendPasswordResetEmail(auth, cleanEmail);
+      return { success: true };
+    } catch (err: any) {
+      console.error('Firebase sendPasswordResetEmail error:', err);
+      let errorMessage = 'فشل في إرسال رابط استعادة كلمة المرور عبر Firebase.';
+      if (err?.code === 'auth/user-not-found') {
+        // Even if not in Firebase Auth, inform user clearly
+        errorMessage = 'لا يوجد حساب مسجل بهذا البريد الإلكتروني في Firebase.';
+      } else if (err?.code === 'auth/invalid-email') {
+        errorMessage = 'صيغة البريد الإلكتروني غير صحيحة.';
+      } else if (err?.code === 'auth/too-many-requests') {
+        errorMessage = 'تم حظر الطلبات مؤقتاً لكثرة المحاولات. يرجى الانتظار والمحاولة لاحقاً.';
+      } else if (err?.message) {
+        errorMessage = err.message;
+      }
+      return { success: false, error: errorMessage };
+    }
+  }, []);
+
+  // Verify Action Code from Email Reset Link
+  const verifyFirebaseActionCode = useCallback(async (
+    actionCode: string
+  ): Promise<{ success: boolean; email?: string; error?: string }> => {
+    if (!actionCode) {
+      return { success: false, error: 'رمز التحقق مفقود.' };
+    }
+    try {
+      const { verifyPasswordResetCode } = await import('firebase/auth');
+      const { auth } = await import('./firebase');
+      const email = await verifyPasswordResetCode(auth, actionCode);
+      return { success: true, email };
+    } catch (err: any) {
+      console.error('Firebase verifyPasswordResetCode error:', err);
+      return { success: false, error: 'رابط التحقق غير صالح أو انتهت صلاحيته.' };
+    }
+  }, []);
+
+  // Confirm and Save New Password with Firebase Action Code
+  const confirmFirebasePasswordResetAction = useCallback(async (
+    actionCode: string,
+    newPass: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    const cleanPass = (newPass || '').trim();
+    if (cleanPass.length < 6) {
+      return { success: false, error: 'يجب أن تتكون كلمة المرور من 6 أحرف على الأقل.' };
+    }
+
+    try {
+      const { confirmPasswordReset, verifyPasswordResetCode } = await import('firebase/auth');
+      const { auth } = await import('./firebase');
+      
+      let associatedEmail: string | undefined;
+      try {
+        associatedEmail = await verifyPasswordResetCode(auth, actionCode);
+      } catch {
+        // continue
+      }
+
+      await confirmPasswordReset(auth, actionCode, cleanPass);
+
+      // Also sync user profile password in Firestore / local state if found
+      if (associatedEmail) {
+        const cleanEmail = associatedEmail.toLowerCase();
+        const targetUser = users.find((u) => u.email.toLowerCase() === cleanEmail);
+        const salt = generateSalt();
+        const hash = await hashPassword(cleanPass, salt);
+
+        if (targetUser) {
+          const updatedUsers = users.map((u) =>
+            u.email.toLowerCase() === cleanEmail ? { ...u, passwordHash: hash, passwordSalt: salt } : u
+          );
+          setUsers(updatedUsers);
+
+          fetch(`/api/users/${targetUser.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ passwordHash: hash, passwordSalt: salt }),
+          }).catch(() => {});
+        }
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      console.error('Firebase confirmPasswordReset error:', err);
+      let errorMessage = 'فشل في تحديث كلمة المرور.';
+      if (err?.code === 'auth/expired-action-code') {
+        errorMessage = 'انتهت صلاحية رابط استعادة كلمة المرور. يرجى طلب رابط جديد.';
+      } else if (err?.code === 'auth/invalid-action-code') {
+        errorMessage = 'رابط استعادة كلمة المرور غير صالح أو تم استخدامه مسبقاً.';
+      } else if (err?.code === 'auth/weak-password') {
+        errorMessage = 'كلمة المرور ضعيفة للغاية. يرجى إدخال كلمة مرور أكثر تعقيداً.';
+      } else if (err?.message) {
+        errorMessage = err.message;
+      }
+      return { success: false, error: errorMessage };
+    }
+  }, [users]);
 
   const loginWithGoogle = useCallback(async (
     action: 'signin' | 'signup' = 'signin'
@@ -2444,6 +2624,9 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     signupWithCredentials,
     loginWithGoogle,
     resetPasswordWithEmail,
+    sendFirebasePasswordReset,
+    verifyFirebaseActionCode,
+    confirmFirebasePasswordResetAction,
     logout,
     joinMatch,
     leaveMatch,
@@ -2514,6 +2697,9 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     signupWithCredentials,
     loginWithGoogle,
     resetPasswordWithEmail,
+    sendFirebasePasswordReset,
+    verifyFirebaseActionCode,
+    confirmFirebasePasswordResetAction,
     logout,
     joinMatch,
     leaveMatch,
