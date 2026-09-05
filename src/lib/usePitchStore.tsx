@@ -1251,19 +1251,30 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const result = await signInWithPopup(auth, provider);
         gUser = result.user;
       } catch (popupErr: any) {
-        console.error('Firebase Google signInWithPopup error:', popupErr);
+        const errorCode = popupErr?.code || '';
 
+        // Gracefully handle expected user cancellation or closed popup without logging an error
         if (
-          popupErr.code === 'auth/popup-closed-by-user' ||
-          popupErr.code === 'auth/cancelled-popup-request'
+          errorCode === 'auth/popup-closed-by-user' ||
+          errorCode === 'auth/cancelled-popup-request'
         ) {
+          console.debug('[PitchMate] Google popup closed or cancelled by user.');
           return {
             success: false,
             code: 'USER_CANCELLED',
           };
         }
 
-        if (popupErr.code === 'auth/unauthorized-domain') {
+        if (errorCode === 'auth/popup-blocked') {
+          console.warn('[PitchMate] Google sign-in popup was blocked by the browser.');
+          return {
+            success: false,
+            code: 'POPUP_BLOCKED',
+            error: 'تم حظر النافذة المنبثقة من قِبل المتصفح. يرجى السماح بالنوافذ المنبثقة (Popups) أو تسجيل الدخول بالبريد الإلكتروني.',
+          };
+        }
+
+        if (errorCode === 'auth/unauthorized-domain') {
           const currentHostname = typeof window !== 'undefined' ? window.location.hostname : 'domain';
           return {
             success: false,
@@ -1272,9 +1283,11 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           };
         }
 
+        console.error('Firebase Google signInWithPopup unexpected error:', popupErr);
+
         return {
           success: false,
-          code: popupErr.code,
+          code: errorCode,
           error: popupErr.message || 'فشل الاتصال بخدمة Google.',
         };
       }
