@@ -1,0 +1,139 @@
+{
+  "entities": {
+    "Match": {
+      "title": "Match",
+      "description": "Soccer match scheduled on pitch",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "durationMinutes": { "type": "number" },
+        "status": { "type": "string", "enum": ["open", "locked", "completed", "cancelled"] },
+        "priceTotal": { "type": "number" },
+        "pricePerPlayer": { "type": "number" },
+        "maxPlayers": { "type": "number" }
+      },
+      "required": ["id", "title", "date", "time", "status", "maxPlayers"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Registered player or admin user profile",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "isAdmin": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "isBanned": { "type": "boolean" }
+      },
+      "required": ["id", "name", "email", "status"]
+    },
+    "MatchComment": {
+      "title": "MatchComment",
+      "description": "Discussion or comment on a match",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "matchId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "matchId", "userId", "userName", "createdAt"]
+    },
+    "AdminAnnouncement": {
+      "title": "AdminAnnouncement",
+      "description": "Announcement broadcast by platform admin",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "authorName": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "pinned": { "type": "boolean" }
+      },
+      "required": ["id", "title", "content", "createdAt"]
+    },
+    "DirectMessage": {
+      "title": "DirectMessage",
+      "description": "Direct message sent between two players",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "text": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "senderId", "receiverId", "createdAt"]
+    },
+    "InAppNotification": {
+      "title": "InAppNotification",
+      "description": "In-app notification for a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string" },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "title", "message", "createdAt", "read"]
+    },
+    "PasswordReset": {
+      "title": "PasswordReset",
+      "description": "Verification OTP session for password reset or signup",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "code": { "type": "string" },
+        "expiresAt": { "type": "number" },
+        "type": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["email", "code", "expiresAt", "type"]
+    }
+  },
+  "firestore": {
+    "/matches/{matchId}": {
+      "schema": "Match",
+      "description": "Soccer matches and reservations"
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profiles and player details"
+    },
+    "/match_comments/{commentId}": {
+      "schema": "MatchComment",
+      "description": "Comments and banter on matches"
+    },
+    "/announcements/{announcementId}": {
+      "schema": "AdminAnnouncement",
+      "description": "Admin platform announcements"
+    },
+    "/direct_messages/{messageId}": {
+      "schema": "DirectMessage",
+      "description": "Private direct messages between players"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "InAppNotification",
+      "description": "User notifications"
+    },
+    "/password_resets/{resetId}": {
+      "schema": "PasswordReset",
+      "description": "Password reset OTP tokens"
+    }
+  }
+}

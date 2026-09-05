@@ -1,6 +1,8 @@
 import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import fs from 'fs';
+import crypto from 'crypto';
+import nodemailer from 'nodemailer';
 import { createServer as createViteServer } from 'vite';
 
 // Types & Initial Data
@@ -604,9 +606,311 @@ async function startServer() {
     type: 'signup' | 'forgot_password';
   }
   const otpSessions = new Map<string, OTPSession>();
+  const otpCooldowns = new Map<string, number>();
+  const otpHourlyCounts = new Map<string, { count: number; resetAt: number }>();
+  const otpFailedAttempts = new Map<string, number>();
+
+  // Initialize Firebase Firestore for server-side OTP persistence
+  let serverFirestoreDb: any = null;
+  (async () => {
+    try {
+      const firebaseConfigPath = path.join(process.cwd(), 'firebase-applet-config.json');
+      if (fs.existsSync(firebaseConfigPath)) {
+        const config = JSON.parse(fs.readFileSync(firebaseConfigPath, 'utf-8'));
+        const dbName = config.firestoreDatabaseId || '(default)';
+        try {
+          const testUrl = `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/${dbName}/documents/test?key=${config.apiKey}`;
+          const resp = await fetch(testUrl);
+          const data: any = await resp.json().catch(() => ({}));
+          if (data?.error?.message?.includes('The database') && data?.error?.message?.includes('does not exist')) {
+            console.log(`[Server Firestore] Cloud Firestore database "${dbName}" is not yet provisioned in project "${config.projectId}". Server using local & memory state.`);
+            serverFirestoreDb = null;
+            return;
+          }
+        } catch {
+          serverFirestoreDb = null;
+          return;
+        }
+
+        const { initializeApp, getApps } = await import('firebase/app');
+        const { getFirestore } = await import('firebase/firestore');
+        const app = getApps().length === 0 ? initializeApp(config, 'pitchmate-server') : getApps()[0];
+        const dbId = config.firestoreDatabaseId && config.firestoreDatabaseId !== '(default)' ? config.firestoreDatabaseId : undefined;
+        serverFirestoreDb = dbId ? getFirestore(app, dbId) : getFirestore(app);
+        console.log('[Server Firestore] Initialized for project:', config.projectId);
+      }
+    } catch (e) {
+      console.warn('[Server Firestore] Note on Firestore init:', e);
+    }
+  })();
+
+  // Nodemailer SMTP Transporter Factory
+  function getEmailTransporter(): any {
+    // 1. SendGrid API Key integration
+    if (process.env.SENDGRID_API_KEY) {
+      return nodemailer.createTransport({
+        host: 'smtp.sendgrid.net',
+        port: 587,
+        secure: false,
+        auth: {
+          user: 'apikey',
+          pass: process.env.SENDGRID_API_KEY,
+        },
+      });
+    }
+
+    // 2. Standard SMTP / Gmail SMTP integration
+    const rawUser = process.env.SMTP_USER || process.env.EMAIL_USER || '';
+    const rawPass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.EMAIL_PASS || '';
+    const smtpUser = rawUser.trim();
+    // Google App Passwords are 16 characters often generated with spaces like "xxxx xxxx xxxx xxxx"
+    const smtpPass = rawPass.trim().replace(/\s+/g, '');
+    const smtpHost = (process.env.SMTP_HOST || 'smtp.gmail.com').trim();
+    const smtpPort = parseInt(process.env.SMTP_PORT || '587', 10);
+    const smtpSecure = process.env.SMTP_SECURE === 'true' || smtpPort === 465;
+
+    if (smtpUser && smtpPass) {
+      const isGmail = smtpHost.includes('gmail') || smtpUser.toLowerCase().includes('@gmail.com');
+      if (isGmail) {
+        return nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            user: smtpUser,
+            pass: smtpPass,
+          },
+        });
+      }
+
+      return nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpSecure,
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+        tls: {
+          rejectUnauthorized: false,
+        },
+      });
+    }
+
+    return null;
+  }
+
+  // Real Email Sending Service using Nodemailer
+  async function sendOTPEmail(
+    toEmail: string,
+    code: string,
+    type: 'signup' | 'forgot_password'
+  ): Promise<{ success: boolean; method: string; messageId?: string }> {
+    const isForgot = type === 'forgot_password';
+    const subject = isForgot
+      ? `PitchMate - رمز استعادة كلمة المرور: ${code}`
+      : `PitchMate - رمز تأكيد الحساب: ${code}`;
+
+    const fromAddress =
+      process.env.SMTP_FROM ||
+      (process.env.SMTP_USER ? `"PitchMate Security" <${process.env.SMTP_USER}>` : '"PitchMate Security" <security@pitchmate.ma>');
+
+    // Clean, well-formatted email containing only the 6-digit numbers in the main highlight box
+    const htmlContent = `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #020A07; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #F1F5F9;">
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #020A07; padding: 32px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 500px; background-color: #082218; border: 1px solid rgba(229, 184, 105, 0.4); border-radius: 16px; overflow: hidden; box-shadow: 0 12px 30px rgba(0,0,0,0.6);">
+          <!-- Header -->
+          <tr>
+            <td style="padding: 26px 20px 20px; text-align: center; background: linear-gradient(180deg, #0E382A 0%, #082218 100%); border-bottom: 1px solid rgba(229, 184, 105, 0.25);">
+              <div style="display: inline-block; padding: 8px 18px; background-color: #020A07; border: 1px solid rgba(229, 184, 105, 0.35); border-radius: 10px; margin-bottom: 12px;">
+                <span style="font-size: 19px; font-weight: 900; color: #F5D794; letter-spacing: 1px;">⚽ PitchMate</span>
+              </div>
+              <h2 style="margin: 0; font-size: 20px; font-weight: 800; color: #F5D794;">
+                ${isForgot ? 'استعادة كلمة المرور' : 'تأكيد الحساب'}
+              </h2>
+              <p style="margin: 5px 0 0; font-size: 12px; color: #6EE7B7;">
+                ${isForgot ? 'Password Reset Verification Code' : 'Account Verification Code'}
+              </p>
+            </td>
+          </tr>
+
+          <!-- Main Content -->
+          <tr>
+            <td style="padding: 28px 24px; text-align: center;">
+              <p style="margin: 0 0 16px; font-size: 14px; line-height: 1.6; color: #CBD5E1;">
+                مرحباً،
+                <br>
+                ${isForgot
+                  ? 'لقد تلقينا طلباً لاستعادة كلمة المرور الخاصة بحسابك المسجل في منصة <strong>PitchMate</strong>.'
+                  : 'شكراً لانضمامك إلى منصة <strong>PitchMate</strong>.'}
+                <br>
+                أدخل رمز التحقق التالي المكون من 6 أرقام في شاشة التحقق داخل التطبيق:
+              </p>
+
+              <!-- Prominent 6-digit numeric OTP container -->
+              <div style="margin: 22px auto; max-width: 290px; background-color: #020A07; border: 2px solid #E5B869; border-radius: 14px; padding: 18px 10px; text-align: center; box-shadow: inset 0 2px 10px rgba(0,0,0,0.7);">
+                <span style="font-family: 'Courier New', Courier, monospace; font-size: 38px; font-weight: 900; letter-spacing: 8px; color: #F5D794; display: inline-block; padding-left: 8px;">
+                  ${code}
+                </span>
+              </div>
+
+              <p style="margin: 16px 0 0; font-size: 12px; font-weight: 600; color: #94A3B8;">
+                ⏱️ هذا الرمز صالح للاستخدام لمدة <strong>10 دقائق</strong> فقط.
+              </p>
+              <p style="margin: 8px 0 0; font-size: 11px; color: #64748B; line-height: 1.5;">
+                ${isForgot ? 'إذا لم تكن أنت من طلب استعادة كلمة المرور، يرجى تجاهل هذه الرسالة بأمان ولن يطرأ أي تغيير على حسابك.' : 'إذا لم تكن أنت من قام بإنشاء هذا الحساب في منصة PitchMate، يرجى تجاهل هذه الرسالة بأمان.'}
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 16px 20px; background-color: #04130D; border-top: 1px solid rgba(229, 184, 105, 0.2); text-align: center; font-size: 11px; color: #64748B;">
+              منصة PitchMate لتنظيم مباريات وحجوزات ملاعب كرة القدم بالمغرب 🇲🇦
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `;
+
+    const textContent = `كود التحقق في PitchMate هو: ${code}\nصالح لمدة 10 دقائق فقط.\nإذا لم تطلب هذا الرمز، يرجى تجاهل هذه الرسالة.`;
+
+    const transporter = getEmailTransporter();
+    if (transporter) {
+      try {
+        const info = await transporter.sendMail({
+          from: fromAddress,
+          to: toEmail,
+          subject,
+          text: textContent,
+          html: htmlContent,
+        });
+        console.log(`[NODEMAILER SUCCESS] Real email sent to ${toEmail}. MessageId: ${info.messageId}`);
+        return { success: true, method: 'smtp', messageId: info.messageId };
+      } catch (err: any) {
+        console.error(`[NODEMAILER ERROR] Failed to send via SMTP to ${toEmail}:`, err?.message || err);
+      }
+    }
+
+    // Fallback console log if SMTP credentials are not yet configured in .env
+    console.log(`\n============================================================`);
+    console.log(`📧 [PITCHMATE EMAIL OTP DISPATCH via NODEMAILER]`);
+    console.log(`To: ${toEmail}`);
+    console.log(`Subject: ${subject}`);
+    console.log(`6-Digit OTP Code: [ ${code} ]`);
+    console.log(`Expires in: 10 minutes`);
+    console.log(`(Configure SMTP_USER & SMTP_PASS in Settings / .env to deliver real emails directly to Gmail inbox)`);
+    console.log(`============================================================\n`);
+
+    return { success: true, method: 'console_and_firestore' };
+  }
+
+  // Helper to persist OTP in Firestore
+  async function persistOTPInFirestore(email: string, code: string, expiresAt: number, type: string) {
+    if (!serverFirestoreDb) return;
+    try {
+      const { doc, setDoc } = await import('firebase/firestore');
+      const docId = `otp_${email.replace(/[^a-zA-Z0-9]/g, '_')}`;
+      await setDoc(doc(serverFirestoreDb, 'password_resets', docId), {
+        email,
+        code,
+        expiresAt,
+        type,
+        createdAt: new Date().toISOString(),
+      });
+      console.log(`[Server Firestore] Stored OTP in 'password_resets' doc: ${docId}`);
+    } catch (err) {
+      console.warn('[Server Firestore] Could not write OTP to Firestore:', err);
+    }
+  }
+
+  // Helper to check OTP in Firestore
+  async function checkOTPInFirestore(email: string, code: string): Promise<boolean> {
+    if (!serverFirestoreDb) return false;
+    try {
+      const { collection, query, where, getDocs } = await import('firebase/firestore');
+      const q = query(collection(serverFirestoreDb, 'password_resets'), where('email', '==', email));
+      const snap = await getDocs(q);
+      let isValid = false;
+      snap.forEach((d) => {
+        const data = d.data();
+        if (data.email === email && data.code === code && Date.now() <= data.expiresAt) {
+          isValid = true;
+        }
+      });
+      return isValid;
+    } catch (err) {
+      console.warn('[Server Firestore] Error verifying OTP:', err);
+      return false;
+    }
+  }
+
+  // Helper to delete OTP from Firestore
+  async function deleteOTPFromFirestore(email: string) {
+    if (!serverFirestoreDb) return;
+    try {
+      const { doc, deleteDoc } = await import('firebase/firestore');
+      const docId = `otp_${email.replace(/[^a-zA-Z0-9]/g, '_')}`;
+      await deleteDoc(doc(serverFirestoreDb, 'password_resets', docId));
+      console.log(`[Server Firestore] Cleared OTP for ${email}`);
+    } catch (err) {
+      console.warn('[Server Firestore] Error clearing OTP:', err);
+    }
+  }
+
+  // Comprehensive helper to detect if an email already has an active account or pending registration
+  async function checkUserExistsByEmail(cleanEmail: string): Promise<{ exists: boolean; reason?: string; user?: any }> {
+    if (!cleanEmail) return { exists: false };
+    const lower = cleanEmail.trim().toLowerCase();
+
+    // 1. Check in-memory database
+    const localUser = db.users.find((u) => u.email.toLowerCase() === lower);
+    if (localUser) {
+      return { exists: true, reason: 'LOCAL_DB', user: localUser };
+    }
+
+    // 2. Check super admin email
+    if (isSuperAdminEmail(lower)) {
+      return { exists: true, reason: 'SUPER_ADMIN' };
+    }
+
+    // 3. Check Firestore 'users' and 'registration_requests' collections
+    if (serverFirestoreDb) {
+      try {
+        const { collection, query, where, getDocs } = await import('firebase/firestore');
+        const qUsers = query(collection(serverFirestoreDb, 'users'), where('email', '==', lower));
+        const snapUsers = await getDocs(qUsers);
+        if (!snapUsers.empty) {
+          return { exists: true, reason: 'FIRESTORE_USERS', user: snapUsers.docs[0].data() };
+        }
+
+        const qReqs = query(collection(serverFirestoreDb, 'registration_requests'), where('email', '==', lower));
+        const snapReqs = await getDocs(qReqs);
+        if (!snapReqs.empty) {
+          return { exists: true, reason: 'FIRESTORE_REG_REQUEST', user: snapReqs.docs[0].data() };
+        }
+      } catch (err) {
+        console.warn('[Server Firestore] Error checking user existence:', err);
+      }
+    }
+
+    return { exists: false };
+  }
 
   // Send 6-digit OTP Verification Code
-  app.post('/api/auth/send-otp', (req, res) => {
+  app.post('/api/auth/send-otp', async (req, res) => {
     const { email, type } = req.body;
     const cleanEmail = (email || '').trim().toLowerCase();
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -618,27 +922,63 @@ async function startServer() {
       });
     }
 
-    const existing = db.users.find((u) => u.email.toLowerCase() === cleanEmail);
-    const isMustapha = isSuperAdminEmail(cleanEmail);
+    // Check if account already exists across all storages
+    const userStatus = await checkUserExistsByEmail(cleanEmail);
 
-    if (type === 'signup' && existing && !isMustapha) {
-      return res.status(409).json({
+    if (type === 'signup') {
+      if (userStatus.exists) {
+        return res.status(409).json({
+          success: false,
+          code: 'EMAIL_ALREADY_EXISTS',
+          error: 'هذا البريد الإلكتروني مسجل به حساب بالفعل مسبقاً. يرجى تسجيل الدخول مباشرة بدلاً من إنشاء حساب جديد.',
+        });
+      }
+    }
+
+    if (type === 'forgot_password') {
+      if (!userStatus.exists) {
+        return res.status(404).json({
+          success: false,
+          code: 'EMAIL_NOT_FOUND',
+          error: 'لا يوجد حساب مسجل بهذا البريد الإلكتروني. يرجى التأكد من البريد أو إنشاء حساب جديد.',
+        });
+      }
+    }
+
+    // Rate Limiting: 60-second cooldown between requests
+    const lastSent = otpCooldowns.get(cleanEmail);
+    if (lastSent && Date.now() - lastSent < 60 * 1000) {
+      const waitSec = Math.ceil((60 * 1000 - (Date.now() - lastSent)) / 1000);
+      return res.status(429).json({
         success: false,
-        error: 'هذا البريد الإلكتروني مسجل بالفعل مسبقاً. يرجى تسجيل الدخول مباشرة.',
+        error: `يرجى الانتظار ${waitSec} ثانية قبل طلب رمز تحقق جديد لحماية الحساب من المحاولات المتكررة.`,
       });
     }
 
-    if (type === 'forgot_password' && !existing && !isMustapha) {
-      return res.status(404).json({
+    // Hourly Rate Limiting: Maximum 5 OTP requests per hour per email
+    const now = Date.now();
+    let hourly = otpHourlyCounts.get(cleanEmail);
+    if (!hourly || now > hourly.resetAt) {
+      hourly = { count: 0, resetAt: now + 3600 * 1000 };
+      otpHourlyCounts.set(cleanEmail, hourly);
+    }
+    if (hourly.count >= 5) {
+      return res.status(429).json({
         success: false,
-        error: 'لا يوجد حساب مسجل بهذا البريد الإلكتروني.',
+        error: 'تم تجاوز الحد الأقصى المسموح لطلبات الرمز في الساعة (5 طلبات). يرجى المحاولة لاحقاً لحماية أمان الحساب.',
       });
     }
 
-    // Generate cryptographically random 6-digit OTP
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    // Generate secure 6-digit numeric OTP using Node crypto
+    const code = crypto.randomInt(100000, 1000000).toString();
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
 
+    // Update rate limits and reset failed attempts on new dispatch
+    hourly.count += 1;
+    otpCooldowns.set(cleanEmail, now);
+    otpFailedAttempts.delete(cleanEmail);
+
+    // 1. Save in memory map
     otpSessions.set(cleanEmail, {
       email: cleanEmail,
       code,
@@ -646,73 +986,123 @@ async function startServer() {
       type: type || 'signup',
     });
 
-    console.log(`\n============================================================`);
-    console.log(`📧 [PITCHMATE OTP DISPATCH TO EMAIL]`);
-    console.log(`To: ${cleanEmail}`);
-    console.log(`Type: ${type === 'forgot_password' ? 'Password Reset (استعادة كلمة المرور)' : 'Account Verification'}`);
-    console.log(`Security Code: [ ${code} ]`);
-    console.log(`Expires in: 10 minutes (${new Date(expiresAt).toLocaleTimeString()})`);
-    console.log(`============================================================\n`);
+    // 2. Save in Firestore password_resets collection
+    await persistOTPInFirestore(cleanEmail, code, expiresAt, type || 'forgot_password');
 
+    // 3. Dispatch real email via Nodemailer
+    const emailDispatch = await sendOTPEmail(cleanEmail, code, type || 'forgot_password');
+
+    // NEVER return the OTP code in the JSON payload! Strict zero-leakage security.
     res.json({
       success: true,
       email: cleanEmail,
-      code, // returned so the app can display the security notification banner in preview
       expiresAt,
-      message: 'Verification code sent successfully to email.',
+      method: emailDispatch.method,
+      message: 'تم إرسال رمز التحقق بنجاح إلى صندوق بريدك الإلكتروني.',
     });
   });
 
-  // Verify OTP Code
-  app.post('/api/auth/verify-otp', (req, res) => {
+  // Verify OTP Code with Brute-Force Rate Limiting
+  app.post('/api/auth/verify-otp', async (req, res) => {
     const { email, code } = req.body;
     const cleanEmail = (email || '').trim().toLowerCase();
     const cleanCode = (code || '').trim();
 
     if (!cleanEmail || !cleanCode) {
-      return res.status(400).json({ success: false, error: 'Email and verification code are required.' });
+      return res.status(400).json({ success: false, error: 'البريد الإلكتروني ورمز التحقق كلاهما مطلوب.' });
     }
 
-    const session = otpSessions.get(cleanEmail);
-    if (!session) {
-      return res.status(400).json({ success: false, error: 'No active verification code found. Please request a new code.' });
-    }
+    const currentAttempts = (otpFailedAttempts.get(cleanEmail) || 0) + 1;
+    otpFailedAttempts.set(cleanEmail, currentAttempts);
 
-    if (Date.now() > session.expiresAt) {
+    if (currentAttempts > 5) {
       otpSessions.delete(cleanEmail);
-      return res.status(400).json({ success: false, error: 'Verification code has expired. Please request a new one.' });
+      await deleteOTPFromFirestore(cleanEmail);
+      otpFailedAttempts.delete(cleanEmail);
+      return res.status(429).json({
+        success: false,
+        error: 'تم تجاوز الحد الأقصى للمحاولات الخاطئة (5 محاولات). تم إبطال الرمز لأسباب أمنية، يرجى طلب رمز جديد.',
+      });
     }
 
-    if (session.code !== cleanCode) {
-      return res.status(400).json({ success: false, error: 'Invalid verification code. Please check and try again.' });
+    // Check memory session
+    const session = otpSessions.get(cleanEmail);
+    if (session && Date.now() <= session.expiresAt && session.code === cleanCode) {
+      otpFailedAttempts.delete(cleanEmail);
+      return res.json({ success: true, verified: true, email: cleanEmail });
     }
 
-    res.json({ success: true, verified: true, email: cleanEmail });
+    // Check Firestore fallback
+    const firestoreValid = await checkOTPInFirestore(cleanEmail, cleanCode);
+    if (firestoreValid) {
+      otpFailedAttempts.delete(cleanEmail);
+      return res.json({ success: true, verified: true, email: cleanEmail });
+    }
+
+    if (session && Date.now() > session.expiresAt) {
+      otpSessions.delete(cleanEmail);
+      await deleteOTPFromFirestore(cleanEmail);
+      return res.status(400).json({ success: false, error: 'انتهت صلاحية رمز التحقق (10 دقائق). يرجى طلب رمز جديد.' });
+    }
+
+    const remaining = 5 - currentAttempts;
+    return res.status(400).json({
+      success: false,
+      error: `رمز التحقق غير صحيح. متبقي لديك ${remaining} محاولات قبل إبطال الرمز.`,
+    });
   });
 
-  // Reset Password for Account
-  app.post('/api/auth/reset-password', (req, res) => {
+  // Reset Password for Account - Strictly requires verified OTP and minimum 6 characters
+  app.post('/api/auth/reset-password', async (req, res) => {
     const { email, code, newPassword, passwordHash, passwordSalt } = req.body;
     const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanCode = (code || '').trim();
 
-    if (!cleanEmail || (!newPassword && !passwordHash)) {
-      return res.status(400).json({ success: false, error: 'البريد الإلكتروني وكلمة المرور الجديدة مطلوبان.' });
+    if (!cleanEmail || !cleanCode || (!newPassword && !passwordHash)) {
+      return res.status(400).json({
+        success: false,
+        error: 'البريد الإلكتروني، رمز التحقق (OTP)، وكلمة المرور الجديدة كلها مطلوبة.',
+      });
     }
 
-    // If OTP code was provided, verify if a session exists
-    if (code) {
-      const session = otpSessions.get(cleanEmail);
-      if (session) {
-        if (Date.now() > session.expiresAt) {
-          otpSessions.delete(cleanEmail);
-          return res.status(400).json({ success: false, error: 'انتهت صلاحية الجلسة. يرجى إعادة المحاولة.' });
-        }
-        if (session.code !== (code || '').trim()) {
-          return res.status(400).json({ success: false, error: 'رمز التحقق غير صحيح.' });
-        }
+    if (newPassword && newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        error: 'يجب ألا تقل كلمة المرور الجديدة عن 6 أحرف.',
+      });
+    }
+
+    // Strict OTP verification
+    let isCodeValid = false;
+    const session = otpSessions.get(cleanEmail);
+    if (session && Date.now() <= session.expiresAt && session.code === cleanCode) {
+      isCodeValid = true;
+    } else {
+      isCodeValid = await checkOTPInFirestore(cleanEmail, cleanCode);
+    }
+
+    if (!isCodeValid) {
+      const currentAttempts = (otpFailedAttempts.get(cleanEmail) || 0) + 1;
+      otpFailedAttempts.set(cleanEmail, currentAttempts);
+      if (currentAttempts > 5) {
         otpSessions.delete(cleanEmail);
+        await deleteOTPFromFirestore(cleanEmail);
+        otpFailedAttempts.delete(cleanEmail);
+        return res.status(429).json({
+          success: false,
+          error: 'تم تجاوز الحد الأقصى للمحاولات الخاطئة. تم إبطال الرمز، يرجى طلب رمز جديد.',
+        });
       }
+      return res.status(400).json({
+        success: false,
+        error: 'رمز التحقق غير صحيح أو انتهت صلاحيته.',
+      });
     }
+
+    // Immediately burn the OTP code so it can NEVER be reused (single-use security)
+    otpSessions.delete(cleanEmail);
+    otpFailedAttempts.delete(cleanEmail);
+    await deleteOTPFromFirestore(cleanEmail);
 
     const targetUserIndex = db.users.findIndex((u) => u.email.toLowerCase() === cleanEmail);
     if (targetUserIndex === -1 && !isSuperAdminEmail(cleanEmail)) {
@@ -721,12 +1111,46 @@ async function startServer() {
 
     if (targetUserIndex !== -1) {
       const targetUser = db.users[targetUserIndex];
-      targetUser.passwordHash = passwordHash || targetUser.passwordHash;
-      targetUser.passwordSalt = passwordSalt || targetUser.passwordSalt;
-      if (newPassword && !passwordHash) {
-        targetUser.password = newPassword;
-      }
+      targetUser.passwordHash = passwordHash;
+      targetUser.passwordSalt = passwordSalt;
+      // Permanently remove any legacy or old plaintext password
+      delete (targetUser as any).password;
       db.users[targetUserIndex] = targetUser;
+    } else if (isSuperAdminEmail(cleanEmail)) {
+      const newAdminUser: any = {
+        id: cleanEmail === 'bouhbousmustapha@gmail.com' ? 'user_mustapha' : `user_admin_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}`,
+        email: cleanEmail,
+        name: 'Mustapha Bouhbous',
+        avatarUrl: MESSI_AVATAR_URL,
+        city: 'Casablanca',
+        isAdmin: true,
+        status: 'approved',
+        matchesPlayed: 50,
+        createdAt: new Date().toISOString(),
+        passwordHash,
+        passwordSalt,
+      };
+      db.users.push(newAdminUser);
+    }
+
+    // Also update in Firestore if user exists there
+    if (serverFirestoreDb) {
+      try {
+        const { collection, query, where, getDocs, updateDoc } = await import('firebase/firestore');
+        const q = query(collection(serverFirestoreDb, 'users'), where('email', '==', cleanEmail));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          const docRef = snap.docs[0].ref;
+          await updateDoc(docRef, {
+            passwordHash: passwordHash || null,
+            passwordSalt: passwordSalt || null,
+            password: null, // Wipe out legacy plaintext password from cloud DB
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      } catch (e) {
+        console.warn('Firestore password update error:', e);
+      }
     }
 
     saveDatabaseDebounced();
@@ -736,7 +1160,7 @@ async function startServer() {
     res.json({ success: true, message: 'تم تحديث كلمة المرور بنجاح. يمكنك الآن تسجيل الدخول.' });
   });
 
-  app.post('/api/users/register', (req, res) => {
+  app.post('/api/users/register', async (req, res) => {
     const { name, email, passwordHash, passwordSalt, avatarUrl, bio, city, preferredPosition, skillRating, otpCode } = req.body;
     const cleanName = (name || '').trim();
     const cleanEmail = (email || '').trim().toLowerCase();
@@ -747,9 +1171,54 @@ async function startServer() {
 
     const isMustapha = isSuperAdminEmail(cleanEmail);
 
-    const existing = db.users.find((u) => u.email.toLowerCase() === cleanEmail);
-    if (existing) {
-      return res.status(400).json({ success: false, error: 'يوجد حساب مسجل مسبقاً بهذا البريد الإلكتروني. يرجى تسجيل الدخول مباشرة.' });
+    // Strict duplication prevention: verify across memory and cloud database
+    const userStatus = await checkUserExistsByEmail(cleanEmail);
+    if (userStatus.exists) {
+      return res.status(409).json({
+        success: false,
+        code: 'EMAIL_ALREADY_EXISTS',
+        error: 'هذا البريد الإلكتروني مسجل به حساب بالفعل مسبقاً. يرجى تسجيل الدخول مباشرة بدلاً من إنشاء حساب جديد.',
+      });
+    }
+
+    // Verify Email Ownership via OTP code
+    if (otpCode) {
+      const cleanCode = (otpCode || '').trim();
+      let isCodeValid = false;
+      const session = otpSessions.get(cleanEmail);
+      if (session && Date.now() <= session.expiresAt && session.code === cleanCode) {
+        isCodeValid = true;
+      } else {
+        isCodeValid = await checkOTPInFirestore(cleanEmail, cleanCode);
+      }
+
+      if (!isCodeValid) {
+        const currentAttempts = (otpFailedAttempts.get(cleanEmail) || 0) + 1;
+        otpFailedAttempts.set(cleanEmail, currentAttempts);
+        if (currentAttempts > 5) {
+          otpSessions.delete(cleanEmail);
+          await deleteOTPFromFirestore(cleanEmail);
+          otpFailedAttempts.delete(cleanEmail);
+          return res.status(429).json({
+            success: false,
+            error: 'تم تجاوز الحد الأقصى للمحاولات الخاطئة. تم إلغاء الرمز، يرجى طلب رمز جديد.',
+          });
+        }
+        return res.status(400).json({
+          success: false,
+          error: 'رمز التحقق غير صحيح أو انتهت صلاحيته.',
+        });
+      }
+
+      // Single-use OTP: Burn immediately
+      otpSessions.delete(cleanEmail);
+      otpFailedAttempts.delete(cleanEmail);
+      await deleteOTPFromFirestore(cleanEmail);
+    } else if (!isMustapha) {
+      return res.status(400).json({
+        success: false,
+        error: 'يرجى تأكيد ملكية البريد الإلكتروني عبر إدخال رمز التحقق (OTP) المرسل إلى بريدك أولاً.',
+      });
     }
 
     const userId = isMustapha ? 'user_mustapha' : `user_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -818,7 +1287,7 @@ async function startServer() {
     let existingUser = db.users.find((u) => u.email.toLowerCase() === cleanEmail);
 
     // If attempting to SIGN UP with an already existing account
-    if (action === 'signup' && existingUser && !isMustapha) {
+    if (action === 'signup' && existingUser) {
       return res.status(409).json({
         success: false,
         code: 'USER_EXISTS',

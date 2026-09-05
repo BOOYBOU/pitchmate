@@ -674,76 +674,96 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const cleanPass = pass.trim();
 
     if (!cleanEmail || !cleanPass) {
-      return { success: false, error: 'Email and password are required.' };
+      return { success: false, error: 'البريد الإلكتروني وكلمة المرور مطلوبان.' };
     }
 
     const isMustapha = isSuperAdminEmail(cleanEmail);
 
-    if (isMustapha) {
-      if (!verifySuperAdminMasterPassword(cleanPass)) {
-        return { success: false, error: 'Invalid Super Admin master password.' };
-      }
-      let mustapha = users.find((u) => isSuperAdminEmail(u.email));
-      if (!mustapha) {
-        mustapha = {
-          id: 'user_mustapha',
-          email: SUPER_ADMIN_EMAIL,
-          name: 'Mustapha Bouhbous',
+    // 1. Locate user in local state or re-fetch from server if missing
+    let targetUser = users.find((u) => u.email.toLowerCase() === cleanEmail);
+    if (!targetUser) {
+      try {
+        const res = await fetch('/api/sync/all');
+        if (res.ok) {
+          const cloudData = await res.json();
+          if (cloudData.users) {
+            setUsers(cloudData.users);
+            targetUser = cloudData.users.find((u: any) => u.email.toLowerCase() === cleanEmail);
+          }
+        }
+      } catch {}
+    }
+
+    if (!targetUser) {
+      // If super admin email and clean fresh state with no custom password set yet
+      if (isMustapha && verifySuperAdminMasterPassword(cleanPass)) {
+        targetUser = {
+          id: cleanEmail === 'bouhbousmustapha@gmail.com' ? 'user_mustapha' : `user_admin_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}`,
+          email: cleanEmail,
+          name: cleanEmail === 'bouhbousmustapha@gmail.com' ? 'Mustapha Bouhbous' : 'Mustapha (Super Admin)',
           avatarUrl: MESSI_AVATAR_URL,
           isAdmin: true,
           status: 'approved',
           matchesPlayed: 50,
           createdAt: new Date().toISOString(),
         };
-        setUsers((prev) => [mustapha!, ...prev.filter((u) => !isSuperAdminEmail(u.email))]);
+        setUsers((prev) => [targetUser!, ...prev.filter((u) => u.email.toLowerCase() !== cleanEmail)]);
+      } else {
+        return { success: false, error: 'لا يوجد حساب مسجل بهذا البريد الإلكتروني. يرجى إنشاء حساب أولاً.' };
       }
-      setCurrentUserId(mustapha.id);
-      setIsAuthenticated(true);
-      const token = `pitchmate_token_${mustapha.id}_${Date.now()}`;
-      localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
-      localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, mustapha.id);
-      return { success: true };
-    }
-
-    const targetUser = users.find((u) => u.email.toLowerCase() === cleanEmail);
-    if (!targetUser) {
-      return { success: false, error: 'No account found with this email. Please sign up first.' };
     }
 
     if (targetUser.isBanned) {
-      return { success: false, error: `Account suspended: ${targetUser.banReason || 'Contact administrator'}` };
+      return { success: false, error: `الحساب موقوف: ${targetUser.banReason || 'تواصل مع إدارة المنصة'}` };
     }
 
-    if (targetUser.status === 'pending') {
+    if (targetUser.status === 'pending' && !isMustapha) {
       return {
         success: false,
         error: 'حسابك في لائحة الانتظار قيد المراجعة من قِبل المشرف العام. يرجى الانتظار حتى يتم قبول طلبك.',
       };
     }
 
-    if (targetUser.status === 'rejected') {
+    if (targetUser.status === 'rejected' && !isMustapha) {
       return {
         success: false,
-        error: 'Your registration was declined by the administrator.',
+        error: 'تم رفض طلب التسجيل من قِبل إدارة المنصة.',
       };
     }
 
     if (targetUser.isGoogleAuth && !targetUser.passwordHash && !targetUser.password) {
       return {
         success: false,
-        error: 'This account was registered using Google. Please click "Sign In with Google" using your Google account.',
+        error: 'تم تسجيل هذا الحساب عبر Google. يرجى الضغط على "تسجيل الدخول عبر Google".',
       };
     }
 
-    const isPasswordCorrect = await verifyPassword(
-      cleanPass,
-      targetUser.passwordHash,
-      targetUser.passwordSalt,
-      targetUser.password
-    );
+    // STRICT SINGLE-PASSWORD AUTHENTICATION:
+    // If user has a passwordHash (set at signup or after password reset), ONLY the current active password hash is valid!
+    // The previous password, legacy plaintext passwords, or master passwords are NEVER accepted once a password is set.
+    let isPasswordCorrect = false;
+
+    if (targetUser.passwordHash && targetUser.passwordSalt) {
+      isPasswordCorrect = await verifyPassword(
+        cleanPass,
+        targetUser.passwordHash,
+        targetUser.passwordSalt
+      );
+    } else if (isMustapha && !targetUser.passwordHash && !targetUser.password) {
+      // Only uninitialized super admin with zero custom passwords
+      isPasswordCorrect = verifySuperAdminMasterPassword(cleanPass);
+    } else if (targetUser.password) {
+      // Legacy unhashed user
+      isPasswordCorrect = cleanPass === targetUser.password;
+    }
 
     if (!isPasswordCorrect) {
-      return { success: false, error: 'Incorrect password. Please try again.' };
+      return { success: false, error: 'كلمة المرور غير صحيحة. يرجى التأكد وإعادة المحاولة.' };
+    }
+
+    if (isMustapha) {
+      targetUser.isAdmin = true;
+      targetUser.status = 'approved';
     }
 
     setCurrentUserId(targetUser.id);
@@ -752,7 +772,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, targetUser.id);
 
-    // Synchronize user to Firebase Authentication in background for official Google password resets
+    // Synchronize user to Firebase Authentication in background
     (async () => {
       try {
         const { signInWithEmailAndPassword, createUserWithEmailAndPassword } = await import('firebase/auth');
@@ -783,6 +803,17 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return { success: false, error: 'الرجاء إدخال بريد إلكتروني صالح بالصيغة الصحيحة (مثال: name@domain.com).' };
     }
 
+    // Proactive check: if signing up and account exists in system, block immediately
+    if (type === 'signup') {
+      const alreadyExists = users.some((u) => u.email.toLowerCase() === cleanEmail) || isSuperAdminEmail(cleanEmail);
+      if (alreadyExists) {
+        return {
+          success: false,
+          error: 'هذا البريد الإلكتروني مسجل به حساب بالفعل مسبقاً. يرجى تسجيل الدخول مباشرة بدلاً من إنشاء حساب جديد.',
+        };
+      }
+    }
+
     try {
       const res = await fetch('/api/auth/send-otp', {
         method: 'POST',
@@ -808,7 +839,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       console.warn('[PitchStore] Send OTP network error:', err);
       return { success: false, error: 'تعذر الاتصال بالخادم لإرسال رمز التحقق. يرجى المحاولة لاحقاً.' };
     }
-  }, []);
+  }, [users]);
 
   // Verify 6-Digit Email OTP (Backend + Firestore Verification)
   const verifyOTPCode = useCallback(async (
@@ -863,20 +894,23 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const cleanName = sanitizeInput(name);
     const cleanEmail = sanitizeInput(email).toLowerCase();
     const cleanPass = pass.trim();
+    const isMustapha = isSuperAdminEmail(cleanEmail);
 
     if (!cleanName || !cleanEmail || !cleanPass) {
       return { success: false, error: 'Please fill in all required fields.' };
     }
 
     if (cleanPass.length < 6) {
-      return { success: false, error: 'Password must be at least 6 characters.' };
+      return { success: false, error: 'يجب ألا تقل كلمة المرور عن 6 أحرف.' };
     }
 
-    const isMustapha = isSuperAdminEmail(cleanEmail);
-    if (isMustapha) {
-      if (!verifySuperAdminMasterPassword(cleanPass)) {
-        return { success: false, error: 'Super Admin registration requires the verified Master Password.' };
-      }
+    // Proactive client-side verification
+    const alreadyExists = users.some((u) => u.email.toLowerCase() === cleanEmail) || isMustapha;
+    if (alreadyExists) {
+      return {
+        success: false,
+        error: 'هذا البريد الإلكتروني مسجل به حساب بالفعل مسبقاً. يرجى تسجيل الدخول مباشرة بدلاً من إنشاء حساب جديد.',
+      };
     }
 
     const salt = generateSalt();
@@ -943,7 +977,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     } catch {
       return { success: false, error: 'Network error occurred during registration.' };
     }
-  }, []);
+  }, [users]);
 
   const resetPasswordWithEmail = useCallback(async (
     email: string,
@@ -985,38 +1019,98 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         return { success: false, error: data.error || 'تعذر تحديث كلمة المرور في الخادم.' };
       }
 
+      // Build sanitized user object without any legacy plaintext password
+      const updatedUser: UserProfile = targetUser
+        ? { ...targetUser, passwordHash: hash, passwordSalt: salt }
+        : {
+            id: isSuperAdminEmail(cleanEmail) ? 'user_mustapha' : `user_${Date.now()}`,
+            name: isSuperAdminEmail(cleanEmail) ? 'Mustapha Bouhbous' : cleanEmail.split('@')[0],
+            email: cleanEmail,
+            avatarUrl: isSuperAdminEmail(cleanEmail) ? MESSI_AVATAR_URL : `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(cleanEmail)}`,
+            city: 'Casablanca',
+            isAdmin: isSuperAdminEmail(cleanEmail),
+            status: 'approved',
+            matchesPlayed: 0,
+            createdAt: new Date().toISOString(),
+            passwordHash: hash,
+            passwordSalt: salt,
+          };
+
+      delete (updatedUser as any).password;
+
       // Update Firestore user document
-      if (targetUser) {
-        const updatedTarget = { ...targetUser, passwordHash: hash, passwordSalt: salt };
-        await saveUserToFirestore(updatedTarget);
-      }
+      await saveUserToFirestore(updatedUser);
 
       // Clear Firestore OTP if any
       await clearPasswordResetOTPInFirestore(cleanEmail);
 
-      // Update local state
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.email.toLowerCase() === cleanEmail ? { ...u, passwordHash: hash, passwordSalt: salt } : u
-        )
-      );
+      // Update local state and purge legacy plaintext password
+      setUsers((prev) => {
+        const exists = prev.some((u) => u.email.toLowerCase() === cleanEmail);
+        let nextList: UserProfile[];
+        if (exists) {
+          nextList = prev.map((u) => {
+            if (u.email.toLowerCase() === cleanEmail) {
+              const uCopy = { ...u, passwordHash: hash, passwordSalt: salt };
+              delete (uCopy as any).password;
+              return uCopy;
+            }
+            return u;
+          });
+        } else {
+          nextList = [updatedUser, ...prev];
+        }
+        scheduleStorageSave(STORAGE_KEYS.USERS, nextList);
+        return nextList;
+      });
+
+      // Synchronize to Firebase Auth in background if session active
+      (async () => {
+        try {
+          const { auth } = await import('./firebase');
+          if (auth.currentUser && auth.currentUser.email?.toLowerCase() === cleanEmail) {
+            const { updatePassword } = await import('firebase/auth');
+            await updatePassword(auth.currentUser, cleanPass);
+          }
+        } catch {}
+      })();
 
       return { success: true };
     } catch (err) {
       console.error('Password reset network error:', err);
       // Fallback local update
-      if (targetUser) {
-        const updatedTarget = { ...targetUser, passwordHash: hash, passwordSalt: salt };
-        await saveUserToFirestore(updatedTarget);
-        await clearPasswordResetOTPInFirestore(cleanEmail);
-        setUsers((prev) =>
-          prev.map((u) =>
-            u.email.toLowerCase() === cleanEmail ? { ...u, passwordHash: hash, passwordSalt: salt } : u
-          )
-        );
-        return { success: true };
-      }
-      return { success: false, error: 'تعذر الاتصال بالخادم لتحديث كلمة المرور.' };
+      const updatedUser: UserProfile = targetUser
+        ? { ...targetUser, passwordHash: hash, passwordSalt: salt }
+        : {
+            id: isSuperAdminEmail(cleanEmail) ? 'user_mustapha' : `user_${Date.now()}`,
+            name: isSuperAdminEmail(cleanEmail) ? 'Mustapha Bouhbous' : cleanEmail.split('@')[0],
+            email: cleanEmail,
+            avatarUrl: isSuperAdminEmail(cleanEmail) ? MESSI_AVATAR_URL : `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(cleanEmail)}`,
+            city: 'Casablanca',
+            isAdmin: isSuperAdminEmail(cleanEmail),
+            status: 'approved',
+            matchesPlayed: 0,
+            createdAt: new Date().toISOString(),
+            passwordHash: hash,
+            passwordSalt: salt,
+          };
+      delete (updatedUser as any).password;
+
+      await saveUserToFirestore(updatedUser);
+      await clearPasswordResetOTPInFirestore(cleanEmail);
+      setUsers((prev) => {
+        const nextList = prev.map((u) => {
+          if (u.email.toLowerCase() === cleanEmail) {
+            const uCopy = { ...u, passwordHash: hash, passwordSalt: salt };
+            delete (uCopy as any).password;
+            return uCopy;
+          }
+          return u;
+        });
+        scheduleStorageSave(STORAGE_KEYS.USERS, nextList);
+        return nextList;
+      });
+      return { success: true };
     }
   }, [users, verifyOTPCode]);
 

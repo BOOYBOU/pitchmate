@@ -234,6 +234,7 @@ export interface InAppNotification {
 
 export const SUPER_ADMIN_EMAILS: readonly string[] = [
   'bouhbousmustapha@gmail.com',
+  'moustafa325476@gmail.com',
 ];
 
 export const SUPER_ADMIN_EMAIL = 'bouhbousmustapha@gmail.com';
@@ -242,10 +243,11 @@ export const MESSI_AVATAR_URL = 'https://upload.wikimedia.org/wikipedia/commons/
 export const DEFAULT_CURRENCY = 'MAD';
 export const MOROCCO_TIMEZONE = 'Africa/Casablanca';
 
-/** Strict check if an email matches the authorized Super Admin email (bouhbousmustapha@gmail.com only) */
+/** Strict check if an email matches the authorized Super Admin email (bouhbousmustapha@gmail.com or moustafa325476@gmail.com) */
 export const isSuperAdminEmail = (email?: string): boolean => {
   if (!email) return false;
-  return email.trim().toLowerCase() === 'bouhbousmustapha@gmail.com';
+  const clean = email.trim().toLowerCase();
+  return clean === 'bouhbousmustapha@gmail.com' || clean === 'moustafa325476@gmail.com';
 };
 
 /** Strict check to verify if a user object holds administrative privileges (bouhbousmustapha@gmail.com only) */

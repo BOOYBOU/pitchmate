@@ -27,6 +27,20 @@ export const db = (() => {
 // Initialize Firebase Auth
 export const auth = getAuth(app);
 
+// Test Firestore connection as required by Firebase skill guidelines
+if (typeof window !== 'undefined') {
+  (async () => {
+    try {
+      const { doc, getDocFromServer } = await import('firebase/firestore');
+      await getDocFromServer(doc(db, 'test', 'connection'));
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('the client is offline')) {
+        console.error('Please check your Firebase configuration.');
+      }
+    }
+  })();
+}
+
 // Helper for sending real Firebase Password Reset Email
 export const sendFirebasePasswordReset = async (email: string) => {
   const { sendPasswordResetEmail } = await import('firebase/auth');
