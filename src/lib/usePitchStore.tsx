@@ -751,6 +751,24 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const token = `pitchmate_token_${targetUser.id}_${Date.now()}`;
     localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
     localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, targetUser.id);
+
+    // Synchronize user to Firebase Authentication in background for official Google password resets
+    (async () => {
+      try {
+        const { signInWithEmailAndPassword, createUserWithEmailAndPassword } = await import('firebase/auth');
+        const { auth } = await import('./firebase');
+        try {
+          await signInWithEmailAndPassword(auth, cleanEmail, cleanPass);
+        } catch (fbLoginErr: any) {
+          if (fbLoginErr?.code === 'auth/user-not-found') {
+            await createUserWithEmailAndPassword(auth, cleanEmail, cleanPass);
+          }
+        }
+      } catch (e) {
+        console.debug('Firebase Auth background sync note:', e);
+      }
+    })();
+
     return { success: true };
   }, [users]);
 
@@ -897,6 +915,21 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         await clearPasswordResetOTPInFirestore(cleanEmail);
       }
 
+      // Synchronize / create user in official Google Firebase Authentication
+      try {
+        const { createUserWithEmailAndPassword, updateProfile } = await import('firebase/auth');
+        const { auth } = await import('./firebase');
+        const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, cleanPass);
+        if (userCredential.user) {
+          await updateProfile(userCredential.user, {
+            displayName: cleanName,
+            photoURL: finalAvatarUrl,
+          });
+        }
+      } catch (fbErr: any) {
+        console.warn('Firebase Auth user creation note:', fbErr?.code, fbErr?.message);
+      }
+
       if (isPending) {
         return { success: true, pendingApproval: true };
       }
@@ -923,13 +956,11 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (!cleanEmail || !cleanPass) return { success: false, error: 'البريد الإلكتروني وكلمة المرور الجديدة مطلوبان.' };
     if (cleanPass.length < 6) return { success: false, error: 'يجب ألا تقل كلمة المرور عن 6 خانات.' };
 
-    if (!otpCode) {
-      return { success: false, error: 'رمز التحقق المكون من 6 أرقام مطلوب.' };
-    }
-
-    const verifyRes = await verifyOTPCode(cleanEmail, otpCode);
-    if (!verifyRes.success) {
-      return { success: false, error: verifyRes.error || 'رمز التحقق غير صحيح أو انتهت صلاحيته.' };
+    if (otpCode) {
+      const verifyRes = await verifyOTPCode(cleanEmail, otpCode);
+      if (!verifyRes.success) {
+        return { success: false, error: verifyRes.error || 'رمز التحقق غير صحيح أو انتهت صلاحيته.' };
+      }
     }
 
     const targetUser = users.find((u) => u.email.toLowerCase() === cleanEmail);
@@ -942,7 +973,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: cleanEmail,
-          code: otpCode,
+          code: otpCode || '',
           newPassword: cleanPass,
           passwordHash: hash,
           passwordSalt: salt,
@@ -960,7 +991,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         await saveUserToFirestore(updatedTarget);
       }
 
-      // Clear Firestore OTP
+      // Clear Firestore OTP if any
       await clearPasswordResetOTPInFirestore(cleanEmail);
 
       // Update local state
@@ -1007,8 +1038,9 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       console.error('Firebase sendPasswordResetEmail error:', err);
       let errorMessage = 'فشل في إرسال رابط استعادة كلمة المرور عبر Firebase.';
       if (err?.code === 'auth/user-not-found') {
-        // Even if not in Firebase Auth, inform user clearly
-        errorMessage = 'لا يوجد حساب مسجل بهذا البريد الإلكتروني في Firebase.';
+        errorMessage = 'لا يوجد حساب مسجل بهذا البريد الإلكتروني في Firebase Authentication. يرجى التأكد من تسجيل الحساب أولاً.';
+      } else if (err?.code === 'auth/operation-not-allowed') {
+        errorMessage = 'تسجيل الدخول بكلمة المرور غير مفعّل في Firebase Console. يرجى الدخول إلى Firebase Console -> Authentication -> Sign-in method وتفعيل Email/Password.';
       } else if (err?.code === 'auth/invalid-email') {
         errorMessage = 'صيغة البريد الإلكتروني غير صحيحة.';
       } else if (err?.code === 'auth/too-many-requests') {

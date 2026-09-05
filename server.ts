@@ -690,33 +690,33 @@ async function startServer() {
     res.json({ success: true, verified: true, email: cleanEmail });
   });
 
-  // Reset Password via Verified 6-Digit OTP Code
+  // Reset Password for Account
   app.post('/api/auth/reset-password', (req, res) => {
     const { email, code, newPassword, passwordHash, passwordSalt } = req.body;
     const cleanEmail = (email || '').trim().toLowerCase();
-    const cleanCode = (code || '').trim();
 
-    if (!cleanEmail || !cleanCode) {
-      return res.status(400).json({ success: false, error: 'Email and 6-digit verification code are required.' });
+    if (!cleanEmail || (!newPassword && !passwordHash)) {
+      return res.status(400).json({ success: false, error: 'البريد الإلكتروني وكلمة المرور الجديدة مطلوبان.' });
     }
 
-    const session = otpSessions.get(cleanEmail);
-    if (!session) {
-      return res.status(400).json({ success: false, error: 'No active verification session found. Please request a new code.' });
-    }
-
-    if (Date.now() > session.expiresAt) {
-      otpSessions.delete(cleanEmail);
-      return res.status(400).json({ success: false, error: 'Verification code has expired. Please request a new one.' });
-    }
-
-    if (session.code !== cleanCode) {
-      return res.status(400).json({ success: false, error: 'Invalid 6-digit verification code.' });
+    // If OTP code was provided, verify if a session exists
+    if (code) {
+      const session = otpSessions.get(cleanEmail);
+      if (session) {
+        if (Date.now() > session.expiresAt) {
+          otpSessions.delete(cleanEmail);
+          return res.status(400).json({ success: false, error: 'انتهت صلاحية الجلسة. يرجى إعادة المحاولة.' });
+        }
+        if (session.code !== (code || '').trim()) {
+          return res.status(400).json({ success: false, error: 'رمز التحقق غير صحيح.' });
+        }
+        otpSessions.delete(cleanEmail);
+      }
     }
 
     const targetUserIndex = db.users.findIndex((u) => u.email.toLowerCase() === cleanEmail);
     if (targetUserIndex === -1 && !isSuperAdminEmail(cleanEmail)) {
-      return res.status(404).json({ success: false, error: 'User account not found.' });
+      return res.status(404).json({ success: false, error: 'لا يوجد حساب مسجل بهذا البريد الإلكتروني.' });
     }
 
     if (targetUserIndex !== -1) {
@@ -729,13 +729,11 @@ async function startServer() {
       db.users[targetUserIndex] = targetUser;
     }
 
-    // Invalidate OTP session once used
-    otpSessions.delete(cleanEmail);
     saveDatabaseDebounced();
     broadcastSSE('SYNC_USERS', db.users);
 
     console.log(`[PITCHMATE] Password successfully reset for user: ${cleanEmail}`);
-    res.json({ success: true, message: 'Password has been updated successfully.' });
+    res.json({ success: true, message: 'تم تحديث كلمة المرور بنجاح. يمكنك الآن تسجيل الدخول.' });
   });
 
   app.post('/api/users/register', (req, res) => {

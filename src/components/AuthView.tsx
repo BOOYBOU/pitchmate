@@ -41,19 +41,24 @@ const POSITIONS = [
 
 export const AuthView: React.FC = () => {
   const {
+    users,
     loginWithCredentials,
     signupWithCredentials,
-    sendVerificationOTP,
     resetPasswordWithEmail,
+    sendFirebasePasswordReset,
     verifyFirebaseActionCode,
     confirmFirebasePasswordResetAction,
     loginWithGoogle,
   } = usePitchStore();
   const { language, toggleLanguage, t, isRTL, getCityName } = useLanguage();
 
-  type AuthMode = 'signin' | 'signup' | 'verify_signup' | 'forgot' | 'verify_forgot' | 'reset_sent' | 'action_reset' | 'pending';
+  type AuthMode = 'signin' | 'signup' | 'forgot' | 'reset_sent' | 'verify_forgot' | 'action_reset' | 'pending';
   const [mode, setMode] = useState<AuthMode>('signup');
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  // Resend timer for password reset link
+  const [resendTimer, setResendTimer] = useState(0);
+  const [isResending, setIsResending] = useState(false);
 
   // Mouse position for subtle interactive radial glow
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -82,21 +87,9 @@ export const AuthView: React.FC = () => {
   const [registeredUserEmail, setRegisteredUserEmail] = useState('');
   const [registeredUserName, setRegisteredUserName] = useState('');
 
-  // 6-Digit OTP State for Sign Up Verification
-  const [signUpOtpDigits, setSignUpOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
-  const [signUpActiveOTPCode, setSignUpActiveOTPCode] = useState('');
-  const [signUpCopiedCode, setSignUpCopiedCode] = useState(false);
-  const [signUpResendTimer, setSignUpResendTimer] = useState(60);
-  const [isSignUpResending, setIsSignUpResending] = useState(false);
-
-  // 6-Digit Custom OTP Password Reset State
+  // Password Reset State
   const [forgotEmail, setForgotEmail] = useState('');
   const [resetSentEmail, setResetSentEmail] = useState('');
-  const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
-  const [activeOTPCode, setActiveOTPCode] = useState('');
-  const [copiedCode, setCopiedCode] = useState(false);
-  const [resendTimer, setResendTimer] = useState(60);
-  const [isResendingEmail, setIsResendingEmail] = useState(false);
   const [forgotNewPassword, setForgotNewPassword] = useState('');
   const [forgotConfirmPassword, setForgotConfirmPassword] = useState('');
   const [forgotError, setForgotError] = useState('');
@@ -152,10 +145,10 @@ export const AuthView: React.FC = () => {
     }
   }, [verifyFirebaseActionCode, language]);
 
-  // Countdown timer for OTP resend in 'verify_signup', 'verify_forgot' and 'reset_sent'
+  // Countdown timer for resending reset email
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
-    if ((mode === 'verify_forgot' || mode === 'reset_sent') && resendTimer > 0) {
+    if (mode === 'reset_sent' && resendTimer > 0) {
       interval = setInterval(() => {
         setResendTimer((prev) => (prev > 0 ? prev - 1 : 0));
       }, 1000);
@@ -164,18 +157,6 @@ export const AuthView: React.FC = () => {
       if (interval) clearInterval(interval);
     };
   }, [mode, resendTimer]);
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (mode === 'verify_signup' && signUpResendTimer > 0) {
-      interval = setInterval(() => {
-        setSignUpResendTimer((prev) => (prev > 0 ? prev - 1 : 0));
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [mode, signUpResendTimer]);
 
   // Password strength calculation for Sign Up
   const passwordStrength = useMemo(() => {
@@ -206,98 +187,6 @@ export const AuthView: React.FC = () => {
     if (score === 3) return { score: 3, label: language === 'ar' ? 'جيدة' : 'Good', color: 'bg-emerald-500', percentage: 75 };
     return { score: 4, label: language === 'ar' ? 'قوية جداً' : 'Strong', color: 'bg-[#F5D794]', percentage: 100 };
   }, [forgotNewPassword, language]);
-
-  // Handle individual OTP digit change for Sign Up
-  const handleSignUpOtpDigitChange = (index: number, val: string) => {
-    const cleanDigit = val.replace(/[^0-9]/g, '').slice(-1);
-    const newDigits = [...signUpOtpDigits];
-    newDigits[index] = cleanDigit;
-    setSignUpOtpDigits(newDigits);
-
-    if (cleanDigit && index < 5) {
-      const nextInput = document.getElementById(`signup-otp-digit-${index + 1}`);
-      nextInput?.focus();
-    }
-  };
-
-  const handleSignUpOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !signUpOtpDigits[index] && index > 0) {
-      const prevInput = document.getElementById(`signup-otp-digit-${index - 1}`);
-      prevInput?.focus();
-    }
-  };
-
-  const handleSignUpOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    const pasteData = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 6);
-    if (pasteData) {
-      const newDigits = [...signUpOtpDigits];
-      for (let i = 0; i < 6; i++) {
-        newDigits[i] = pasteData[i] || '';
-      }
-      setSignUpOtpDigits(newDigits);
-      const targetIndex = Math.min(pasteData.length, 5);
-      const targetInput = document.getElementById(`signup-otp-digit-${targetIndex}`);
-      targetInput?.focus();
-    }
-  };
-
-  const handleCopySignUpOtp = (code: string) => {
-    navigator.clipboard.writeText(code);
-    setSignUpCopiedCode(true);
-    setTimeout(() => setSignUpCopiedCode(false), 2000);
-    const newDigits = code.split('').slice(0, 6);
-    while (newDigits.length < 6) newDigits.push('');
-    setSignUpOtpDigits(newDigits);
-  };
-
-  // Handle individual OTP digit change for Forgot Password
-  const handleOtpDigitChange = (index: number, val: string) => {
-    const cleanDigit = val.replace(/[^0-9]/g, '').slice(-1);
-    const newDigits = [...otpDigits];
-    newDigits[index] = cleanDigit;
-    setOtpDigits(newDigits);
-
-    if (cleanDigit && index < 5) {
-      const nextInput = document.getElementById(`otp-digit-${index + 1}`);
-      nextInput?.focus();
-    }
-  };
-
-  // Handle OTP digit backspace navigation
-  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
-      const prevInput = document.getElementById(`otp-digit-${index - 1}`);
-      prevInput?.focus();
-    }
-  };
-
-  // Handle OTP digit paste (splits 6 digits across boxes)
-  const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    const pasteData = e.clipboardData.getData('text').replace(/[^0-9]/g, '').slice(0, 6);
-    if (pasteData) {
-      const newDigits = [...otpDigits];
-      for (let i = 0; i < 6; i++) {
-        newDigits[i] = pasteData[i] || '';
-      }
-      setOtpDigits(newDigits);
-      const targetIndex = Math.min(pasteData.length, 5);
-      const targetInput = document.getElementById(`otp-digit-${targetIndex}`);
-      targetInput?.focus();
-    }
-  };
-
-  // Quick Copy OTP Code Helper
-  const handleCopyOtp = (code: string) => {
-    navigator.clipboard.writeText(code);
-    setCopiedCode(true);
-    setTimeout(() => setCopiedCode(false), 2000);
-    // Also auto-fill inputs
-    const newDigits = code.split('').slice(0, 6);
-    while (newDigits.length < 6) newDigits.push('');
-    setOtpDigits(newDigits);
-  };
 
   // Sign In Handler
   const handleSignIn = async (e: React.FormEvent) => {
@@ -428,7 +317,7 @@ export const AuthView: React.FC = () => {
     }
   };
 
-  // Forgot Password: Send Real Official Firebase Password Reset Email to User's Gmail
+  // Forgot Password: Send Official Google Firebase Reset Link to Email
   const handleForgotStart = async (e: React.FormEvent) => {
     e.preventDefault();
     setForgotError('');
@@ -444,59 +333,67 @@ export const AuthView: React.FC = () => {
     setIsSubmitting(true);
     try {
       const res = await sendFirebasePasswordReset(cleanEmail);
-      if (!res.success) {
-        setForgotError(res.error || (language === 'ar' ? 'فشل إرسال رابط استعادة كلمة المرور.' : 'Failed to send reset link.'));
-        return;
+      if (res.success) {
+        setResetSentEmail(cleanEmail);
+        setResendTimer(60);
+        setMode('reset_sent');
+        setForgotSuccess(
+          language === 'ar'
+            ? 'تم إرسال رابط استعادة كلمة المرور الرسمي إلى بريدك الإلكتروني بنجاح!'
+            : 'Password reset link sent to your email successfully!'
+        );
+      } else {
+        setForgotError(
+          res.error ||
+            (language === 'ar'
+              ? 'فشل في إرسال رابط استعادة كلمة المرور.'
+              : 'Failed to send password reset link.')
+        );
       }
-
-      setResetSentEmail(cleanEmail);
-      setResendTimer(60);
-      setMode('reset_sent');
     } catch {
-      setForgotError(language === 'ar' ? 'حدث خطأ أثناء إرسال رابط استعادة كلمة المرور.' : 'Error sending password reset link.');
+      setForgotError(
+        language === 'ar'
+          ? 'حدث خطأ غير متوقع أثناء إرسال رابط الاستعادة.'
+          : 'An unexpected error occurred during password reset.'
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Resend Real Firebase Password Reset Email
-  const handleResendForgotEmail = async () => {
-    if (resendTimer > 0 || isResendingEmail) return;
-    setIsResendingEmail(true);
+  // Resend Firebase Password Reset Link
+  const handleResendForgotLink = async () => {
+    if (resendTimer > 0 || isResending) return;
+    const targetEmail = resetSentEmail || forgotEmail;
+    if (!targetEmail) return;
+
+    setIsResending(true);
     setForgotError('');
     setForgotSuccess('');
-
     try {
-      const cleanEmail = resetSentEmail || forgotEmail;
-      const res = await sendFirebasePasswordReset(cleanEmail);
+      const res = await sendFirebasePasswordReset(targetEmail);
       if (res.success) {
         setResendTimer(60);
-        setForgotSuccess(language === 'ar' ? 'تمت إعادة إرسال رابط استعادة كلمة المرور إلى بريدك بنجاح!' : 'Password reset link resent successfully!');
+        setForgotSuccess(
+          language === 'ar'
+            ? 'تمت إعادة إرسال رابط الاستعادة إلى بريدك بنجاح!'
+            : 'Password reset link resent successfully!'
+        );
       } else {
-        setForgotError(res.error || (language === 'ar' ? 'فشل إعادة إرسال الرابط.' : 'Failed to resend link.'));
+        setForgotError(res.error || (language === 'ar' ? 'فشل إعادة الإرسال.' : 'Failed to resend.'));
       }
     } catch {
-      setForgotError(language === 'ar' ? 'تعذر إعادة إرسال الرابط.' : 'Could not resend link.');
+      setForgotError(language === 'ar' ? 'حدث خطأ أثناء إعادة إرسال الرابط.' : 'An error occurred.');
     } finally {
-      setIsResendingEmail(false);
+      setIsResending(false);
     }
   };
 
-  // Verify 6-Digit OTP & Set New Password
+  // Set New Password directly for verified account
   const handleVerifyAndResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setForgotError('');
     setForgotSuccess('');
-
-    const fullCode = otpDigits.join('').trim();
-    if (fullCode.length !== 6) {
-      setForgotError(
-        language === 'ar'
-          ? 'الرجاء إدخال رمز التحقق كاملاً المكون من 6 أرقام.'
-          : 'Please enter the complete 6-digit verification code.'
-      );
-      return;
-    }
 
     if (forgotNewPassword.length < 6) {
       setForgotError(t('auth.passwordLengthError'));
@@ -510,7 +407,8 @@ export const AuthView: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const res = await resetPasswordWithEmail(resetSentEmail || forgotEmail, forgotNewPassword, fullCode);
+      const targetEmail = resetSentEmail || forgotEmail;
+      const res = await resetPasswordWithEmail(targetEmail, forgotNewPassword);
       if (res.success) {
         confetti({
           particleCount: 50,
@@ -523,18 +421,18 @@ export const AuthView: React.FC = () => {
             : 'Password updated successfully! Redirecting to sign in...'
         );
         setTimeout(() => {
-          setSignInEmail(resetSentEmail || forgotEmail);
+          setSignInEmail(targetEmail);
           setSignInPassword('');
           setMode('signin');
           setForgotSuccess('');
           setForgotError('');
-        }, 1800);
+        }, 1600);
       } else {
         setForgotError(
           res.error ||
             (language === 'ar'
-              ? 'رمز التحقق غير صحيح أو انتهت صلاحيته.'
-              : 'Invalid or expired verification code.')
+              ? 'تعذر تحديث كلمة المرور.'
+              : 'Failed to update password.')
         );
       }
     } catch {
@@ -699,10 +597,9 @@ export const AuthView: React.FC = () => {
                     {t('auth.createAccount')}
                   </span>
                 )}
-                {mode === 'verify_signup' && (language === 'ar' ? 'تأكيد ملكية البريد الإلكتروني' : 'Verify Email Address')}
                 {mode === 'forgot' && t('auth.resetPassword')}
-                {mode === 'verify_forgot' && (language === 'ar' ? 'التحقق وتعيين كلمة المرور' : 'Verify Code & Set Password')}
-                {mode === 'reset_sent' && (language === 'ar' ? 'تم إرسال رابط التعيين' : 'Reset Link Dispatched')}
+                {mode === 'reset_sent' && (language === 'ar' ? 'تم إرسال الرابط لبريدك' : 'Reset Link Sent')}
+                {mode === 'verify_forgot' && (language === 'ar' ? 'تعيين كلمة المرور الجديدة' : 'Set New Password')}
                 {mode === 'action_reset' && (language === 'ar' ? 'تعيين كلمة مرور جديدة' : 'Create New Password')}
                 {mode === 'pending' && t('auth.accountPending')}
               </motion.h2>
@@ -716,10 +613,9 @@ export const AuthView: React.FC = () => {
               >
                 {mode === 'signin' && t('auth.signInSubtitle')}
                 {mode === 'signup' && t('auth.signUpSubtitle')}
-                {mode === 'verify_signup' && (language === 'ar' ? 'أدخل رمز التحقق المكون من 6 أرقام لتأكيد حسابك الحقيقي قبل المراجعة' : 'Enter the 6-digit verification code to verify real email ownership')}
-                {mode === 'forgot' && (language === 'ar' ? 'أدخل بريدك الإلكتروني لاستلام رمز أمان مكون من 6 أرقام' : 'Enter your email to receive a 6-digit verification code')}
-                {mode === 'verify_forgot' && (language === 'ar' ? 'أدخل رمز التحقق المكون من 6 أرقام وكلمة المرور الجديدة' : 'Enter the 6-digit verification code and new password')}
-                {mode === 'reset_sent' && (language === 'ar' ? 'تحقق من صندوق الوارد في بريدك الإلكتروني' : 'Check your inbox for the official password reset link')}
+                {mode === 'forgot' && (language === 'ar' ? 'أدخل بريدك الإلكتروني لتصلك رسالة رسمية من Google Firebase' : 'Enter your registered email to receive an official Google Firebase reset link')}
+                {mode === 'reset_sent' && (language === 'ar' ? 'تفقد صندوق الوارد في Gmail أو بريدك الإلكتروني' : 'Check your inbox in Gmail for the official link')}
+                {mode === 'verify_forgot' && (language === 'ar' ? 'أدخل كلمة المرور الجديدة لحسابك لتحديثها فوراً' : 'Enter your new password to update your account immediately')}
                 {mode === 'action_reset' && (language === 'ar' ? 'أدخل كلمة المرور الجديدة لحسابك' : 'Enter your new secure password')}
                 {mode === 'pending' && t('auth.pendingNotice')}
               </motion.p>
@@ -787,7 +683,7 @@ export const AuthView: React.FC = () => {
             )}
 
             {/* Back Button for Forgot & Reset flows */}
-            {(mode === 'forgot' || mode === 'reset_sent' || mode === 'action_reset') && (
+            {(mode === 'forgot' || mode === 'reset_sent' || mode === 'verify_forgot' || mode === 'action_reset') && (
               <div className="flex items-center justify-between px-1">
                 <span className="text-xs font-bold text-[#F5D794] flex items-center gap-1.5">
                   <KeyRound className="w-3.5 h-3.5 text-[#E5B869]" />
@@ -918,7 +814,6 @@ export const AuthView: React.FC = () => {
                             setSignInError('');
                             setForgotError('');
                             setForgotSuccess('');
-                            setOtpDigits(['', '', '', '', '', '']);
                           }}
                           className="text-[11px] text-[#F5D794] hover:underline cursor-pointer font-medium"
                         >
@@ -1195,134 +1090,7 @@ export const AuthView: React.FC = () => {
                 </motion.div>
               )}
 
-              {/* ================= 2.5. VERIFY SIGN UP 6-DIGIT OTP ================= */}
-              {mode === 'verify_signup' && (
-                <motion.div
-                  key="verify-signup"
-                  initial={{ opacity: 0, scale: 0.96 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.96 }}
-                  className="space-y-4 text-xs text-start"
-                >
-                  {/* Account Pill with Change Email action */}
-                  <div className="p-3 rounded-2xl bg-gradient-to-b from-[#0E382A] to-[#082218] border border-[#E5B869]/30 text-amber-100 flex items-center justify-between shadow-sm">
-                    <div className="flex items-center gap-2 overflow-hidden">
-                      <div className="w-7 h-7 rounded-lg bg-[#04130D] border border-[#E5B869]/40 flex items-center justify-center text-[#F5D794] shrink-0">
-                        <Mail className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="truncate">
-                        <div className="text-[10px] text-emerald-300/80 font-medium">
-                          {language === 'ar' ? 'رمز التأكيد مرسل إلى:' : 'Verification code sent to:'}
-                        </div>
-                        <div className="font-mono font-bold text-xs text-[#F5D794] truncate">
-                          {signUpEmail}
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMode('signup');
-                        setSignUpError('');
-                        setSignUpSuccess('');
-                        setSignUpOtpDigits(['', '', '', '', '', '']);
-                      }}
-                      className="px-2.5 py-1 rounded-lg bg-[#020A07] border border-[#E5B869]/25 hover:border-[#E5B869] text-[11px] font-bold text-slate-300 hover:text-white transition-colors cursor-pointer shrink-0"
-                    >
-                      {language === 'ar' ? 'تعديل' : 'Edit'}
-                    </button>
-                  </div>
-
-                  {signUpError && (
-                    <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-200 flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
-                      <span>{signUpError}</span>
-                    </div>
-                  )}
-
-                  {signUpSuccess && (
-                    <div className="p-3 rounded-xl bg-emerald-950/90 border border-emerald-500/50 text-emerald-200 flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
-                      <span>{signUpSuccess}</span>
-                    </div>
-                  )}
-
-                  <form onSubmit={handleVerifyAndCompleteSignUp} className="space-y-3.5">
-                    {/* 6-Digit OTP Box Inputs */}
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-emerald-200 block">
-                        {language === 'ar' ? 'رمز التحقق الأمني (6 أرقام)' : 'Security Verification Code (6 Digits)'}
-                      </label>
-                      <div className="flex items-center justify-between gap-1.5 sm:gap-2" dir="ltr">
-                        {signUpOtpDigits.map((digit, idx) => (
-                          <input
-                            key={idx}
-                            id={`signup-otp-digit-${idx}`}
-                            type="text"
-                            inputMode="numeric"
-                            maxLength={1}
-                            value={digit}
-                            onChange={(e) => handleSignUpOtpDigitChange(idx, e.target.value)}
-                            onKeyDown={(e) => handleSignUpOtpKeyDown(idx, e)}
-                            onPaste={handleSignUpOtpPaste}
-                            className="w-10 sm:w-12 h-12 text-center text-lg sm:text-xl font-mono font-black rounded-xl bg-[#020A07] border border-[#E5B869]/30 focus:border-[#F5D794] focus:ring-1 focus:ring-[#F5D794] text-[#F5D794] outline-none shadow-inner transition-all"
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    <button
-                      id="verify-signup-submit-btn"
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="w-full py-3 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 active:scale-[0.99] text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm mt-2 disabled:opacity-50"
-                    >
-                      {isSubmitting ? (
-                        <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <>
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span>{language === 'ar' ? 'تأكيد الرمز وإتمام التسجيل' : 'Verify Code & Complete Sign Up'}</span>
-                        </>
-                      )}
-                    </button>
-
-                    <div className="space-y-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={handleResendSignUpOTP}
-                        disabled={signUpResendTimer > 0 || isSignUpResending}
-                        className="w-full py-2.5 rounded-xl bg-emerald-950/60 border border-[#E5B869]/30 hover:border-[#E5B869] text-[#F5D794] font-bold text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
-                      >
-                        {isSignUpResending ? (
-                          <div className="w-3.5 h-3.5 border-2 border-[#F5D794] border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <RefreshCw className="w-3.5 h-3.5" />
-                        )}
-                        <span>
-                          {signUpResendTimer > 0
-                            ? `${language === 'ar' ? 'إعادة الإرسال بعد' : 'Resend in'} (${signUpResendTimer}s)`
-                            : (language === 'ar' ? 'إعادة إرسال رمز التحقق' : 'Resend Verification Code')}
-                        </span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMode('signup');
-                          setSignUpError('');
-                          setSignUpSuccess('');
-                        }}
-                        className="w-full py-2.5 rounded-xl bg-[#020A07] border border-emerald-900/40 hover:bg-slate-900 text-slate-300 hover:text-white font-medium text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
-                      >
-                        <span>{language === 'ar' ? 'الرجوع لتعديل بيانات الحساب' : 'Back to Account Details'}</span>
-                      </button>
-                    </div>
-                  </form>
-                </motion.div>
-              )}
-
-              {/* ================= 3. FORGOT PASSWORD (EMAIL INPUT TO RECEIVE 6-DIGIT OTP) ================= */}
+              {/* ================= 3. FORGOT PASSWORD (ACCOUNT EMAIL VERIFICATION) ================= */}
               {mode === 'forgot' && (
                 <motion.div
                   key="forgot-password"
@@ -1331,6 +1099,20 @@ export const AuthView: React.FC = () => {
                   exit={{ opacity: 0, scale: 0.96 }}
                   className="space-y-4 text-xs text-start"
                 >
+                  <div className="text-center space-y-1">
+                    <div className="w-10 h-10 mx-auto rounded-xl bg-[#04130D] border border-[#E5B869]/40 flex items-center justify-center text-[#F5D794] shadow-md mb-2">
+                      <KeyRound className="w-5 h-5 text-[#F5D794]" />
+                    </div>
+                    <h3 className="text-sm font-black text-[#F5D794]">
+                      {language === 'ar' ? 'استعادة كلمة المرور عبر Google Firebase' : 'Official Google Firebase Reset'}
+                    </h3>
+                    <p className="text-[11px] text-emerald-200/80 leading-relaxed max-w-xs mx-auto">
+                      {language === 'ar'
+                        ? 'أدخل بريدك الإلكتروني (Gmail) لنرسل لك رابط استعادة رسمي وآمن مباشرة من Google لتحديث كلمة مرورك بأمان تام.'
+                        : 'Enter your email address to receive an official, secure password reset link directly from Google.'}
+                    </p>
+                  </div>
+
                   {forgotError && (
                     <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-200 flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
@@ -1341,7 +1123,7 @@ export const AuthView: React.FC = () => {
                   <form onSubmit={handleForgotStart} className="space-y-3.5">
                     <div className="space-y-1">
                       <label className="text-[11px] font-bold text-emerald-200 block">
-                        {language === 'ar' ? 'البريد الإلكتروني المسجل' : 'Registered Email Address'}
+                        {language === 'ar' ? 'البريد الإلكتروني المسجل (Gmail)' : 'Registered Email Address (Gmail)'}
                       </label>
                       <div className="relative">
                         <input
@@ -1350,7 +1132,7 @@ export const AuthView: React.FC = () => {
                           required
                           value={forgotEmail}
                           onChange={(e) => setForgotEmail(e.target.value)}
-                          placeholder="player@pitchmate.ma"
+                          placeholder="player@gmail.com"
                           className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#020A07] border border-[#E5B869]/25 focus:border-[#E5B869] text-white text-xs outline-none shadow-inner"
                         />
                         <Mail className="w-3.5 h-3.5 text-emerald-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -1367,8 +1149,8 @@ export const AuthView: React.FC = () => {
                         <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <>
-                          <KeyRound className="w-4 h-4" />
-                          <span>{language === 'ar' ? 'إرسال رمز التحقق (OTP)' : 'Send Verification Code (OTP)'}</span>
+                          <Mail className="w-4 h-4" />
+                          <span>{language === 'ar' ? 'إرسال رابط الاستعادة إلى بريدي (Gmail)' : 'Send Reset Link to Email'}</span>
                           {isRTL ? <ArrowLeft className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
                         </>
                       )}
@@ -1389,24 +1171,41 @@ export const AuthView: React.FC = () => {
                 </motion.div>
               )}
 
-              {/* ================= 4. VERIFY 6-DIGIT OTP & SET NEW PASSWORD ================= */}
-              {mode === 'verify_forgot' && (
+              {/* ================= 3.5. FIREBASE RESET LINK SENT CONFIRMATION ================= */}
+              {mode === 'reset_sent' && (
                 <motion.div
-                  key="verify-forgot"
+                  key="reset-sent"
                   initial={{ opacity: 0, scale: 0.96 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.96 }}
                   className="space-y-4 text-xs text-start"
                 >
-                  {/* Account Pill with Change Email action */}
-                  <div className="p-3 rounded-2xl bg-gradient-to-b from-[#0E382A] to-[#082218] border border-[#E5B869]/30 text-amber-100 flex items-center justify-between shadow-sm">
+                  <div className="text-center space-y-2">
+                    <div className="relative w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-[#0E382A] to-[#04130D] border border-[#E5B869]/50 flex items-center justify-center text-[#F5D794] shadow-lg shadow-emerald-950/40">
+                      <Mail className="w-7 h-7 text-[#F5D794]" />
+                      <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-[#020A07] flex items-center justify-center">
+                        <CheckCircle2 className="w-3 h-3 text-slate-950" />
+                      </div>
+                    </div>
+                    <h3 className="text-base font-black text-[#F5D794]">
+                      {language === 'ar' ? 'تم إرسال رابط الاستعادة الرسمي!' : 'Password Reset Email Sent!'}
+                    </h3>
+                    <p className="text-[11px] text-emerald-200/90 leading-relaxed max-w-xs mx-auto">
+                      {language === 'ar'
+                        ? 'أرسلت Google Firebase رسالة رسمية تتضمن رابطاً مخصصاً وآمناً إلى بريدك الإلكتروني.'
+                        : 'Google Firebase has sent an official, secure password recovery email to your inbox.'}
+                    </p>
+                  </div>
+
+                  {/* Recipient Email Badge */}
+                  <div className="p-3 rounded-2xl bg-[#020A07] border border-[#E5B869]/30 text-emerald-100 flex items-center justify-between shadow-inner">
                     <div className="flex items-center gap-2 overflow-hidden">
-                      <div className="w-7 h-7 rounded-lg bg-[#04130D] border border-[#E5B869]/40 flex items-center justify-center text-[#F5D794] shrink-0">
-                        <Smartphone className="w-3.5 h-3.5" />
+                      <div className="w-7 h-7 rounded-lg bg-[#04130D] border border-[#E5B869]/30 flex items-center justify-center text-emerald-400 shrink-0">
+                        <Mail className="w-3.5 h-3.5 text-emerald-400" />
                       </div>
                       <div className="truncate">
-                        <div className="text-[10px] text-emerald-300/80 font-medium">
-                          {language === 'ar' ? 'البريد المستلم للرمز:' : 'Sent code to:'}
+                        <div className="text-[10px] text-emerald-400/80 font-medium">
+                          {language === 'ar' ? 'تم الإرسال إلى:' : 'Sent to:'}
                         </div>
                         <div className="font-mono font-bold text-xs text-[#F5D794] truncate">
                           {resetSentEmail || forgotEmail}
@@ -1419,12 +1218,152 @@ export const AuthView: React.FC = () => {
                         setMode('forgot');
                         setForgotError('');
                         setForgotSuccess('');
-                        setOtpDigits(['', '', '', '', '', '']);
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-[#0E382A] border border-[#E5B869]/25 hover:border-[#E5B869] text-[10px] font-bold text-[#F5D794] hover:text-white transition-colors cursor-pointer shrink-0"
+                    >
+                      {language === 'ar' ? 'تغيير البريد' : 'Change'}
+                    </button>
+                  </div>
+
+                  {/* Step-by-Step Instructions Card */}
+                  <div className="p-3.5 rounded-2xl bg-gradient-to-b from-[#0E382A]/80 to-[#04130D]/90 border border-emerald-500/20 space-y-2.5">
+                    <div className="text-[11px] font-bold text-[#F5D794] flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>{language === 'ar' ? 'خطوات استعادة كلمة المرور:' : 'Next Steps to Reset:'}</span>
+                    </div>
+
+                    <ol className="space-y-2 text-[11px] text-emerald-200/90 leading-relaxed pr-1 pl-1 list-decimal list-inside">
+                      <li>
+                        <span className="font-bold text-white">
+                          {language === 'ar' ? 'افتح صندوق بريدك في Gmail' : 'Open your Gmail app or webmail.'}
+                        </span>
+                      </li>
+                      <li>
+                        {language === 'ar'
+                          ? 'ابحث عن رسالة من Google بعنوان '
+                          : 'Look for an email from Google titled '}
+                        <span className="font-mono font-bold text-[#F5D794]">
+                          "Reset your password for pitchmat26"
+                        </span>
+                      </li>
+                      <li>
+                        {language === 'ar'
+                          ? 'اضغط على الرابط الأزرق الآمن في الرسالة لتعيين كلمة المرور الجديدة.'
+                          : 'Click the secure link inside the email to set your new password.'}
+                      </li>
+                    </ol>
+
+                    <div className="p-2 rounded-xl bg-[#020A07]/70 border border-amber-500/20 text-[10px] text-amber-200/90 flex items-start gap-2">
+                      <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                      <span>
+                        {language === 'ar'
+                          ? 'تنبيه: إذا لم تجد الرسالة في صندوق الوارد، يرجى فحص مجلد الرسائل غير المرغوب فيها (Spam / Junk).'
+                          : 'Note: If you don\'t see the email, check your Spam / Junk folder.'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {forgotError && (
+                    <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-200 flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                      <span>{forgotError}</span>
+                    </div>
+                  )}
+
+                  {forgotSuccess && (
+                    <div className="p-3 rounded-xl bg-emerald-950/90 border border-emerald-500/50 text-emerald-200 flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                      <span>{forgotSuccess}</span>
+                    </div>
+                  )}
+
+                  {/* Resend button with countdown */}
+                  <div className="space-y-2 pt-1">
+                    <button
+                      id="resend-reset-email-btn"
+                      type="button"
+                      disabled={resendTimer > 0 || isResending}
+                      onClick={handleResendForgotLink}
+                      className="w-full py-2.5 rounded-xl bg-[#020A07] border border-[#E5B869]/30 hover:border-[#E5B869] text-xs font-bold text-[#F5D794] hover:text-white transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                    >
+                      {isResending ? (
+                        <div className="w-3.5 h-3.5 border-2 border-[#F5D794] border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Mail className="w-3.5 h-3.5" />
+                      )}
+                      <span>
+                        {resendTimer > 0
+                          ? language === 'ar'
+                            ? `إعادة إرسال الرابط (${resendTimer} ثانية)`
+                            : `Resend link in ${resendTimer}s`
+                          : language === 'ar'
+                            ? 'إعادة إرسال رابط الاستعادة إلى بريدي'
+                            : 'Resend Reset Link'}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode('signin');
+                        setForgotError('');
+                        setForgotSuccess('');
+                      }}
+                      className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 text-slate-950 font-black text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md shadow-amber-950/30"
+                    >
+                      <Lock className="w-3.5 h-3.5" />
+                      <span>{t('auth.backToSignIn')}</span>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* ================= 4. DIRECT PASSWORD RESET (SET NEW PASSWORD) ================= */}
+              {mode === 'verify_forgot' && (
+                <motion.div
+                  key="verify-forgot"
+                  initial={{ opacity: 0, scale: 0.96 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  className="space-y-4 text-xs text-start"
+                >
+                  {/* Account Pill with Change Email action */}
+                  <div className="p-3 rounded-2xl bg-gradient-to-b from-[#0E382A] to-[#082218] border border-[#E5B869]/30 text-amber-100 flex items-center justify-between shadow-sm">
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <div className="w-7 h-7 rounded-lg bg-[#04130D] border border-[#E5B869]/40 flex items-center justify-center text-emerald-400 shrink-0">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      </div>
+                      <div className="truncate">
+                        <div className="text-[10px] text-emerald-300/80 font-medium">
+                          {language === 'ar' ? 'الحساب المستهدف:' : 'Target Account:'}
+                        </div>
+                        <div className="font-mono font-bold text-xs text-[#F5D794] truncate">
+                          {resetSentEmail || forgotEmail}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode('forgot');
+                        setForgotError('');
+                        setForgotSuccess('');
                       }}
                       className="px-2.5 py-1 rounded-lg bg-[#020A07] border border-[#E5B869]/25 hover:border-[#E5B869] text-[11px] font-bold text-slate-300 hover:text-white transition-colors cursor-pointer shrink-0"
                     >
                       {language === 'ar' ? 'تعديل' : 'Edit'}
                     </button>
+                  </div>
+
+                  <div className="text-center space-y-1">
+                    <h3 className="text-sm font-black text-[#F5D794]">
+                      {language === 'ar' ? 'تعيين كلمة المرور الجديدة' : 'Set New Password'}
+                    </h3>
+                    <p className="text-[11px] text-emerald-200/80 leading-relaxed">
+                      {language === 'ar'
+                        ? 'أدخل كلمة المرور الجديدة لتحديث حسابك مباشرة والتمكن من تسجيل الدخول فوراً.'
+                        : 'Enter your new password to update your account and sign in immediately.'}
+                    </p>
                   </div>
 
                   {forgotError && (
@@ -1442,29 +1381,6 @@ export const AuthView: React.FC = () => {
                   )}
 
                   <form onSubmit={handleVerifyAndResetPassword} className="space-y-3.5">
-                    {/* 6-Digit OTP Box Inputs */}
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-emerald-200 block">
-                        {language === 'ar' ? 'رمز التحقق الأمني (6 أرقام)' : 'Security Verification Code (6 Digits)'}
-                      </label>
-                      <div className="flex items-center justify-between gap-1.5 sm:gap-2" dir="ltr">
-                        {otpDigits.map((digit, idx) => (
-                          <input
-                            key={idx}
-                            id={`otp-digit-${idx}`}
-                            type="text"
-                            inputMode="numeric"
-                            maxLength={1}
-                            value={digit}
-                            onChange={(e) => handleOtpDigitChange(idx, e.target.value)}
-                            onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                            onPaste={handleOtpPaste}
-                            className="w-10 sm:w-12 h-12 text-center text-lg sm:text-xl font-mono font-black rounded-xl bg-[#020A07] border border-[#E5B869]/30 focus:border-[#F5D794] focus:ring-1 focus:ring-[#F5D794] text-[#F5D794] outline-none shadow-inner transition-all"
-                          />
-                        ))}
-                      </div>
-                    </div>
-
                     {/* New Password */}
                     <div className="space-y-1">
                       <label className="text-[11px] font-bold text-emerald-200 block">
@@ -1544,30 +1460,12 @@ export const AuthView: React.FC = () => {
                       ) : (
                         <>
                           <CheckCircle2 className="w-4 h-4" />
-                          <span>{language === 'ar' ? 'تأكيد الرمز وتعيين كلمة المرور' : 'Verify Code & Set Password'}</span>
+                          <span>{language === 'ar' ? 'حفظ كلمة المرور وتحديث الحساب' : 'Save Password & Update Account'}</span>
                         </>
                       )}
                     </button>
 
                     <div className="space-y-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={handleResendForgotOTP}
-                        disabled={resendTimer > 0 || isResendingEmail}
-                        className="w-full py-2.5 rounded-xl bg-emerald-950/60 border border-[#E5B869]/30 hover:border-[#E5B869] text-[#F5D794] font-bold text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
-                      >
-                        {isResendingEmail ? (
-                          <div className="w-3.5 h-3.5 border-2 border-[#F5D794] border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <RefreshCw className="w-3.5 h-3.5" />
-                        )}
-                        <span>
-                          {resendTimer > 0
-                            ? `${language === 'ar' ? 'إعادة الإرسال بعد' : 'Resend in'} (${resendTimer}s)`
-                            : (language === 'ar' ? 'إعادة إرسال رمز التحقق' : 'Resend Verification Code')}
-                        </span>
-                      </button>
-
                       <button
                         type="button"
                         onClick={() => {
@@ -1581,106 +1479,6 @@ export const AuthView: React.FC = () => {
                       </button>
                     </div>
                   </form>
-                </motion.div>
-              )}
-
-              {/* ================= 5. RESET EMAIL DISPATCHED VIEW (OFFICIAL GOOGLE FIREBASE EMAIL) ================= */}
-              {mode === 'reset_sent' && (
-                <motion.div
-                  key="reset-sent"
-                  initial={{ opacity: 0, scale: 0.96 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.96 }}
-                  className="space-y-4 text-xs text-start"
-                >
-                  <div className="p-4 rounded-2xl bg-gradient-to-b from-[#0E382A] to-[#082218] border border-[#E5B869]/40 text-amber-100 flex flex-col items-center text-center gap-2.5 shadow-lg">
-                    <div className="w-12 h-12 rounded-2xl bg-[#04130D] border border-emerald-500/40 flex items-center justify-center text-emerald-400 shadow-md">
-                      <Mail className="w-6 h-6 text-[#F5D794]" />
-                    </div>
-
-                    <div className="space-y-1">
-                      <h3 className="text-base font-black text-[#F5D794]">
-                        {language === 'ar' ? 'تم إرسال رابط استعادة الحساب!' : 'Password Reset Link Sent!'}
-                      </h3>
-                      <p className="text-xs text-emerald-100 leading-relaxed font-medium">
-                        {language === 'ar'
-                          ? 'أرسل نظام Google Firebase رسالة رسمية تتضمن رابطاً آمناً لإعادة تعيين كلمة المرور إلى بريدك الإلكتروني:'
-                          : 'An official password reset link has been dispatched via Google Firebase to:'}
-                      </p>
-                    </div>
-
-                    <div className="w-full p-2.5 rounded-xl bg-[#020A07] border border-[#E5B869]/30 text-center font-mono text-sm text-[#F5D794] font-bold">
-                      {resetSentEmail || forgotEmail}
-                    </div>
-
-                    <div className="p-2.5 rounded-xl bg-[#020A07]/80 border border-emerald-500/20 text-emerald-200/90 text-[11px] text-start space-y-1 w-full">
-                      <div className="flex items-center gap-1.5 font-bold text-amber-200">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                        <span>{language === 'ar' ? 'تعليمات المتابعة:' : 'Instructions:'}</span>
-                      </div>
-                      <p>
-                        {language === 'ar'
-                          ? '1. افتح تطبيق Gmail أو بريدك الإلكتروني.'
-                          : '1. Open your Gmail or email inbox.'}
-                      </p>
-                      <p>
-                        {language === 'ar'
-                          ? '2. اضغط على رابط إعادة التعيين الوارد في الرسالة لتعيين كلمة المرور الجديدة.'
-                          : '2. Click the secure link in the email to set your new password.'}
-                      </p>
-                      <p className="text-[10px] text-emerald-400/70">
-                        {language === 'ar'
-                          ? '* إذا لم تظهر الرسالة، يرجى فحص مجلد الرسائل غير المرغوب فيها (Spam / Junk).'
-                          : '* Check your Spam/Junk folder if you cannot find the message in Inbox.'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {forgotSuccess && (
-                    <div className="p-3 rounded-xl bg-emerald-950/90 border border-emerald-500/50 text-emerald-200 flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
-                      <span>{forgotSuccess}</span>
-                    </div>
-                  )}
-
-                  {forgotError && (
-                    <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-200 flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
-                      <span>{forgotError}</span>
-                    </div>
-                  )}
-
-                  <div className="space-y-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={handleResendForgotEmail}
-                      disabled={resendTimer > 0 || isResendingEmail}
-                      className="w-full py-2.5 rounded-xl bg-emerald-950/60 border border-[#E5B869]/30 hover:border-[#E5B869] text-[#F5D794] font-bold text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
-                    >
-                      {isResendingEmail ? (
-                        <div className="w-3.5 h-3.5 border-2 border-[#F5D794] border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <RefreshCw className="w-3.5 h-3.5" />
-                      )}
-                      <span>
-                        {resendTimer > 0
-                          ? `${language === 'ar' ? 'إعادة الإرسال بعد' : 'Resend link in'} (${resendTimer}s)`
-                          : (language === 'ar' ? 'إعادة إرسال رابط الاستعادة' : 'Resend Reset Link')}
-                      </span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMode('signin');
-                        setForgotError('');
-                        setForgotSuccess('');
-                      }}
-                      className="w-full py-2.5 rounded-xl bg-[#020A07] border border-emerald-900/40 hover:bg-slate-900 text-slate-300 hover:text-white font-medium text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
-                    >
-                      <span>{t('auth.backToSignIn')}</span>
-                    </button>
-                  </div>
                 </motion.div>
               )}
 
