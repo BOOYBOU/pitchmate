@@ -9,7 +9,8 @@ import {
   Volume2,
   VolumeX,
   AlertCircle,
-  Sparkles
+  Sparkles,
+  Loader2
 } from 'lucide-react';
 import { SoundEffects } from '../lib/audioService';
 import { useLanguage } from '../lib/useLanguage';
@@ -29,6 +30,7 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
 }) => {
   const { language } = useLanguage();
   const [isRecording, setIsRecording] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [errorMessage, setErrorMessage] = useState('');
   const [audioLevels, setAudioLevels] = useState<number[]>([4, 6, 12, 8, 16, 22, 14, 8, 4]);
@@ -68,13 +70,21 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
-      // Determine supported mime type
-      const mimeTypes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+      // Determine supported mime type safely across Safari, Chrome, Firefox
+      const mimeTypes = [
+        'audio/webm;codecs=opus',
+        'audio/mp4',
+        'audio/aac',
+        'audio/webm',
+        'audio/ogg;codecs=opus',
+      ];
       let selectedMimeType = '';
-      for (const mime of mimeTypes) {
-        if (MediaRecorder.isTypeSupported(mime)) {
-          selectedMimeType = mime;
-          break;
+      if (typeof MediaRecorder.isTypeSupported === 'function') {
+        for (const mime of mimeTypes) {
+          if (MediaRecorder.isTypeSupported(mime)) {
+            selectedMimeType = mime;
+            break;
+          }
         }
       }
 
@@ -162,6 +172,9 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
     if (timerRef.current) clearInterval(timerRef.current);
     if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
 
+    setIsRecording(false);
+    setIsSending(true);
+
     mediaRecorderRef.current.onstop = async () => {
       const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
       const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
@@ -171,7 +184,6 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
         streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
       }
-      setIsRecording(false);
       setRecordingSeconds(0);
       audioChunksRef.current = [];
 
@@ -183,40 +195,43 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
         if (finalAudioUrl) {
           SoundEffects.playSentSound();
           if (onSendVoiceNote) {
-            onSendVoiceNote(finalAudioUrl, finalDuration);
+            await onSendVoiceNote(finalAudioUrl, finalDuration);
           } else if (onSendAudio) {
-            onSendAudio(finalAudioUrl, finalDuration);
+            await onSendAudio(finalAudioUrl, finalDuration);
           }
         } else {
           // Fallback to data URL
           const reader = new FileReader();
-          reader.onloadend = () => {
+          reader.onloadend = async () => {
             const base64Audio = reader.result as string;
             if (base64Audio) {
               SoundEffects.playSentSound();
               if (onSendVoiceNote) {
-                onSendVoiceNote(base64Audio, finalDuration);
+                await onSendVoiceNote(base64Audio, finalDuration);
               } else if (onSendAudio) {
-                onSendAudio(base64Audio, finalDuration);
+                await onSendAudio(base64Audio, finalDuration);
               }
             }
           };
           reader.readAsDataURL(audioBlob);
         }
-      } catch {
+      } catch (uploadErr) {
+        console.warn('Voice note send fallback error:', uploadErr);
         const reader = new FileReader();
-        reader.onloadend = () => {
+        reader.onloadend = async () => {
           const base64Audio = (reader.result as string) || '';
           if (base64Audio) {
             SoundEffects.playSentSound();
             if (onSendVoiceNote) {
-              onSendVoiceNote(base64Audio, finalDuration);
+              await onSendVoiceNote(base64Audio, finalDuration);
             } else if (onSendAudio) {
-              onSendAudio(base64Audio, finalDuration);
+              await onSendAudio(base64Audio, finalDuration);
             }
           }
         };
         reader.readAsDataURL(audioBlob);
+      } finally {
+        setIsSending(false);
       }
     };
 
@@ -228,6 +243,17 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
     const remaining = sec % 60;
     return `${mins}:${remaining < 10 ? '0' : ''}${remaining}`;
   };
+
+  if (isSending) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-[#090D16] border border-[#E5B869]/50 rounded-2xl animate-in fade-in shadow-md text-xs text-[#F5D794]">
+        <Loader2 className="w-3.5 h-3.5 animate-spin text-[#E5B869] shrink-0" />
+        <span className="font-semibold text-[11px] whitespace-nowrap">
+          {language === 'ar' ? 'جاري إرسال التسجيل...' : 'Sending voice note...'}
+        </span>
+      </div>
+    );
+  }
 
   if (isRecording) {
     return (
@@ -322,21 +348,29 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
   const { language } = useLanguage();
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(durationSeconds);
+  const [duration, setDuration] = useState(durationSeconds > 0 ? durationSeconds : 0);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
+  const [loadError, setLoadError] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Sync prop duration when it loads or updates
+  useEffect(() => {
+    if (durationSeconds > 0 && (duration === 0 || !isFinite(duration))) {
+      setDuration(durationSeconds);
+    }
+  }, [durationSeconds, duration]);
+
   // Generate pseudo-waveform bars based on audioUrl hash
   const waveformBars = React.useMemo(() => {
-    const barsCount = 20;
+    const barsCount = 24;
     const bars: number[] = [];
     let seed = 0;
     for (let i = 0; i < audioUrl.length; i++) {
       seed = (seed + audioUrl.charCodeAt(i) * (i + 1)) % 1000;
     }
     for (let i = 0; i < barsCount; i++) {
-      const height = Math.abs(Math.sin(seed + i * 0.8) * 16) + 6;
+      const height = Math.abs(Math.sin(seed + i * 0.7) * 16) + 6;
       bars.push(height);
     }
     return bars;
@@ -345,15 +379,36 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
+    setLoadError(false);
 
     const handleLoadedMetadata = () => {
-      if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
+      if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration) && audio.duration > 0) {
         setDuration(Math.round(audio.duration));
+      } else if (!isFinite(audio.duration)) {
+        // Chrome WebM duration: seek to end and reset to force duration computation
+        const tempTimeUpdate = () => {
+          audio.removeEventListener('timeupdate', tempTimeUpdate);
+          if (isFinite(audio.duration) && audio.duration > 0) {
+            setDuration(Math.round(audio.duration));
+          } else if (durationSeconds > 0) {
+            setDuration(durationSeconds);
+          }
+          audio.currentTime = 0;
+        };
+        audio.addEventListener('timeupdate', tempTimeUpdate);
+        audio.currentTime = 1e101;
       }
     };
 
     const handleTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
+      if ((duration === 0 || !isFinite(duration)) && audio.currentTime > 0) {
+        if (durationSeconds > 0) {
+          setDuration(durationSeconds);
+        } else if (audio.currentTime > duration) {
+          setDuration(Math.ceil(audio.currentTime));
+        }
+      }
     };
 
     const handleEnded = () => {
@@ -361,16 +416,24 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
       setCurrentTime(0);
     };
 
+    const handleError = () => {
+      console.warn('Voice note audio loading error for:', audioUrl);
+      setLoadError(true);
+      setIsPlaying(false);
+    };
+
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('error', handleError);
 
     return () => {
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('error', handleError);
     };
-  }, []);
+  }, [audioUrl, durationSeconds, duration]);
 
   const togglePlay = () => {
     const audio = audioRef.current;
@@ -382,9 +445,28 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
     } else {
       audio.play().then(() => {
         setIsPlaying(true);
+        setLoadError(false);
       }).catch((e) => {
         console.warn('Audio playback error:', e);
+        // Retry once after resetting currentTime
+        audio.currentTime = 0;
+        audio.play().then(() => {
+          setIsPlaying(true);
+        }).catch(() => {
+          setLoadError(true);
+          setIsPlaying(false);
+        });
       });
+    }
+  };
+
+  const seekToPercentage = (pct: number) => {
+    const audio = audioRef.current;
+    const effectiveDuration = duration > 0 ? duration : (durationSeconds > 0 ? durationSeconds : 1);
+    const targetTime = (pct / 100) * effectiveDuration;
+    if (audio) {
+      audio.currentTime = targetTime;
+      setCurrentTime(targetTime);
     }
   };
 
@@ -408,41 +490,67 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
   };
 
   const formatTime = (sec: number) => {
+    if (!isFinite(sec) || isNaN(sec)) return '0:00';
     const mins = Math.floor(sec / 60);
     const remaining = Math.floor(sec % 60);
     return `${mins}:${remaining < 10 ? '0' : ''}${remaining}`;
   };
 
-  const progressPercentage = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const effectiveTotal = duration > 0 ? duration : (durationSeconds > 0 ? durationSeconds : 0);
+  const progressPercentage = effectiveTotal > 0 ? Math.min(100, (currentTime / effectiveTotal) * 100) : 0;
 
   return (
     <div
       className={`flex items-center gap-2.5 p-2 sm:p-2.5 rounded-2xl border transition-all ${
         isSender
-          ? 'bg-[#241A0B]/80 border-[#E5B869]/40'
-          : 'bg-[#141A26] border-[#E5B869]/20'
+          ? 'bg-[#241A0B]/85 border-[#E5B869]/40 text-slate-950'
+          : 'bg-[#141A26] border-[#E5B869]/20 text-white'
       }`}
     >
-      <audio ref={audioRef} src={audioUrl} preload="metadata" />
+      <audio ref={audioRef} src={audioUrl} preload="metadata" crossOrigin="anonymous" />
 
-      {/* Play/Pause CTA */}
+      {/* Play/Pause Button */}
       <button
         type="button"
         onClick={togglePlay}
+        disabled={loadError}
         className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-95 cursor-pointer shadow-md ${
-          isSender
+          loadError
+            ? 'bg-rose-800 text-white opacity-80 cursor-not-allowed'
+            : isSender
             ? 'bg-gradient-to-br from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950'
             : 'bg-gradient-to-br from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950'
         }`}
-        title={isPlaying ? (language === 'ar' ? 'إيقاف مؤقت' : 'Pause voice message') : (language === 'ar' ? 'تشغيل الرسالة الصوتية' : 'Play voice message')}
+        title={
+          loadError
+            ? (language === 'ar' ? 'تعذر تشغيل الملف الصوتي' : 'Audio error')
+            : isPlaying
+            ? (language === 'ar' ? 'إيقاف مؤقت' : 'Pause voice message')
+            : (language === 'ar' ? 'تشغيل الرسالة الصوتية' : 'Play voice message')
+        }
       >
-        {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
+        {loadError ? (
+          <AlertCircle className="w-4 h-4" />
+        ) : isPlaying ? (
+          <Pause className="w-4 h-4 fill-current" />
+        ) : (
+          <Play className="w-4 h-4 fill-current ml-0.5" />
+        )}
       </button>
 
       {/* Waveform & Slider Container */}
-      <div className="flex-1 min-w-[140px] max-w-[220px] space-y-1">
-        {/* Waveform graphic */}
-        <div className="flex items-center gap-[2px] h-5 px-1">
+      <div className="flex-1 min-w-[140px] max-w-[240px] space-y-1">
+        {/* Interactive Waveform graphic with click-to-seek */}
+        <div
+          className="flex items-center gap-[2px] h-6 px-1 cursor-pointer py-1"
+          onClick={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const pct = Math.max(0, Math.min(100, (clickX / rect.width) * 100));
+            seekToPercentage(pct);
+          }}
+          title={language === 'ar' ? 'انقر للتقديم أو التأخير' : 'Click to seek'}
+        >
           {waveformBars.map((barHeight, idx) => {
             const barProgress = (idx / waveformBars.length) * 100;
             const isPassed = barProgress <= progressPercentage;
@@ -451,7 +559,11 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
                 key={idx}
                 className={`flex-1 rounded-full transition-colors ${
                   isPassed
-                    ? 'bg-[#E5B869]'
+                    ? isSender
+                      ? 'bg-slate-950'
+                      : 'bg-[#E5B869]'
+                    : isSender
+                    ? 'bg-slate-950/30'
                     : 'bg-slate-700/60'
                 }`}
                 style={{ height: `${barHeight}px` }}
@@ -464,7 +576,7 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
         <input
           type="range"
           min={0}
-          max={duration || 1}
+          max={effectiveTotal || 1}
           step={0.1}
           value={currentTime}
           onChange={handleSeek}
@@ -472,11 +584,17 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
         />
 
         {/* Duration & Speed */}
-        <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono">
-          <span>{formatTime(currentTime > 0 ? currentTime : duration)}</span>
+        <div className={`flex items-center justify-between text-[10px] font-mono ${
+          isSender ? 'text-slate-950/80 font-bold' : 'text-slate-400'
+        }`}>
+          <span>
+            {formatTime(currentTime)} / {formatTime(effectiveTotal)}
+          </span>
           <span className="flex items-center gap-1">
-            <Mic className="w-2.5 h-2.5 text-[#E5B869]" />
-            <span className="text-[#F5D794]">{language === 'ar' ? 'صوتية' : 'Voice'}</span>
+            <Mic className={`w-2.5 h-2.5 ${isSender ? 'text-slate-950' : 'text-[#E5B869]'}`} />
+            <span className={isSender ? 'text-slate-950' : 'text-[#F5D794]'}>
+              {language === 'ar' ? 'صوتية' : 'Voice'}
+            </span>
           </span>
         </div>
       </div>
@@ -485,7 +603,11 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
       <button
         type="button"
         onClick={cycleSpeed}
-        className="px-1.5 py-0.5 rounded-lg bg-[#080B10] hover:bg-[#141A26] border border-[#E5B869]/20 text-[#F5D794] text-[10px] font-bold shrink-0 transition-colors cursor-pointer"
+        className={`px-1.5 py-0.5 rounded-lg text-[10px] font-bold shrink-0 transition-colors cursor-pointer border ${
+          isSender
+            ? 'bg-slate-950/10 hover:bg-slate-950/20 border-slate-950/30 text-slate-950'
+            : 'bg-[#080B10] hover:bg-[#141A26] border-[#E5B869]/20 text-[#F5D794]'
+        }`}
         title={language === 'ar' ? 'تغيير سرعة التشغيل' : 'Change playback speed'}
       >
         {playbackSpeed}x

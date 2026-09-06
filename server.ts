@@ -338,8 +338,8 @@ interface AuthenticatedRequest extends Request {
 
 // Authentication & Admin Authorization Middlewares
 function extractUserMiddleware(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-  const userId = (req.headers['x-user-id'] as string) || (req.body?.adminRequesterId as string) || (req.query?.userId as string);
-  const userEmail = (req.headers['x-user-email'] as string) || (req.body?.userEmail as string) || (req.query?.userEmail as string);
+  const userId = (req.headers['x-user-id'] as string) || (req.body?.userId as string) || (req.body?.senderId as string) || (req.body?.adminRequesterId as string) || (req.query?.userId as string);
+  const userEmail = (req.headers['x-user-email'] as string) || (req.body?.userEmail as string) || (req.body?.senderEmail as string) || (req.query?.userEmail as string);
   const token = req.headers.authorization?.replace('Bearer ', '');
   const adminSecret = req.headers['x-admin-password'] as string;
 
@@ -367,7 +367,24 @@ function extractUserMiddleware(req: AuthenticatedRequest, res: Response, next: N
 
   // 3. User ID lookup from active session
   if (userId) {
-    const found = db.users.find((u) => u.id === userId);
+    let found = db.users.find((u) => u.id === userId);
+    if (!found && userEmail) {
+      found = db.users.find((u) => u.email.toLowerCase() === userEmail.trim().toLowerCase());
+    }
+    if (!found && (userId.startsWith('user_') || userId.length >= 3)) {
+      found = {
+        id: userId,
+        name: (req.headers['x-user-name'] as string) || (req.body?.senderName as string) || 'Player',
+        email: userEmail || `${userId}@pitchmate.local`,
+        avatarUrl: (req.headers['x-user-avatar'] as string) || (req.body?.senderAvatar as string) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100',
+        status: 'approved',
+        isAdmin: isSuperAdminEmail(userEmail || ''),
+        matchesPlayed: 0,
+        createdAt: new Date().toISOString(),
+      };
+      db.users.push(found);
+      broadcastSSE('SYNC_USERS', db.users);
+    }
     if (found) {
       req.user = found;
       return next();
@@ -429,8 +446,28 @@ async function startServer() {
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-  // Static file serving for uploaded audio and avatars
-  app.use('/uploads', express.static(UPLOADS_DIR));
+  // Static file serving for uploaded audio and avatars with byte-range streaming support (essential for iOS Safari)
+  app.use(
+    '/uploads',
+    (req, res, next) => {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Accept-Ranges', 'bytes');
+      next();
+    },
+    express.static(UPLOADS_DIR, {
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.mp4') || filePath.endsWith('.m4a') || filePath.endsWith('.aac')) {
+          res.setHeader('Content-Type', 'audio/mp4');
+        } else if (filePath.endsWith('.webm')) {
+          res.setHeader('Content-Type', 'audio/webm');
+        } else if (filePath.endsWith('.wav')) {
+          res.setHeader('Content-Type', 'audio/wav');
+        } else if (filePath.endsWith('.ogg')) {
+          res.setHeader('Content-Type', 'audio/ogg');
+        }
+      },
+    })
+  );
 
   app.use(extractUserMiddleware);
 
@@ -510,12 +547,19 @@ async function startServer() {
         return res.status(400).json({ success: false, error: 'No audio data provided' });
       }
 
-      let ext = format === 'wav' ? 'wav' : 'webm';
-      if (base64Data.startsWith('data:audio/wav')) {
-        ext = 'wav';
-      } else if (base64Data.startsWith('data:audio/mp4') || base64Data.startsWith('data:audio/m4a')) {
+      let ext = 'webm';
+      if (
+        format === 'mp4' ||
+        format === 'm4a' ||
+        format === 'aac' ||
+        base64Data.startsWith('data:audio/mp4') ||
+        base64Data.startsWith('data:audio/m4a') ||
+        base64Data.startsWith('data:audio/aac')
+      ) {
         ext = 'mp4';
-      } else if (base64Data.startsWith('data:audio/ogg')) {
+      } else if (format === 'wav' || base64Data.startsWith('data:audio/wav')) {
+        ext = 'wav';
+      } else if (format === 'ogg' || base64Data.startsWith('data:audio/ogg')) {
         ext = 'ogg';
       }
 

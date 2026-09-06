@@ -18,7 +18,8 @@ import {
   Maximize2,
   ExternalLink,
   Download,
-  Mic
+  Mic,
+  AlertCircle
 } from 'lucide-react';
 import { UserProfile, DirectMessage, SUPER_ADMIN_EMAIL } from '../types';
 import { usePitchStore } from '../lib/usePitchStore';
@@ -51,6 +52,7 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
   const [messageInput, setMessageInput] = useState('');
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [imageErrorNotice, setImageErrorNotice] = useState<string | null>(null);
   const [isUrlInputOpen, setIsUrlInputOpen] = useState(false);
   const [urlInputText, setUrlInputText] = useState('');
   const [activeLightboxImage, setActiveLightboxImage] = useState<string | null>(null);
@@ -88,6 +90,18 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [selectedUserId, directMessages, attachedImage]);
 
+  // Handle ESC key to exit modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const otherUsers = users.filter((u) => u.id !== currentUser.id);
@@ -108,15 +122,19 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
     )
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if ((!messageInput.trim() && !attachedImage) || !selectedUserId) return;
 
-    await sendDirectMessage(selectedUserId, messageInput.trim(), attachedImage || undefined);
+    const textToSend = messageInput.trim();
+    const imageToSend = attachedImage || undefined;
+
     setMessageInput('');
     setAttachedImage(null);
     setIsUrlInputOpen(false);
     setUrlInputText('');
+
+    await sendDirectMessage(selectedUserId, textToSend, imageToSend);
   };
 
   const handleSendVoiceNote = async (audioUrl: string, durationSeconds: number) => {
@@ -129,23 +147,31 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Please select an image file (PNG, JPG, WebP, GIF)');
+      setImageErrorNotice('يرجى اختيار ملف صورة صالح (PNG, JPG, WebP, GIF)');
+      setTimeout(() => setImageErrorNotice(null), 4000);
       return;
     }
 
-    if (file.size > 8 * 1024 * 1024) {
-      alert('Image file must be under 8MB');
+    if (file.size > 15 * 1024 * 1024) {
+      setImageErrorNotice('حجم الصورة كبير جداً، يرجى اختيار صورة أقل من 15 ميجابايت');
+      setTimeout(() => setImageErrorNotice(null), 4000);
       return;
     }
 
     try {
       setIsUploadingImage(true);
+      setImageErrorNotice(null);
       const res = await mediaStorage.uploadImage(file);
       if (res.success && res.imageUrl) {
         setAttachedImage(res.imageUrl);
+      } else {
+        setImageErrorNotice('تعذر معالجة الصورة، يرجى المحاولة مرة أخرى');
+        setTimeout(() => setImageErrorNotice(null), 4000);
       }
     } catch (err) {
       console.error('Image upload failed:', err);
+      setImageErrorNotice('خطأ أثناء رفع الصورة');
+      setTimeout(() => setImageErrorNotice(null), 4000);
     } finally {
       setIsUploadingImage(false);
       e.target.value = '';
@@ -176,12 +202,18 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
     if (file && file.type.startsWith('image/')) {
       try {
         setIsUploadingImage(true);
+        setImageErrorNotice(null);
         const res = await mediaStorage.uploadImage(file);
         if (res.success && res.imageUrl) {
           setAttachedImage(res.imageUrl);
+        } else {
+          setImageErrorNotice('تعذر معالجة الصورة المسحوبة');
+          setTimeout(() => setImageErrorNotice(null), 4000);
         }
       } catch (err) {
         console.error('Image drop upload failed:', err);
+        setImageErrorNotice('خطأ أثناء رفع الصورة المسحوبة');
+        setTimeout(() => setImageErrorNotice(null), 4000);
       } finally {
         setIsUploadingImage(false);
       }
@@ -190,9 +222,13 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in"
+        onClick={onClose}
+      >
         <div
           id="direct-messages-modal"
+          onClick={(e) => e.stopPropagation()}
           className="w-full max-w-5xl h-[90vh] sm:h-[84vh] bg-[#0A3A2A] border border-[#E5B869]/35 rounded-3xl shadow-2xl flex overflow-hidden text-white relative"
         >
           {/* Left Sidebar: User List */}
@@ -209,6 +245,17 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                     <p className="text-[10px] text-emerald-300/70">Teammate Voice & Chat</p>
                   </div>
                 </div>
+
+                {/* Always-visible Close Button in Sidebar Header */}
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-8 h-8 rounded-xl bg-[#0A3A2A] hover:bg-[#0E4836] border border-[#E5B869]/30 text-emerald-400 hover:text-white transition-all cursor-pointer flex items-center justify-center shadow-sm"
+                  title="Close Direct Messages (Esc)"
+                  aria-label="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
               {/* Search Bar */}
@@ -385,11 +432,13 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                   {/* Header Actions */}
                   <div className="flex items-center gap-2">
                     <button
+                      type="button"
                       onClick={onClose}
-                      className="text-emerald-300/70 hover:text-white p-1.5 rounded-xl hover:bg-[#0E4836] transition-colors cursor-pointer"
-                      title="Close"
+                      className="w-8 h-8 rounded-xl bg-[#081813] hover:bg-[#0E4836] border border-[#E5B869]/30 text-emerald-400 hover:text-white transition-all cursor-pointer flex items-center justify-center shadow-sm"
+                      title="Close (Esc)"
+                      aria-label="Close"
                     >
-                      <X className="w-5 h-5" />
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -475,7 +524,7 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                             )}
 
                             {/* Message Text */}
-                            {msg.text && (
+                            {msg.text && (!msg.audioUrl || !msg.text.startsWith('🎤')) && (
                               <p className="leading-relaxed whitespace-pre-wrap">{msg.text}</p>
                             )}
 
@@ -533,14 +582,24 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                         <X className="w-3 h-3" />
                       </button>
                     </div>
-                    <div className="text-xs text-emerald-100">
+                    <div className="text-xs text-emerald-100 flex-1 min-w-0">
                       <span className="font-bold text-[#F5D794] flex items-center gap-1">
                         <ImageIcon className="w-3.5 h-3.5 text-[#E5B869]" /> Image attached
                       </span>
-                      <p className="text-[11px] text-emerald-300/70">
-                        Type an optional caption below and click send.
+                      <p className="text-[11px] text-emerald-300/70 truncate">
+                        جاهزة للإرسال أو أضف تعليقاً بالأسفل
                       </p>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSendMessage()}
+                      className="px-3 py-1.5 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:opacity-90 text-slate-950 rounded-xl text-xs font-bold transition-all shadow cursor-pointer flex items-center gap-1.5 shrink-0"
+                      title="Send image now"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>إرسال الآن</span>
+                    </button>
                   </div>
                 )}
 
@@ -575,6 +634,30 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                       className="p-1.5 text-emerald-300/70 hover:text-white cursor-pointer"
                     >
                       <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Upload Status & Notices */}
+                {isUploadingImage && (
+                  <div className="px-4 py-2 bg-[#0E4836] border-t border-[#E5B869]/30 flex items-center gap-2 text-xs text-[#F5D794] animate-pulse">
+                    <span className="w-2 h-2 rounded-full bg-[#E5B869] animate-ping" />
+                    <span className="font-semibold">جاري ضغط ومعالجة الصورة لضمان أفضل جودة وسرعة إرسال...</span>
+                  </div>
+                )}
+
+                {imageErrorNotice && (
+                  <div className="px-4 py-2 bg-rose-950/90 border-t border-rose-500/40 flex items-center justify-between text-xs text-rose-300">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                      <span>{imageErrorNotice}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setImageErrorNotice(null)}
+                      className="text-rose-400 hover:text-white text-xs px-1 cursor-pointer"
+                    >
+                      ✕
                     </button>
                   </div>
                 )}
@@ -646,8 +729,24 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                 </div>
               </>
             ) : (
-              <div className="h-full flex items-center justify-center p-6 text-xs text-emerald-300/60">
-                Select a player to open direct chat
+              <div className="h-full flex flex-col">
+                {/* Top bar with corner close button as in screenshot */}
+                <div className="p-3.5 sm:p-4 border-b border-[#E5B869]/20 bg-[#0A3A2A] flex items-center justify-between">
+                  <div className="text-xs text-emerald-300/70 font-medium">PitchMate Direct Chat</div>
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="w-8 h-8 rounded-xl bg-[#081813] hover:bg-[#0E4836] border border-[#E5B869]/30 text-emerald-400 hover:text-white transition-all cursor-pointer flex items-center justify-center shadow-sm"
+                    title="Close (Esc)"
+                    aria-label="Close"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="flex-1 flex items-center justify-center p-6 text-xs text-emerald-300/60">
+                  Select a player to open direct chat
+                </div>
               </div>
             )}
           </div>

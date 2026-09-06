@@ -7,37 +7,33 @@ import {
   User,
   ArrowRight,
   ArrowLeft,
-  Upload,
   AlertCircle,
   Eye,
   EyeOff,
   Clock,
   KeyRound,
   ShieldCheck,
-  Trophy,
   Globe,
-  Inbox,
-  CheckCircle,
   CheckCircle2,
-  Sparkles,
   RefreshCw,
-  Copy,
   Check,
-  Smartphone,
-  LogIn
+  LogIn,
+  MapPin,
+  Activity
 } from 'lucide-react';
 import { usePitchStore } from '../lib/usePitchStore';
 import { useLanguage } from '../lib/useLanguage';
 import { MOROCCAN_CITIES_LOCALIZED } from '../lib/translations';
 import { isSuperAdminEmail, MESSI_AVATAR_URL } from '../types';
+import { PitchMateLogo } from './PitchMateLogo';
 
 const MOROCCAN_CITIES = Object.keys(MOROCCAN_CITIES_LOCALIZED);
 
 const POSITIONS = [
-  { code: 'GK', labelAr: 'حارس', labelEn: 'GK', icon: '🧤' },
-  { code: 'DEF', labelAr: 'دفاع', labelEn: 'DEF', icon: '🛡️' },
-  { code: 'MID', labelAr: 'وسط', labelEn: 'MID', icon: '⚡' },
-  { code: 'FWD', labelAr: 'هجوم', labelEn: 'FWD', icon: '🎯' },
+  { code: 'GK', labelAr: 'حارس مرمى', labelEn: 'Goalkeeper (GK)' },
+  { code: 'DEF', labelAr: 'مدافع', labelEn: 'Defender (DEF)' },
+  { code: 'MID', labelAr: 'لاعب وسط', labelEn: 'Midfielder (MID)' },
+  { code: 'FWD', labelAr: 'مهاجم', labelEn: 'Forward (FWD)' },
 ];
 
 export const AuthView: React.FC = () => {
@@ -47,7 +43,6 @@ export const AuthView: React.FC = () => {
     signupWithCredentials,
     resetPasswordWithEmail,
     sendVerificationOTP,
-    sendFirebasePasswordReset,
     verifyFirebaseActionCode,
     confirmFirebasePasswordResetAction,
     loginWithGoogle,
@@ -55,7 +50,7 @@ export const AuthView: React.FC = () => {
   const { language, toggleLanguage, t, isRTL, getCityName } = useLanguage();
 
   type AuthMode = 'signin' | 'signup' | 'verify_signup' | 'forgot' | 'verify_forgot' | 'action_reset' | 'pending';
-  const [mode, setMode] = useState<AuthMode>('signup');
+  const [mode, setMode] = useState<AuthMode>('signin');
   const [googleLoading, setGoogleLoading] = useState(false);
 
   // Resend timer for password reset code
@@ -69,9 +64,6 @@ export const AuthView: React.FC = () => {
   const [isSignupResending, setIsSignupResending] = useState(false);
   const [signupVerifyError, setSignupVerifyError] = useState('');
   const [signupVerifySuccess, setSignupVerifySuccess] = useState('');
-
-  // Mouse position for subtle interactive radial glow
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   // Password visibility toggles
   const [showSignInPassword, setShowSignInPassword] = useState(false);
@@ -91,9 +83,7 @@ export const AuthView: React.FC = () => {
   const [signUpCity, setSignUpCity] = useState(MOROCCAN_CITIES[0] || 'الدار البيضاء (Casablanca)');
   const [signUpPosition, setSignUpPosition] = useState('MID');
   const [signUpPassword, setSignUpPassword] = useState('');
-  const [avatarPreview, setAvatarPreview] = useState('https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=300&auto=format&fit=crop&q=80');
   const [signUpError, setSignUpError] = useState('');
-  const [signUpSuccess, setSignUpSuccess] = useState('');
   const [registeredUserEmail, setRegisteredUserEmail] = useState('');
   const [registeredUserName, setRegisteredUserName] = useState('');
 
@@ -112,21 +102,16 @@ export const AuthView: React.FC = () => {
   const [actionEmail, setActionEmail] = useState('');
   const [isVerifyingActionCode, setIsVerifyingActionCode] = useState(false);
 
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  // Email regex helper
+  const isValidEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  };
 
-  // Handle ambient interactive parallax glow
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      setMousePos({
-        x: (e.clientX / window.innerWidth - 0.5) * 20,
-        y: (e.clientY / window.innerHeight - 0.5) * 20,
-      });
-    };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
+  const isSignInEmailValid = useMemo(() => isValidEmail(signInEmail), [signInEmail]);
+  const isSignUpEmailValid = useMemo(() => isValidEmail(signUpEmail), [signUpEmail]);
+  const isForgotEmailValid = useMemo(() => isValidEmail(forgotEmail), [forgotEmail]);
 
-  // Auto-detect Firebase Password Reset Link in URL (e.g. ?mode=resetPassword&oobCode=...)
+  // Auto-detect Firebase Password Reset Link in URL
   useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -152,7 +137,7 @@ export const AuthView: React.FC = () => {
           });
         }
       } catch {
-        // ignore parsing errors
+        // ignore parsing error
       }
     }
   }, [verifyFirebaseActionCode, language]);
@@ -195,7 +180,7 @@ export const AuthView: React.FC = () => {
     if (score <= 1) return { score: 1, label: language === 'ar' ? 'ضعيفة' : 'Weak', color: 'bg-rose-500', percentage: 25 };
     if (score === 2) return { score: 2, label: language === 'ar' ? 'متوسطة' : 'Fair', color: 'bg-amber-500', percentage: 50 };
     if (score === 3) return { score: 3, label: language === 'ar' ? 'جيدة' : 'Good', color: 'bg-emerald-500', percentage: 75 };
-    return { score: 4, label: language === 'ar' ? 'قوية جداً' : 'Strong', color: 'bg-[#F5D794]', percentage: 100 };
+    return { score: 4, label: language === 'ar' ? 'قوية جداً' : 'Strong', color: 'bg-[#E5B869]', percentage: 100 };
   }, [signUpPassword, language]);
 
   // Password strength calculation for Reset Password
@@ -210,7 +195,7 @@ export const AuthView: React.FC = () => {
     if (score <= 1) return { score: 1, label: language === 'ar' ? 'ضعيفة' : 'Weak', color: 'bg-rose-500', percentage: 25 };
     if (score === 2) return { score: 2, label: language === 'ar' ? 'متوسطة' : 'Fair', color: 'bg-amber-500', percentage: 50 };
     if (score === 3) return { score: 3, label: language === 'ar' ? 'جيدة' : 'Good', color: 'bg-emerald-500', percentage: 75 };
-    return { score: 4, label: language === 'ar' ? 'قوية جداً' : 'Strong', color: 'bg-[#F5D794]', percentage: 100 };
+    return { score: 4, label: language === 'ar' ? 'قوية جداً' : 'Strong', color: 'bg-[#E5B869]', percentage: 100 };
   }, [forgotNewPassword, language]);
 
   // Sign In Handler
@@ -277,11 +262,10 @@ export const AuthView: React.FC = () => {
     }
   };
 
-  // Sign Up: Step 1 - Send 6-digit verification code (OTP) to prove email ownership first
+  // Sign Up: Step 1 - Send 6-digit OTP
   const handleSignUpStart = async (e: React.FormEvent) => {
     e.preventDefault();
     setSignUpError('');
-    setSignUpSuccess('');
     setSignupVerifyError('');
     setSignupVerifySuccess('');
 
@@ -292,8 +276,7 @@ export const AuthView: React.FC = () => {
     }
 
     const cleanEmail = signUpEmail.trim().toLowerCase();
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+    if (!cleanEmail || !isValidEmail(cleanEmail)) {
       setSignUpError(
         language === 'ar'
           ? 'الرجاء إدخال بريد إلكتروني صالح بالصيغة الصحيحة (مثال: name@domain.com).'
@@ -302,7 +285,7 @@ export const AuthView: React.FC = () => {
       return;
     }
 
-    // Instant local check: prevent duplicate registration if email already has an account
+    // Check duplicate
     const isSuper = cleanEmail === 'moustafa325476@gmail.com' || cleanEmail === 'mustapha.bouhbous@pitchmate.ma';
     const isAlreadyRegistered = users.some((u) => u.email.toLowerCase() === cleanEmail) || isSuper;
     if (isAlreadyRegistered) {
@@ -396,7 +379,7 @@ export const AuthView: React.FC = () => {
     }
   };
 
-  // Sign Up: Step 2 - Verify OTP & Create the User Account
+  // Sign Up: Step 2 - Verify OTP & Create User
   const handleVerifySignUpAndRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setSignupVerifyError('');
@@ -519,7 +502,7 @@ export const AuthView: React.FC = () => {
     signupOtpInputRefs.current[focusTarget]?.focus();
   };
 
-  // OTP Digits input handlers
+  // OTP Digits input handlers for password reset
   const handleOtpDigitChange = (index: number, value: string) => {
     const cleanValue = value.replace(/[^0-9]/g, '');
     if (!cleanValue) {
@@ -568,18 +551,17 @@ export const AuthView: React.FC = () => {
     otpInputRefs.current[focusTarget]?.focus();
   };
 
-  // Forgot Password: Send 6-digit numeric OTP via Nodemailer & Firestore
+  // Forgot password start
   const handleForgotStart = async (e: React.FormEvent) => {
     e.preventDefault();
     setForgotError('');
     setForgotSuccess('');
 
     const cleanEmail = forgotEmail.trim().toLowerCase();
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+    if (!cleanEmail || !isValidEmail(cleanEmail)) {
       setForgotError(
         language === 'ar'
-          ? 'يرجى إدخال بريد إلكتروني صالح بالصيغة الصحيحة (مثال: name@domain.com).'
+          ? 'الرجاء إدخال بريد إلكتروني صالح.'
           : 'Please enter a valid email address.'
       );
       return;
@@ -595,8 +577,8 @@ export const AuthView: React.FC = () => {
         setMode('verify_forgot');
         setForgotSuccess(
           language === 'ar'
-            ? 'تم إرسال كود التحقق المكون من 6 أرقام إلى بريدك الإلكتروني بنجاح!'
-            : 'A 6-digit verification code has been sent to your email!'
+            ? 'تم إرسال كود التحقق السري المكون من 6 أرقام إلى بريدك الإلكتروني!'
+            : 'A 6-digit verification code has been dispatched to your email!'
         );
         setTimeout(() => {
           otpInputRefs.current[0]?.focus();
@@ -620,7 +602,7 @@ export const AuthView: React.FC = () => {
     }
   };
 
-  // Resend 6-digit OTP Code
+  // Resend 6-digit OTP Code for password reset
   const handleResendForgotLink = async () => {
     if (resendTimer > 0 || isResending) return;
     const targetEmail = resetSentEmail || forgotEmail;
@@ -748,214 +730,159 @@ export const AuthView: React.FC = () => {
           setForgotError('');
         }, 2000);
       } else {
-        setForgotError(res.error || (language === 'ar' ? 'فشل تحديث كلمة المرور.' : 'Failed to reset password.'));
+        setForgotError(
+          res.error ||
+            (language === 'ar'
+              ? 'فشل في تحديث كلمة المرور. قد يكون الرابط منتهي الصلاحية.'
+              : 'Failed to update password. The link might be expired.')
+        );
       }
     } catch {
-      setForgotError(language === 'ar' ? 'حدث خطأ أثناء تحديث كلمة المرور.' : 'An error occurred.');
+      setForgotError(
+        language === 'ar'
+          ? 'حدث خطأ غير متوقع أثناء تحديث كلمة المرور.'
+          : 'An unexpected error occurred.'
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      setSignUpError(language === 'ar' ? 'يرجى اختيار ملف صورة صالح (PNG, JPG, WebP)' : 'Please select a valid image file');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setSignUpError(language === 'ar' ? 'حجم الصورة يجب ألا يتجاوز 5 ميجابايت' : 'Image size should be under 5MB');
-      return;
-    }
-
-    setSignUpError('');
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (typeof event.target?.result === 'string') {
-        setAvatarPreview(event.target.result);
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const isPendingError =
-    signInError.toLowerCase().includes('admin approval') ||
-    signInError.toLowerCase().includes('waitlist') ||
-    signInError.includes('المشرف') ||
-    signInError.includes('الانتظار') ||
-    signInError.includes('مراجعة');
+  const isPendingError = signInError.includes('الموافقة') || signInError.includes('pending') || signInError.includes('قيد المراجعة');
 
   return (
-    <div className="min-h-screen w-full bg-[#020604] text-slate-100 flex flex-col justify-between relative overflow-hidden font-sans select-none antialiased">
-      {/* ================= AMBIENT LUMINESCENCE BACKGROUND ================= */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-        <div
-          className="absolute -top-40 left-1/2 w-[800px] h-[600px] bg-gradient-to-b from-emerald-500/15 via-[#E5B869]/10 to-transparent rounded-full blur-[140px] transition-transform duration-700 ease-out"
-          style={{
-            transform: `translate(calc(-50% + ${mousePos.x}px), ${mousePos.y}px)`,
-          }}
-        />
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-[#0E4836]/20 rounded-full blur-[160px]" />
+    <div
+      dir={isRTL ? 'rtl' : 'ltr'}
+      className="min-h-screen stadium-ambient-bg text-slate-100 flex flex-col justify-between selection:bg-[#E5B869]/30 selection:text-[#F5D794] font-sans relative overflow-hidden"
+    >
+      {/* Royal Moroccan Gold & Emerald Obsidian Ambient Atmosphere ("تغذية بصرية فاخرة") */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
+        {/* Golden Crown Stadium Aurora (Top) */}
+        <div className="absolute -top-28 left-1/2 -translate-x-1/2 w-[820px] h-[400px] bg-gradient-to-b from-[#E5B869]/20 via-[#C69238]/10 to-transparent rounded-full blur-[140px] animate-pulse" style={{ animationDuration: '6s' }} />
         
-        {/* Refined subtle mesh grid */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#0E483610_1px,transparent_1px),linear-gradient(to_bottom,#0E483610_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-60" />
+        {/* Deep Moroccan Emerald Pitch Illumination (Center & Bottom) */}
+        <div className="absolute top-1/3 -left-32 w-[520px] h-[520px] bg-[#0E4836]/25 rounded-full blur-[130px]" />
+        <div className="absolute top-1/3 -right-32 w-[520px] h-[520px] bg-[#0A3829]/25 rounded-full blur-[130px]" />
+        <div className="absolute -bottom-48 left-1/2 -translate-x-1/2 w-[700px] h-[360px] bg-gradient-to-t from-[#0E4836]/35 via-[#0A2E22]/20 to-transparent rounded-full blur-[130px]" />
+        
+        {/* Tactical Pitch Lines & Golden Grid Watermark */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#e5b8690a_1px,transparent_1px),linear-gradient(to_bottom,#e5b8690a_1px,transparent_1px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_70%_60%_at_50%_45%,#000_65%,transparent_100%)] opacity-90" />
       </div>
 
-      {/* ================= MINIMAL TOP BAR ================= */}
+      {/* Top Navigation Bar */}
       <header className="relative z-20 w-full max-w-5xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between">
-        {/* Brand Logo */}
-        <div className="flex items-center gap-3 group cursor-default">
-          <div className="relative">
-            <div className="absolute -inset-1 bg-gradient-to-r from-[#F5D794] to-emerald-400 rounded-xl blur-sm opacity-60 group-hover:opacity-100 transition duration-300" />
-            <div className="relative w-10 h-10 rounded-xl bg-[#041610] border border-[#E5B869]/60 flex items-center justify-center text-[#F5D794] shadow-lg">
-              <Trophy className="w-5 h-5 text-[#F5D794] group-hover:scale-105 transition-transform" />
-            </div>
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-lg sm:text-xl font-black font-display tracking-tight text-white">
-                PitchMate
-              </span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#0E4836] text-[#F5D794] border border-[#E5B869]/40 font-mono font-bold uppercase">
-                PRO 🇲🇦
-              </span>
-            </div>
-          </div>
+        {/* Brand identity using authentic PitchMate logo */}
+        <div className="flex items-center gap-3">
+          <PitchMateLogo size="sm" withSubtitle={true} />
         </div>
 
-        {/* Language Switcher */}
+        {/* Clean Language Selector */}
         <button
           type="button"
           onClick={toggleLanguage}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#07241A]/90 hover:bg-[#0E4836] border border-[#E5B869]/40 hover:border-[#E5B869] text-xs font-bold text-[#F5D794] hover:text-white transition-all cursor-pointer shadow-md active:scale-95 backdrop-blur-md"
+          className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#08130E]/90 hover:bg-[#0E221A] border border-[#E5B869]/30 hover:border-[#E5B869]/70 text-xs font-semibold text-slate-200 hover:text-[#F5D794] transition-all cursor-pointer shadow-sm active:scale-95"
         >
           <Globe className="w-3.5 h-3.5 text-[#E5B869]" />
-          <span>{language === 'ar' ? 'English (EN)' : 'العربية (AR)'}</span>
+          <span>{language === 'ar' ? 'English' : 'العربية'}</span>
         </button>
       </header>
 
-      {/* ================= PURE CENTERED AUTHENTICATION CARD ================= */}
-      <main className="relative z-10 flex-1 max-w-md w-full mx-auto px-4 py-4 sm:py-8 flex items-center justify-center">
-        <div className="w-full relative">
-          {/* Ambient Glow behind card */}
-          <div className="absolute -inset-1 bg-gradient-to-r from-[#E5B869]/30 via-emerald-500/20 to-[#F5D794]/30 rounded-[32px] blur-xl opacity-75" />
+      {/* Main SaaS Auth Centerpiece */}
+      <main className="relative z-10 flex-1 w-full max-w-md mx-auto px-4 py-6 sm:py-8 flex items-center justify-center">
+        <div className="w-full">
+          {/* Main Card Container with Royal Moroccan Emerald & Gold Glassmorphism */}
+          <div className="relative bg-gradient-to-b from-[#0B1A14]/94 via-[#07130F]/96 to-[#050C0A]/98 backdrop-blur-2xl border border-[#E5B869]/35 hover:border-[#E5B869]/55 transition-all duration-300 rounded-3xl p-6 sm:p-8 shadow-[0_25px_70px_rgba(0,0,0,0.95),0_0_50px_rgba(13,80,60,0.25),inset_0_1px_1px_rgba(245,215,148,0.25)]">
+            {/* Top gold luminous jewel highlight line */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-[2px] bg-gradient-to-r from-transparent via-[#E5B869] to-transparent rounded-full pointer-events-none shadow-[0_0_8px_#E5B869]" />
+            
+            {/* Header Titles with Moroccan Community Badge */}
+            <div className="text-center space-y-2 mb-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-[#0E4836]/80 via-[#103D2F]/80 to-[#0A261D]/80 border border-[#E5B869]/40 shadow-[0_2px_14px_rgba(14,72,54,0.4)] mx-auto">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#E5B869] animate-pulse" />
+                <span className="text-[11px] font-bold text-[#F5D794] tracking-wide">
+                  {language === 'ar' ? 'المنصة الرسمية لمجتمع كرة القدم بالمغرب' : 'Official Moroccan Football Hub'}
+                </span>
+              </div>
 
-          {/* Masterpiece Glassmorphic Card */}
-          <motion.div
-            layout
-            transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-            className="relative bg-gradient-to-b from-[#07241A]/95 via-[#041610]/98 to-[#020A07]/98 backdrop-blur-3xl border border-[#E5B869]/40 rounded-[28px] p-6 sm:p-8 shadow-[0_25px_60px_rgba(0,0,0,0.85),0_0_35px_rgba(229,184,105,0.12)] space-y-5"
-          >
-            {/* Header Titles */}
-            <div className="space-y-1.5 text-center">
-              <motion.h2
-                key={mode + '-title'}
-                initial={{ opacity: 0, y: -6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-                className="text-2xl sm:text-3xl font-black font-display text-white tracking-tight"
-              >
-                {mode === 'signin' && (
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-emerald-100 to-[#F5D794]">
-                    {t('auth.welcomeBack')}
-                  </span>
-                )}
-                {mode === 'signup' && (
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-emerald-100 to-[#F5D794]">
-                    {t('auth.createAccount')}
-                  </span>
-                )}
-                {mode === 'verify_signup' && (language === 'ar' ? 'تأكيد البريد الإلكتروني' : 'Verify Email')}
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white font-display">
+                {mode === 'signin' && t('auth.welcomeBack')}
+                {mode === 'signup' && t('auth.createAccount')}
+                {mode === 'verify_signup' && (language === 'ar' ? 'التحقق من البريد الإلكتروني' : 'Verify Email')}
                 {mode === 'forgot' && t('auth.resetPassword')}
-                {mode === 'verify_forgot' && (language === 'ar' ? 'تعيين كلمة المرور الجديدة' : 'Set New Password')}
-                {mode === 'action_reset' && (language === 'ar' ? 'تعيين كلمة مرور جديدة' : 'Create New Password')}
+                {mode === 'verify_forgot' && (language === 'ar' ? 'تعيين كلمة مرور جديدة' : 'Set New Password')}
+                {mode === 'action_reset' && (language === 'ar' ? 'تعيين كلمة المرور' : 'Create New Password')}
                 {mode === 'pending' && t('auth.accountPending')}
-              </motion.h2>
-
-              <motion.p
-                key={mode + '-sub'}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.2, delay: 0.05 }}
-                className="text-xs text-emerald-300/80 max-w-xs mx-auto leading-relaxed"
-              >
+              </h1>
+              <p className="text-xs text-slate-300 leading-relaxed max-w-xs mx-auto">
                 {mode === 'signin' && t('auth.signInSubtitle')}
                 {mode === 'signup' && t('auth.signUpSubtitle')}
-                {mode === 'verify_signup' && (language === 'ar' ? 'أدخل رمز التحقق (OTP) للتأكد من ملكية البريد الإلكتروني' : 'Enter the 6-digit code to verify email ownership')}
-                {mode === 'forgot' && (language === 'ar' ? 'أدخل بريدك الإلكتروني لتصلك رسالة تتضمن رمز التحقق السري' : 'Enter your registered email to receive a secure 6-digit OTP code')}
-                {mode === 'verify_forgot' && (language === 'ar' ? 'أدخل كلمة المرور الجديدة لحسابك لتحديثها فوراً' : 'Enter your new password to update your account immediately')}
+                {mode === 'verify_signup' && (language === 'ar' ? 'أدخل رمز التحقق (OTP) للتأكد من ملكية البريد الإلكتروني' : 'Enter the 6-digit code sent to verify email ownership')}
+                {mode === 'forgot' && (language === 'ar' ? 'أدخل بريدك الإلكتروني المسجل لاستلام رمز التحقق' : 'Enter your registered email to receive a 6-digit code')}
+                {mode === 'verify_forgot' && (language === 'ar' ? 'أدخل رمز التحقق وكلمة المرور الجديدة لتحديث حسابك' : 'Enter the 6-digit code and your new password to update')}
                 {mode === 'action_reset' && (language === 'ar' ? 'أدخل كلمة المرور الجديدة لحسابك' : 'Enter your new secure password')}
                 {mode === 'pending' && t('auth.pendingNotice')}
-              </motion.p>
+              </p>
             </div>
 
-            {/* Seamless Fluid Mode Switcher Tabs (Sign In / Sign Up) */}
+            {/* Seamless Segmented Tab Slider between Login & Signup */}
             {(mode === 'signin' || mode === 'signup') && (
-              <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#020A07] rounded-2xl border border-[#E5B869]/25 relative shadow-inner">
+              <div className="grid grid-cols-2 p-1 bg-[#040B08]/90 rounded-2xl border border-[#E5B869]/30 mb-6 relative shadow-[inset_0_2px_4px_rgba(0,0,0,0.6)]">
                 <button
-                  id="switch-to-signin-tab"
+                  id="tab-signin-btn"
                   type="button"
                   onClick={() => {
                     setMode('signin');
                     setSignInError('');
                     setSignUpError('');
-                    setSignUpSuccess('');
                     setForgotError('');
                     setForgotSuccess('');
                   }}
-                  className={`relative py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-2 z-10 ${
-                    mode === 'signin'
-                      ? 'text-slate-950 font-black'
-                      : 'text-emerald-300/70 hover:text-white'
+                  className={`relative py-2.5 text-xs sm:text-sm font-semibold transition-colors duration-200 cursor-pointer flex items-center justify-center gap-2 z-10 ${
+                    mode === 'signin' ? 'text-[#F5D794] font-black' : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
                   {mode === 'signin' && (
                     <motion.div
-                      layoutId="activeAuthPill"
-                      className="absolute inset-0 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] rounded-xl shadow-md -z-10"
-                      transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                      layoutId="activeAuthSegment"
+                      className="absolute inset-0 bg-gradient-to-r from-[#0D4433] via-[#12533F] to-[#093325] border border-[#E5B869]/80 rounded-xl shadow-[0_4px_16px_rgba(229,184,105,0.25),inset_0_1px_0_rgba(245,215,148,0.3)] -z-10"
+                      transition={{ type: 'spring', stiffness: 450, damping: 35 }}
                     />
                   )}
-                  <Lock className="w-3.5 h-3.5" />
+                  <LogIn className={`w-3.5 h-3.5 ${mode === 'signin' ? 'text-[#E5B869]' : 'text-slate-400'}`} />
                   <span>{t('auth.signInButton')}</span>
                 </button>
 
                 <button
-                  id="switch-to-signup-tab"
+                  id="tab-signup-btn"
                   type="button"
                   onClick={() => {
                     setMode('signup');
                     setSignInError('');
                     setSignUpError('');
-                    setSignUpSuccess('');
                     setForgotError('');
                     setForgotSuccess('');
                   }}
-                  className={`relative py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer flex items-center justify-center gap-2 z-10 ${
-                    mode === 'signup'
-                      ? 'text-slate-950 font-black'
-                      : 'text-emerald-300/70 hover:text-white'
+                  className={`relative py-2.5 text-xs sm:text-sm font-semibold transition-colors duration-200 cursor-pointer flex items-center justify-center gap-2 z-10 ${
+                    mode === 'signup' ? 'text-[#F5D794] font-black' : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
                   {mode === 'signup' && (
                     <motion.div
-                      layoutId="activeAuthPill"
-                      className="absolute inset-0 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] rounded-xl shadow-md -z-10"
-                      transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                      layoutId="activeAuthSegment"
+                      className="absolute inset-0 bg-gradient-to-r from-[#0D4433] via-[#12533F] to-[#093325] border border-[#E5B869]/80 rounded-xl shadow-[0_4px_16px_rgba(229,184,105,0.25),inset_0_1px_0_rgba(245,215,148,0.3)] -z-10"
+                      transition={{ type: 'spring', stiffness: 450, damping: 35 }}
                     />
                   )}
-                  <User className="w-3.5 h-3.5" />
+                  <User className={`w-3.5 h-3.5 ${mode === 'signup' ? 'text-[#E5B869]' : 'text-slate-400'}`} />
                   <span>{t('auth.signUpButton')}</span>
                 </button>
               </div>
             )}
 
-            {/* Back Button for Forgot & Reset flows */}
+            {/* Back button for Forgot/Reset views */}
             {(mode === 'forgot' || mode === 'verify_forgot' || mode === 'action_reset') && (
-              <div className="flex items-center justify-between px-1">
-                <span className="text-xs font-bold text-[#F5D794] flex items-center gap-1.5">
+              <div className="flex items-center justify-between mb-5 pb-3 border-b border-[#E5B869]/15">
+                <span className="text-xs font-semibold text-slate-200 flex items-center gap-1.5">
                   <KeyRound className="w-3.5 h-3.5 text-[#E5B869]" />
                   <span>{t('auth.resetPassword')}</span>
                 </span>
@@ -966,7 +893,7 @@ export const AuthView: React.FC = () => {
                     setForgotError('');
                     setForgotSuccess('');
                   }}
-                  className="text-xs text-emerald-300 hover:text-[#F5D794] font-semibold cursor-pointer flex items-center gap-1 transition-colors"
+                  className="text-xs text-slate-400 hover:text-[#F5D794] font-medium cursor-pointer flex items-center gap-1.5 transition-colors"
                 >
                   {isRTL ? <ArrowRight className="w-3.5 h-3.5" /> : <ArrowLeft className="w-3.5 h-3.5" />}
                   <span>{t('auth.backToSignIn')}</span>
@@ -974,55 +901,57 @@ export const AuthView: React.FC = () => {
               </div>
             )}
 
-            {/* ================= VIEWS CONTAINER ================= */}
-            <AnimatePresence mode="wait">
-              {/* ================= 1. SIGN IN VIEW ================= */}
+            {/* Animated Forms Slider */}
+            <AnimatePresence mode="wait" initial={false}>
+              
+              {/* ================= 1. SIGN IN ================= */}
               {mode === 'signin' && (
                 <motion.div
-                  key="signin-tab"
-                  initial={{ opacity: 0, x: isRTL ? 15 : -15 }}
+                  key="signin-view"
+                  initial={{ opacity: 0, x: isRTL ? 16 : -16 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: isRTL ? -15 : 15 }}
-                  transition={{ duration: 0.2, ease: 'easeInOut' }}
-                  className="space-y-4 text-xs"
+                  exit={{ opacity: 0, x: isRTL ? -16 : 16 }}
+                  transition={{ duration: 0.22, ease: 'easeOut' }}
+                  className="space-y-4"
                 >
+                  {/* Error Notification */}
                   {signInError && (
                     <motion.div
-                      initial={{ opacity: 0, y: -5 }}
+                      initial={{ opacity: 0, y: -6 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className={`p-3 rounded-2xl flex items-start gap-2.5 ${
+                      className={`p-3 rounded-xl flex items-start gap-2.5 text-xs ${
                         isPendingError
-                          ? 'bg-[#0E382A] border border-[#E5B869]/50 text-amber-200'
-                          : 'bg-rose-950/80 border border-rose-500/50 text-rose-200'
+                          ? 'bg-amber-500/10 border border-amber-500/20 text-amber-200'
+                          : 'bg-rose-500/10 border border-rose-500/20 text-rose-200'
                       }`}
                     >
                       {isPendingError ? (
-                        <Clock className="w-4 h-4 shrink-0 text-[#E5B869] mt-0.5" />
+                        <Clock className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
                       ) : (
                         <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
                       )}
                       <div className="space-y-1 text-start">
                         <span className="font-semibold block leading-snug">{signInError}</span>
                         {isPendingError && (
-                          <span className="text-[11px] text-[#F5D794] block">
+                          <span className="text-[11px] text-amber-300 block">
                             {language === 'ar'
-                              ? 'تم إشعار المشرف وسيقوم بمراجعة حسابك وتفعيله في أقرب وقت.'
-                              : 'The administrator will review and activate your account shortly.'}
+                              ? 'حسابك مسجل وينتظر موافقة المشرف. سيتم التفعيل قريباً.'
+                              : 'Your account is under review by administrator.'}
                           </span>
                         )}
                       </div>
                     </motion.div>
                   )}
 
-                  {/* Google Button */}
+                  {/* Google Single Sign-On Button */}
                   <button
-                    id="auth-google-signin-btn"
+                    id="btn-google-signin"
                     type="button"
                     onClick={() => handleGoogleAuth('signin')}
                     disabled={googleLoading || isSubmitting}
-                    className="w-full py-2.5 px-4 bg-white/95 hover:bg-white active:bg-slate-100 text-[#1F2937] hover:text-black border border-white/30 rounded-xl font-bold transition-all flex items-center justify-center gap-3 cursor-pointer shadow-sm hover:shadow-md active:scale-[0.99] text-xs sm:text-sm disabled:opacity-60 group"
+                    className="w-full py-2.5 px-4 bg-[#05110C]/90 hover:bg-[#0B221A] active:bg-[#040D09] text-slate-200 hover:text-white border border-[#E5B869]/25 hover:border-[#E5B869]/55 rounded-xl font-semibold transition-all flex items-center justify-center gap-3 cursor-pointer shadow-sm text-xs sm:text-sm disabled:opacity-50"
                   >
-                    <svg className="w-4 h-4 shrink-0 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                       <path
                         fill="#4285F4"
                         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -1043,37 +972,41 @@ export const AuthView: React.FC = () => {
                     <span>{googleLoading ? t('auth.signingIn') : t('auth.continueWithGoogle')}</span>
                   </button>
 
-                  <div className="flex items-center gap-3 my-2.5">
-                    <div className="h-px bg-[#E5B869]/20 flex-1" />
-                    <span className="text-[10px] text-emerald-300/60 uppercase font-semibold">
-                      {language === 'ar' ? 'أو بالبريد الإلكتروني' : 'Or with Email'}
+                  {/* Clean Divider */}
+                  <div className="flex items-center gap-3 my-2">
+                    <div className="h-px bg-gradient-to-r from-transparent via-[#E5B869]/25 to-transparent flex-1" />
+                    <span className="text-[11px] text-[#E5B869]/80 font-semibold uppercase tracking-wider">
+                      {language === 'ar' ? 'أو عبر البريد' : 'Or with email'}
                     </span>
-                    <div className="h-px bg-[#E5B869]/20 flex-1" />
+                    <div className="h-px bg-gradient-to-r from-transparent via-[#E5B869]/25 to-transparent flex-1" />
                   </div>
 
                   {/* Sign In Form */}
-                  <form onSubmit={handleSignIn} className="space-y-3 text-start">
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-emerald-200 block">
+                  <form onSubmit={handleSignIn} className="space-y-3.5 text-start">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-200 block">
                         {t('auth.email')}
                       </label>
                       <div className="relative group">
                         <input
-                          id="signin-email-input"
+                          id="signin-email"
                           type="email"
                           required
                           value={signInEmail}
                           onChange={(e) => setSignInEmail(e.target.value)}
-                          placeholder="player@pitchmate.ma"
-                          className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#020A07] border border-[#E5B869]/25 focus:border-[#E5B869] focus:ring-1 focus:ring-[#E5B869]/30 text-white placeholder-slate-500 text-xs transition-all outline-none shadow-inner"
+                          placeholder="user@example.com"
+                          className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#040B08]/90 border border-[#16382B] group-hover:border-[#E5B869]/40 group-focus-within:border-[#E5B869] group-focus-within:ring-2 group-focus-within:ring-[#E5B869]/25 text-white placeholder-slate-500 text-xs transition-all outline-none shadow-inner"
                         />
-                        <Mail className="w-3.5 h-3.5 text-emerald-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#F5D794] transition-colors" />
+                        <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#E5B869] transition-colors" />
+                        {isSignInEmailValid && (
+                          <Check className="w-4 h-4 text-[#E5B869] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        )}
                       </div>
                     </div>
 
-                    <div className="space-y-1">
+                    <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
-                        <label className="text-[11px] font-bold text-emerald-200">
+                        <label className="text-xs font-semibold text-slate-200">
                           {t('auth.password')}
                         </label>
                         <button
@@ -1085,48 +1018,44 @@ export const AuthView: React.FC = () => {
                             setForgotError('');
                             setForgotSuccess('');
                           }}
-                          className="text-[11px] text-[#F5D794] hover:underline cursor-pointer font-medium"
+                          className="text-xs text-[#E5B869] hover:text-[#F5D794] hover:underline cursor-pointer font-semibold transition-colors"
                         >
                           {t('auth.forgotPassword')}
                         </button>
                       </div>
                       <div className="relative group">
                         <input
-                          id="signin-password-input"
+                          id="signin-password"
                           type={showSignInPassword ? 'text' : 'password'}
                           required
                           value={signInPassword}
                           onChange={(e) => setSignInPassword(e.target.value)}
                           placeholder="••••••••"
-                          className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#020A07] border border-[#E5B869]/25 focus:border-[#E5B869] focus:ring-1 focus:ring-[#E5B869]/30 text-white placeholder-slate-500 text-xs transition-all outline-none shadow-inner"
+                          className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#040B08]/90 border border-[#16382B] group-hover:border-[#E5B869]/40 group-focus-within:border-[#E5B869] group-focus-within:ring-2 group-focus-within:ring-[#E5B869]/25 text-white placeholder-slate-500 text-xs transition-all outline-none shadow-inner"
                         />
-                        <Lock className="w-3.5 h-3.5 text-emerald-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#F5D794] transition-colors" />
+                        <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#E5B869] transition-colors" />
                         <button
                           type="button"
                           onClick={() => setShowSignInPassword(!showSignInPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer transition-colors"
                         >
-                          {showSignInPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          {showSignInPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
                     </div>
 
                     <button
-                      id="signin-submit-btn"
+                      id="btn-signin-submit"
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full py-3 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 active:scale-[0.99] text-slate-950 rounded-xl font-black shadow-[0_8px_20px_rgba(229,184,105,0.25)] transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm mt-2 disabled:opacity-50 group"
+                      className="w-full mt-2 py-3 px-4 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:from-[#FFF1C5] hover:via-[#F5D794] hover:to-[#D4A045] active:scale-[0.985] text-slate-950 rounded-xl font-black transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm shadow-[0_8px_25px_rgba(229,184,105,0.35)] hover:shadow-[0_12px_32px_rgba(229,184,105,0.5)] disabled:opacity-50"
                     >
                       {isSubmitting ? (
                         <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <>
                           <span>{t('auth.signInButton')}</span>
-                          {isRTL ? (
-                            <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" />
-                          ) : (
-                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                          )}
+                          {isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
                         </>
                       )}
                     </button>
@@ -1134,25 +1063,26 @@ export const AuthView: React.FC = () => {
                 </motion.div>
               )}
 
-              {/* ================= 2. SIGN UP VIEW ================= */}
+              {/* ================= 2. SIGN UP ================= */}
               {mode === 'signup' && (
                 <motion.div
-                  key="signup-tab"
-                  initial={{ opacity: 0, x: isRTL ? -15 : 15 }}
+                  key="signup-view"
+                  initial={{ opacity: 0, x: isRTL ? -16 : 16 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: isRTL ? 15 : -15 }}
-                  transition={{ duration: 0.2, ease: 'easeInOut' }}
-                  className="space-y-3.5 text-xs"
+                  exit={{ opacity: 0, x: isRTL ? 16 : -16 }}
+                  transition={{ duration: 0.22, ease: 'easeOut' }}
+                  className="space-y-4"
                 >
+                  {/* Error Notification */}
                   {signUpError && (
                     <motion.div
-                      initial={{ opacity: 0, y: -5 }}
+                      initial={{ opacity: 0, y: -6 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="p-3.5 rounded-2xl bg-rose-950/80 border border-rose-500/50 text-rose-200 flex flex-col gap-2 text-start"
+                      className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-200 flex flex-col gap-2 text-start text-xs"
                     >
                       <div className="flex items-start gap-2">
                         <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
-                        <span className="font-semibold text-xs leading-relaxed">{signUpError}</span>
+                        <span className="font-semibold leading-relaxed">{signUpError}</span>
                       </div>
                       {(signUpError.includes('مسجل') || signUpError.includes('already')) && (
                         <button
@@ -1162,24 +1092,24 @@ export const AuthView: React.FC = () => {
                             setMode('signin');
                             setSignUpError('');
                           }}
-                          className="self-start mt-0.5 px-3 py-1.5 rounded-xl bg-amber-400/20 hover:bg-amber-400/30 border border-amber-400/40 text-amber-300 hover:text-white font-bold text-[11px] transition-colors flex items-center gap-1.5 cursor-pointer"
+                          className="self-start px-2.5 py-1 rounded-lg bg-[#241A0B] hover:bg-[#332510] border border-[#E5B869]/40 text-[#F5D794] text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
                         >
-                          <LogIn className="w-3.5 h-3.5" />
-                          <span>{language === 'ar' ? 'الانتقال لتسجيل الدخول مباشرة بهذا البريد' : 'Sign in directly with this email'}</span>
+                          <LogIn className="w-3.5 h-3.5 text-[#E5B869]" />
+                          <span>{language === 'ar' ? 'تسجيل الدخول مباشرة بهذا البريد' : 'Sign in directly with this email'}</span>
                         </button>
                       )}
                     </motion.div>
                   )}
 
-                  {/* Google Sign Up Button */}
+                  {/* Google Single Sign-On Button */}
                   <button
-                    id="auth-google-signup-btn"
+                    id="btn-google-signup"
                     type="button"
                     onClick={() => handleGoogleAuth('signup')}
                     disabled={googleLoading || isSubmitting}
-                    className="w-full py-2.5 px-4 bg-white/95 hover:bg-white active:bg-slate-100 text-[#1F2937] hover:text-black border border-white/30 rounded-xl font-bold transition-all flex items-center justify-center gap-3 cursor-pointer shadow-sm hover:shadow-md active:scale-[0.99] text-xs sm:text-sm disabled:opacity-60 group"
+                    className="w-full py-2.5 px-4 bg-[#05110C]/90 hover:bg-[#0B221A] active:bg-[#040D09] text-slate-200 hover:text-white border border-[#E5B869]/25 hover:border-[#E5B869]/55 rounded-xl font-semibold transition-all flex items-center justify-center gap-3 cursor-pointer shadow-sm text-xs sm:text-sm disabled:opacity-50"
                   >
-                    <svg className="w-4 h-4 shrink-0 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                       <path
                         fill="#4285F4"
                         d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -1200,151 +1130,163 @@ export const AuthView: React.FC = () => {
                     <span>{googleLoading ? t('auth.signingIn') : t('auth.continueWithGoogle')}</span>
                   </button>
 
+                  {/* Clean Divider */}
                   <div className="flex items-center gap-3 my-2">
-                    <div className="h-px bg-[#E5B869]/20 flex-1" />
-                    <span className="text-[10px] text-emerald-300/60 uppercase font-semibold">
-                      {language === 'ar' ? 'أو بالتسجيل المباشر' : 'Or direct registration'}
+                    <div className="h-px bg-gradient-to-r from-transparent via-[#E5B869]/25 to-transparent flex-1" />
+                    <span className="text-[11px] text-[#E5B869]/80 font-semibold uppercase tracking-wider">
+                      {language === 'ar' ? 'أو إدخال البيانات' : 'Or enter details'}
                     </span>
-                    <div className="h-px bg-[#E5B869]/20 flex-1" />
+                    <div className="h-px bg-gradient-to-r from-transparent via-[#E5B869]/25 to-transparent flex-1" />
                   </div>
 
                   {/* Sign Up Form */}
                   <form onSubmit={handleSignUpStart} className="space-y-3 text-start">
                     {/* Full Name */}
                     <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-emerald-200 block">
+                      <label className="text-xs font-semibold text-slate-200 block">
                         {t('auth.fullName')}
                       </label>
-                      <div className="relative">
+                      <div className="relative group">
                         <input
-                          id="signup-name-input"
+                          id="signup-name"
                           type="text"
                           required
                           value={signUpName}
                           onChange={(e) => setSignUpName(e.target.value)}
-                          placeholder={language === 'ar' ? 'أشرف حكيمي' : 'Achraf Hakimi'}
-                          className="w-full pl-8 pr-3 py-2.5 rounded-xl bg-[#020A07] border border-[#E5B869]/25 focus:border-[#E5B869] text-white text-xs outline-none shadow-inner"
+                          placeholder={language === 'ar' ? 'الاسم الكامل' : 'Full Name'}
+                          className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#040B08]/90 border border-[#16382B] group-hover:border-[#E5B869]/40 group-focus-within:border-[#E5B869] group-focus-within:ring-2 group-focus-within:ring-[#E5B869]/25 text-white placeholder-slate-500 text-xs transition-all outline-none shadow-inner"
                         />
-                        <User className="w-3.5 h-3.5 text-emerald-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#E5B869] transition-colors" />
                       </div>
                     </div>
 
                     {/* Email */}
                     <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-emerald-200 block">
+                      <label className="text-xs font-semibold text-slate-200 block">
                         {t('auth.email')}
                       </label>
-                      <div className="relative">
+                      <div className="relative group">
                         <input
-                          id="signup-email-input"
+                          id="signup-email"
                           type="email"
                           required
                           value={signUpEmail}
                           onChange={(e) => setSignUpEmail(e.target.value)}
-                          placeholder="hakimi@pitchmate.ma"
-                          className="w-full pl-8 pr-3 py-2 rounded-xl bg-[#020A07] border border-[#E5B869]/25 focus:border-[#E5B869] text-white text-xs outline-none shadow-inner"
+                          placeholder="user@example.com"
+                          className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#040B08]/90 border border-[#16382B] group-hover:border-[#E5B869]/40 group-focus-within:border-[#E5B869] group-focus-within:ring-2 group-focus-within:ring-[#E5B869]/25 text-white placeholder-slate-500 text-xs transition-all outline-none shadow-inner"
                         />
-                        <Mail className="w-3.5 h-3.5 text-emerald-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#E5B869] transition-colors" />
+                        {isSignUpEmailValid && (
+                          <Check className="w-4 h-4 text-[#E5B869] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        )}
                       </div>
                     </div>
 
-                    {/* City & Position Selectors */}
-                    <div className="grid grid-cols-2 gap-2">
+                    {/* City & Position */}
+                    <div className="grid grid-cols-2 gap-2.5">
                       <div className="space-y-1">
-                        <label className="text-[11px] font-bold text-emerald-200 block">
+                        <label className="text-xs font-semibold text-slate-200 block">
                           {t('profile.city')}
                         </label>
-                        <select
-                          id="signup-city-select"
-                          value={signUpCity}
-                          onChange={(e) => setSignUpCity(e.target.value)}
-                          className="w-full py-2 px-2.5 rounded-xl bg-[#020A07] border border-[#E5B869]/25 focus:border-[#E5B869] text-white text-xs outline-none cursor-pointer"
-                        >
-                          {MOROCCAN_CITIES.map((city) => (
-                            <option key={city} value={city} className="bg-[#020A07] text-white">
-                              {getCityName(city)}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="relative">
+                          <select
+                            id="signup-city"
+                            value={signUpCity}
+                            onChange={(e) => setSignUpCity(e.target.value)}
+                            className="w-full py-2.5 pl-8 pr-2.5 rounded-xl bg-[#040B08]/90 border border-[#16382B] hover:border-[#E5B869]/40 focus:border-[#E5B869] focus:ring-2 focus:ring-[#E5B869]/25 text-white text-xs outline-none cursor-pointer shadow-inner"
+                          >
+                            {MOROCCAN_CITIES.map((city) => (
+                              <option key={city} value={city} className="bg-[#08130E] text-white">
+                                {getCityName(city)}
+                              </option>
+                            ))}
+                          </select>
+                          <MapPin className="w-3.5 h-3.5 text-[#E5B869] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
                       </div>
 
                       <div className="space-y-1">
-                        <label className="text-[11px] font-bold text-emerald-200 block">
+                        <label className="text-xs font-semibold text-slate-200 block">
                           {t('profile.position')}
                         </label>
-                        <select
-                          id="signup-position-select"
-                          value={signUpPosition}
-                          onChange={(e) => setSignUpPosition(e.target.value)}
-                          className="w-full py-2 px-2.5 rounded-xl bg-[#020A07] border border-[#E5B869]/25 focus:border-[#E5B869] text-white text-xs outline-none cursor-pointer"
-                        >
-                          {POSITIONS.map((pos) => (
-                            <option key={pos.code} value={pos.code} className="bg-[#020A07] text-white">
-                              {pos.icon} {language === 'ar' ? pos.labelAr : pos.labelEn}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="relative">
+                          <select
+                            id="signup-position"
+                            value={signUpPosition}
+                            onChange={(e) => setSignUpPosition(e.target.value)}
+                            className="w-full py-2.5 pl-8 pr-2.5 rounded-xl bg-[#040B08]/90 border border-[#16382B] hover:border-[#E5B869]/40 focus:border-[#E5B869] focus:ring-2 focus:ring-[#E5B869]/25 text-white text-xs outline-none cursor-pointer shadow-inner"
+                          >
+                            {POSITIONS.map((pos) => (
+                              <option key={pos.code} value={pos.code} className="bg-[#08130E] text-white">
+                                {language === 'ar' ? pos.labelAr : pos.labelEn}
+                              </option>
+                            ))}
+                          </select>
+                          <Activity className="w-3.5 h-3.5 text-[#E5B869] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
                       </div>
                     </div>
 
                     {/* Password */}
                     <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-emerald-200 block">
+                      <label className="text-xs font-semibold text-slate-200 block">
                         {t('auth.password')}
                       </label>
-                      <div className="relative">
+                      <div className="relative group">
                         <input
-                          id="signup-password-input"
+                          id="signup-password"
                           type={showSignUpPassword ? 'text' : 'password'}
                           required
                           value={signUpPassword}
                           onChange={(e) => setSignUpPassword(e.target.value)}
                           placeholder="••••••••"
-                          className="w-full pl-8 pr-8 py-2 rounded-xl bg-[#020A07] border border-[#E5B869]/25 focus:border-[#E5B869] text-white text-xs outline-none shadow-inner"
+                          className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#040B08]/90 border border-[#16382B] group-hover:border-[#E5B869]/40 group-focus-within:border-[#E5B869] group-focus-within:ring-2 group-focus-within:ring-[#E5B869]/25 text-white placeholder-slate-500 text-xs transition-all outline-none shadow-inner"
                         />
-                        <Lock className="w-3.5 h-3.5 text-emerald-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#E5B869] transition-colors" />
                         <button
                           type="button"
                           onClick={() => setShowSignUpPassword(!showSignUpPassword)}
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer transition-colors"
                         >
-                          {showSignUpPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          {showSignUpPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
 
-                      {/* Password Strength Indicator */}
+                      {/* Clean Segmented Password Strength Bar */}
                       {signUpPassword && (
-                        <div className="pt-1 space-y-1">
-                          <div className="w-full bg-slate-900/80 h-1.5 rounded-full overflow-hidden border border-emerald-500/20">
-                            <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${passwordStrength.percentage}%` }}
-                              className={`h-full ${passwordStrength.color} transition-all duration-300`}
-                            />
+                        <div className="pt-1.5 space-y-1">
+                          <div className="grid grid-cols-4 gap-1.5 h-1">
+                            {[1, 2, 3, 4].map((step) => (
+                              <div
+                                key={step}
+                                className={`rounded-full h-full transition-colors duration-200 ${
+                                  step <= passwordStrength.score ? passwordStrength.color : 'bg-slate-800'
+                                }`}
+                              />
+                            ))}
                           </div>
-                          <span className="text-[10px] text-[#F5D794] block text-end font-mono font-bold">
-                            {passwordStrength.label}
-                          </span>
+                          <div className="flex items-center justify-between text-[10px]">
+                            <span className="text-slate-400">
+                              {language === 'ar' ? 'مستوى أمان كلمة المرور' : 'Password security'}
+                            </span>
+                            <span className="font-bold text-[#F5D794]">{passwordStrength.label}</span>
+                          </div>
                         </div>
                       )}
                     </div>
 
                     <button
-                      id="signup-submit-btn"
+                      id="btn-signup-submit"
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full py-3 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 active:scale-[0.99] text-slate-950 rounded-xl font-black shadow-[0_8px_20px_rgba(229,184,105,0.25)] transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm mt-2 disabled:opacity-50 group"
+                      className="w-full mt-2 py-3 px-4 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:from-[#FFF1C5] hover:via-[#F5D794] hover:to-[#D4A045] active:scale-[0.985] text-slate-950 rounded-xl font-black transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm shadow-[0_8px_25px_rgba(229,184,105,0.35)] hover:shadow-[0_12px_32px_rgba(229,184,105,0.5)] disabled:opacity-50"
                     >
                       {isSubmitting ? (
                         <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <>
                           <span>{t('auth.signUpButton')}</span>
-                          {isRTL ? (
-                            <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" />
-                          ) : (
-                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                          )}
+                          {isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
                         </>
                       )}
                     </button>
@@ -1352,42 +1294,24 @@ export const AuthView: React.FC = () => {
                 </motion.div>
               )}
 
-              {/* ================= 2.5. SIGN UP EMAIL VERIFICATION (6-DIGIT OTP) ================= */}
+              {/* ================= 2.5. SIGN UP OTP VERIFICATION ================= */}
               {mode === 'verify_signup' && (
                 <motion.div
-                  key="verify-signup"
-                  initial={{ opacity: 0, scale: 0.96 }}
+                  key="verify-signup-view"
+                  initial={{ opacity: 0, scale: 0.98 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.96 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  transition={{ duration: 0.2 }}
                   className="space-y-4 text-xs text-start"
                 >
-                  <div className="text-center space-y-1">
-                    <div className="w-11 h-11 mx-auto rounded-2xl bg-[#04130D] border border-[#E5B869]/40 flex items-center justify-center text-[#F5D794] shadow-md mb-2">
-                      <Mail className="w-5 h-5 text-[#F5D794]" />
-                    </div>
-                    <h3 className="text-sm font-black text-[#F5D794]">
-                      {language === 'ar' ? 'تأكيد ملكية البريد الإلكتروني' : 'Verify Email Ownership'}
-                    </h3>
-                    <p className="text-[11px] text-emerald-200/80 leading-relaxed max-w-xs mx-auto">
-                      {language === 'ar'
-                        ? 'أدخل رمز التحقق (OTP) المكون من 6 أرقام المرسل إلى بريدك الإلكتروني للتأكد من أن البريد يخصك قبل إتمام التسجيل.'
-                        : 'Enter the 6-digit verification code sent to your email to verify ownership before registration.'}
-                    </p>
-                  </div>
-
-                  {/* Recipient Email Info Box with Edit/Change option */}
-                  <div className="p-3 rounded-2xl bg-gradient-to-b from-[#0E382A] to-[#082218] border border-[#E5B869]/30 text-amber-100 flex items-center justify-between shadow-sm">
-                    <div className="flex items-center gap-2 overflow-hidden">
-                      <div className="w-7 h-7 rounded-lg bg-[#04130D] border border-[#E5B869]/40 flex items-center justify-center text-emerald-400 shrink-0">
-                        <Mail className="w-3.5 h-3.5 text-emerald-400" />
-                      </div>
+                  <div className="p-3 rounded-xl bg-[#05070A]/90 border border-[#E5B869]/25 text-slate-300 flex items-center justify-between">
+                    <div className="flex items-center gap-2 truncate">
+                      <Mail className="w-4 h-4 text-[#E5B869] shrink-0" />
                       <div className="truncate">
-                        <div className="text-[10px] text-emerald-300/80 font-medium">
-                          {language === 'ar' ? 'تم إرسال الرمز إلى:' : 'Verification code sent to:'}
+                        <div className="text-[10px] text-slate-500 font-medium">
+                          {language === 'ar' ? 'تم الإرسال إلى:' : 'Sent to:'}
                         </div>
-                        <div className="font-mono font-bold text-xs text-[#F5D794] truncate">
-                          {signUpEmail}
-                        </div>
+                        <div className="font-mono font-semibold text-[#F5D794] truncate">{signUpEmail}</div>
                       </div>
                     </div>
                     <button
@@ -1396,35 +1320,33 @@ export const AuthView: React.FC = () => {
                         setMode('signup');
                         setSignupVerifyError('');
                         setSignupVerifySuccess('');
-                        setSignupOtpDigits(['', '', '', '', '', '']);
                       }}
-                      className="px-2.5 py-1 rounded-lg bg-[#020A07] border border-[#E5B869]/25 hover:border-[#E5B869] text-[11px] font-bold text-slate-300 hover:text-white transition-colors cursor-pointer shrink-0"
+                      className="text-xs text-[#E5B869] hover:text-[#F5D794] font-semibold cursor-pointer shrink-0 ml-2"
                     >
-                      {language === 'ar' ? 'تعديل البريد' : 'Edit Email'}
+                      {language === 'ar' ? 'تعديل' : 'Edit'}
                     </button>
                   </div>
 
                   {signupVerifyError && (
-                    <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-200 flex items-center gap-2">
+                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-200 flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
                       <span>{signupVerifyError}</span>
                     </div>
                   )}
 
                   {signupVerifySuccess && (
-                    <div className="p-3 rounded-xl bg-emerald-950/90 border border-emerald-500/50 text-emerald-200 flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                    <div className="p-3 rounded-xl bg-[#0D382A]/60 border border-[#E5B869]/30 text-[#F5D794] flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 shrink-0 text-[#E5B869]" />
                       <span>{signupVerifySuccess}</span>
                     </div>
                   )}
 
                   <form onSubmit={handleVerifySignUpAndRegister} className="space-y-4">
-                    {/* 6-Digit OTP Boxes */}
-                    <div className="space-y-1.5 text-center">
-                      <label className="text-[11px] font-bold text-emerald-200 block">
-                        {language === 'ar' ? 'أدخل الرمز المكون من 6 أرقام:' : 'Enter 6-Digit Code:'}
+                    <div className="space-y-2 text-center">
+                      <label className="text-xs font-medium text-slate-300 block">
+                        {language === 'ar' ? 'رمز التحقق (6 أرقام)' : 'Verification Code (6 Digits)'}
                       </label>
-                      <div className="flex items-center justify-center gap-2 dir-ltr" dir="ltr">
+                      <div className="flex items-center justify-center gap-2" dir="ltr">
                         {signupOtpDigits.map((digit, idx) => (
                           <input
                             key={`signup-otp-${idx}`}
@@ -1436,255 +1358,195 @@ export const AuthView: React.FC = () => {
                             onChange={(e) => handleSignupOtpDigitChange(idx, e.target.value)}
                             onKeyDown={(e) => handleSignupOtpKeyDown(idx, e)}
                             onPaste={handleSignupOtpPaste}
-                            className="w-10 h-12 text-center text-lg font-mono font-black rounded-xl bg-[#020A07] border-2 border-[#E5B869]/30 focus:border-[#E5B869] focus:ring-2 focus:ring-[#E5B869]/30 text-[#F5D794] outline-none shadow-inner transition-all"
+                            className="w-10 h-12 text-center text-lg font-mono font-bold rounded-xl bg-[#05070A] border border-[#E5B869]/25 focus:border-[#E5B869] focus:ring-2 focus:ring-[#E5B869]/25 text-[#F5D794] outline-none transition-all"
                           />
                         ))}
                       </div>
                     </div>
 
                     <button
-                      id="signup-verify-submit-btn"
+                      id="btn-signup-verify"
                       type="submit"
                       disabled={isSubmitting || signupOtpDigits.join('').length !== 6}
-                      className="w-full py-3 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 active:scale-[0.99] text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm disabled:opacity-50"
+                      className="w-full py-2.5 px-4 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-105 active:scale-[0.99] text-slate-950 rounded-xl font-bold transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm shadow-lg shadow-[#E5B869]/20 disabled:opacity-50"
                     >
                       {isSubmitting ? (
                         <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <>
                           <CheckCircle2 className="w-4 h-4" />
-                          <span>{language === 'ar' ? 'تأكيد البريد الإلكتروني وإتمام التسجيل' : 'Verify Email & Complete Registration'}</span>
+                          <span>{language === 'ar' ? 'تأكيد الحساب والمتابعة' : 'Verify & Complete'}</span>
                         </>
                       )}
                     </button>
 
-                    {/* Resend button with timer */}
-                    <div className="pt-1 space-y-2">
+                    <div className="flex items-center justify-between pt-1">
                       <button
                         type="button"
                         disabled={signupResendTimer > 0 || isSignupResending}
                         onClick={handleResendSignupOTP}
-                        className="w-full py-2.5 rounded-xl bg-[#020A07] border border-[#E5B869]/30 hover:border-[#E5B869] text-xs font-bold text-[#F5D794] hover:text-white transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                        className="text-xs text-[#E5B869] hover:text-[#F5D794] font-medium disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
                       >
-                        {isSignupResending ? (
-                          <div className="w-3.5 h-3.5 border-2 border-[#F5D794] border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <RefreshCw className="w-3.5 h-3.5" />
-                        )}
+                        <RefreshCw className={`w-3.5 h-3.5 ${isSignupResending ? 'animate-spin' : ''}`} />
                         <span>
                           {signupResendTimer > 0
                             ? language === 'ar'
-                              ? `إعادة إرسال الرمز (${signupResendTimer} ثانية)`
-                              : `Resend code in ${signupResendTimer}s`
+                              ? `إعادة الإرسال بعد ${signupResendTimer} ثانية`
+                              : `Resend in ${signupResendTimer}s`
                             : language === 'ar'
-                              ? 'إعادة إرسال رمز التحقق إلى بريدي'
-                              : 'Resend Verification Code'}
+                            ? 'إعادة إرسال الرمز'
+                            : 'Resend code'}
                         </span>
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => {
-                          setMode('signin');
-                          setSignupVerifyError('');
-                          setSignupVerifySuccess('');
-                        }}
-                        className="w-full py-2 rounded-xl bg-[#04130D] border border-emerald-900/40 hover:bg-slate-900 text-slate-300 hover:text-white font-medium text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                        onClick={() => setMode('signin')}
+                        className="text-xs text-slate-400 hover:text-[#F5D794] transition-colors cursor-pointer"
                       >
-                        <span>{t('auth.backToSignIn')}</span>
+                        {t('auth.backToSignIn')}
                       </button>
                     </div>
                   </form>
                 </motion.div>
               )}
 
-              {/* ================= 3. FORGOT PASSWORD (ACCOUNT EMAIL VERIFICATION VIA OTP) ================= */}
+              {/* ================= 3. FORGOT PASSWORD ================= */}
               {mode === 'forgot' && (
                 <motion.div
-                  key="forgot-password"
-                  initial={{ opacity: 0, scale: 0.96 }}
+                  key="forgot-view"
+                  initial={{ opacity: 0, scale: 0.98 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.96 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  transition={{ duration: 0.2 }}
                   className="space-y-4 text-xs text-start"
                 >
-                  <div className="text-center space-y-1">
-                    <div className="w-10 h-10 mx-auto rounded-xl bg-[#04130D] border border-[#E5B869]/40 flex items-center justify-center text-[#F5D794] shadow-md mb-2">
-                      <KeyRound className="w-5 h-5 text-[#F5D794]" />
-                    </div>
-                    <h3 className="text-sm font-black text-[#F5D794]">
-                      {language === 'ar' ? 'استعادة كلمة المرور عبر كود التحقق (OTP)' : 'Password Reset via Verification Code (OTP)'}
-                    </h3>
-                    <p className="text-[11px] text-emerald-200/80 leading-relaxed max-w-xs mx-auto">
-                      {language === 'ar'
-                        ? 'أدخل بريدك الإلكتروني المسجل لنرسل لك رمز تحقق سرياً مكوناً من 6 أرقام لتأكيد هويتك وتعيين كلمة المرور الجديدة مباشرة في التطبيق.'
-                        : 'Enter your email address to receive a secure 6-digit verification code to reset your password directly in the app.'}
-                    </p>
-                  </div>
-
                   {forgotError && (
-                    <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-200 flex items-center gap-2">
+                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-200 flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
                       <span>{forgotError}</span>
                     </div>
                   )}
 
                   <form onSubmit={handleForgotStart} className="space-y-3.5">
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-emerald-200 block">
-                        {language === 'ar' ? 'البريد الإلكتروني المسجل (Gmail)' : 'Registered Email Address (Gmail)'}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-slate-300 block">
+                        {t('auth.email')}
                       </label>
-                      <div className="relative">
+                      <div className="relative group">
                         <input
-                          id="forgot-email-input"
+                          id="forgot-email"
                           type="email"
                           required
                           value={forgotEmail}
                           onChange={(e) => setForgotEmail(e.target.value)}
-                          placeholder="player@gmail.com"
-                          className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#020A07] border border-[#E5B869]/25 focus:border-[#E5B869] text-white text-xs outline-none shadow-inner"
+                          placeholder="user@example.com"
+                          className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#05070A]/90 border border-slate-800 group-focus-within:border-[#E5B869] group-focus-within:ring-2 group-focus-within:ring-[#E5B869]/25 text-white placeholder-slate-500 text-xs transition-all outline-none"
                         />
-                        <Mail className="w-3.5 h-3.5 text-emerald-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#E5B869] transition-colors" />
+                        {isForgotEmailValid && (
+                          <Check className="w-4 h-4 text-[#E5B869] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        )}
                       </div>
                     </div>
 
                     <button
-                      id="forgot-submit-btn"
+                      id="btn-forgot-submit"
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full py-3 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 active:scale-[0.99] text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm disabled:opacity-50"
+                      className="w-full py-2.5 px-4 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-105 active:scale-[0.99] text-slate-950 rounded-xl font-bold transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm shadow-lg shadow-[#E5B869]/20 disabled:opacity-50"
                     >
                       {isSubmitting ? (
                         <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <>
                           <Mail className="w-4 h-4" />
-                          <span>{language === 'ar' ? 'إرسال رمز التحقق (OTP) إلى بريدي' : 'Send 6-Digit Code to Email'}</span>
-                          {isRTL ? <ArrowLeft className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                          <span>{language === 'ar' ? 'إرسال رمز التحقق' : 'Send Verification Code'}</span>
+                          {isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
                         </>
                       )}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMode('signin');
-                        setForgotError('');
-                        setForgotSuccess('');
-                      }}
-                      className="w-full py-2.5 rounded-xl bg-[#020A07] border border-emerald-900/40 hover:bg-slate-900 text-slate-300 hover:text-white font-medium text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
-                    >
-                      <span>{t('auth.backToSignIn')}</span>
                     </button>
                   </form>
                 </motion.div>
               )}
 
-              {/* ================= 4. DIRECT PASSWORD RESET (VERIFY 6-DIGIT OTP & SET PASSWORD) ================= */}
+              {/* ================= 4. VERIFY OTP & RESET PASSWORD ================= */}
               {mode === 'verify_forgot' && (
                 <motion.div
-                  key="verify-forgot"
-                  initial={{ opacity: 0, scale: 0.96 }}
+                  key="verify-forgot-view"
+                  initial={{ opacity: 0, scale: 0.98 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.96 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  transition={{ duration: 0.2 }}
                   className="space-y-4 text-xs text-start"
                 >
-                  {/* Account Pill with Change Email action */}
-                  <div className="p-3 rounded-2xl bg-gradient-to-b from-[#0E382A] to-[#082218] border border-[#E5B869]/30 text-amber-100 flex items-center justify-between shadow-sm">
-                    <div className="flex items-center gap-2 overflow-hidden">
-                      <div className="w-7 h-7 rounded-lg bg-[#04130D] border border-[#E5B869]/40 flex items-center justify-center text-emerald-400 shrink-0">
-                        <Mail className="w-3.5 h-3.5 text-emerald-400" />
+                  <div className="p-3 rounded-xl bg-[#05070A]/90 border border-[#E5B869]/25 text-slate-300 flex items-center justify-between">
+                    <div className="truncate">
+                      <div className="text-[10px] text-slate-500 font-medium">
+                        {language === 'ar' ? 'البريد الإلكتروني:' : 'Account email:'}
                       </div>
-                      <div className="truncate">
-                        <div className="text-[10px] text-emerald-300/80 font-medium">
-                          {language === 'ar' ? 'تم الإرسال إلى البريد الإلكتروني:' : 'Sent to Registered Email:'}
-                        </div>
-                        <div className="font-mono font-bold text-xs text-[#F5D794] truncate">
-                          {resetSentEmail || forgotEmail}
-                        </div>
+                      <div className="font-mono font-semibold text-[#F5D794] truncate">
+                        {resetSentEmail || forgotEmail}
                       </div>
                     </div>
                     <button
                       type="button"
-                      onClick={() => {
-                        setMode('forgot');
-                        setForgotError('');
-                        setForgotSuccess('');
-                        setOtpDigits(['', '', '', '', '', '']);
-                      }}
-                      className="px-2.5 py-1 rounded-lg bg-[#020A07] border border-[#E5B869]/25 hover:border-[#E5B869] text-[11px] font-bold text-slate-300 hover:text-white transition-colors cursor-pointer shrink-0"
+                      onClick={() => setMode('forgot')}
+                      className="text-xs text-[#E5B869] hover:text-[#F5D794] font-semibold cursor-pointer shrink-0 ml-2"
                     >
                       {language === 'ar' ? 'تغيير' : 'Change'}
                     </button>
                   </div>
 
-                  <div className="text-center space-y-1">
-                    <div className="w-10 h-10 mx-auto rounded-xl bg-[#04130D] border border-[#E5B869]/40 flex items-center justify-center text-[#F5D794] shadow-md mb-2">
-                      <KeyRound className="w-5 h-5 text-[#F5D794]" />
-                    </div>
-                    <h3 className="text-sm font-black text-[#F5D794]">
-                      {language === 'ar' ? 'إدخال رمز التحقق وكلمة المرور' : 'Enter 6-Digit Code & Password'}
-                    </h3>
-                    <p className="text-[11px] text-emerald-200/80 leading-relaxed">
-                      {language === 'ar'
-                        ? 'أدخل رمز التحقق (OTP) المكون من 6 أرقام المرسل إلى بريدك، ثم عيّن كلمة المرور الجديدة.'
-                        : 'Enter the 6-digit verification code sent to your email, then set your new password.'}
-                    </p>
-                  </div>
-
                   {forgotError && (
-                    <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-200 flex items-center gap-2">
+                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-200 flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
                       <span>{forgotError}</span>
                     </div>
                   )}
 
                   {forgotSuccess && (
-                    <div className="p-3 rounded-xl bg-emerald-950/90 border border-emerald-500/50 text-emerald-200 flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                    <div className="p-3 rounded-xl bg-[#0D382A]/60 border border-[#E5B869]/30 text-[#F5D794] flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 shrink-0 text-[#E5B869]" />
                       <span>{forgotSuccess}</span>
                     </div>
                   )}
 
-                  <form onSubmit={handleVerifyAndResetPassword} className="space-y-4">
-                    {/* 6-Digit Numeric OTP Input Boxes */}
+                  <form onSubmit={handleVerifyAndResetPassword} className="space-y-3.5">
+                    {/* OTP Inputs */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <label className="text-[11px] font-bold text-emerald-200 block">
-                          {language === 'ar' ? 'رمز التحقق (6 أرقام):' : 'Verification Code (6 Digits):'}
+                        <label className="text-xs font-medium text-slate-300 block">
+                          {language === 'ar' ? 'رمز التحقق (6 أرقام)' : 'Verification Code (6 Digits)'}
                         </label>
                         <button
                           type="button"
                           disabled={resendTimer > 0 || isResending}
                           onClick={handleResendForgotLink}
-                          className="text-[10px] font-bold text-[#E5B869] hover:underline disabled:opacity-50 disabled:no-underline cursor-pointer"
+                          className="text-xs text-[#E5B869] hover:text-[#F5D794] hover:underline disabled:opacity-50 disabled:no-underline cursor-pointer"
                         >
                           {isResending
                             ? (language === 'ar' ? 'جاري الإرسال...' : 'Sending...')
                             : resendTimer > 0
-                            ? `${language === 'ar' ? 'إعادة الإرسال خلال' : 'Resend in'} ${resendTimer}s`
-                            : (language === 'ar' ? 'إعادة إرسال الرمز' : 'Resend Code')}
+                            ? `${language === 'ar' ? 'إعادة الإرسال بعد' : 'Resend in'} ${resendTimer}s`
+                            : (language === 'ar' ? 'إعادة الإرسال' : 'Resend')}
                         </button>
                       </div>
 
-                      {/* Six individual numeric inputs */}
-                      <div className="flex items-center justify-between gap-1.5 sm:gap-2 dir-ltr" dir="ltr">
+                      <div className="flex items-center justify-between gap-1.5 sm:gap-2" dir="ltr">
                         {[0, 1, 2, 3, 4, 5].map((index) => (
                           <input
                             key={index}
-                            ref={(el) => {
-                              otpInputRefs.current[index] = el;
-                            }}
-                            id={`otp-input-${index}`}
+                            ref={(el) => { otpInputRefs.current[index] = el; }}
+                            id={`otp-digit-${index}`}
                             type="text"
                             inputMode="numeric"
-                            pattern="[0-9]*"
                             maxLength={1}
-                            autoComplete={index === 0 ? 'one-time-code' : 'off'}
                             value={otpDigits[index] || ''}
                             onChange={(e) => handleOtpDigitChange(index, e.target.value)}
                             onKeyDown={(e) => handleOtpKeyDown(index, e)}
                             onPaste={handleOtpPaste}
-                            className="w-10 sm:w-11 h-12 text-center text-lg font-black font-mono rounded-xl bg-[#020A07] border border-[#E5B869]/40 focus:border-[#F5D794] focus:ring-2 focus:ring-[#E5B869]/30 text-[#F5D794] outline-none shadow-inner transition-all"
+                            className="w-10 sm:w-11 h-12 text-center text-lg font-bold font-mono rounded-xl bg-[#05070A] border border-[#E5B869]/25 focus:border-[#E5B869] focus:ring-2 focus:ring-[#E5B869]/25 text-[#F5D794] outline-none transition-all"
                           />
                         ))}
                       </div>
@@ -1692,40 +1554,43 @@ export const AuthView: React.FC = () => {
 
                     {/* New Password */}
                     <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-emerald-200 block">
+                      <label className="text-xs font-medium text-slate-300 block">
                         {t('auth.newPassword')}
                       </label>
-                      <div className="relative">
+                      <div className="relative group">
                         <input
-                          id="forgot-otp-new-password"
+                          id="forgot-new-pwd"
                           type={showForgotNewPassword ? 'text' : 'password'}
                           required
                           value={forgotNewPassword}
                           onChange={(e) => setForgotNewPassword(e.target.value)}
                           placeholder="••••••••"
-                          className="w-full pl-8 pr-8 py-2 rounded-xl bg-[#020A07] border border-[#E5B869]/25 focus:border-[#E5B869] text-white text-xs outline-none shadow-inner"
+                          className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#05070A]/90 border border-slate-800 group-focus-within:border-[#E5B869] group-focus-within:ring-2 group-focus-within:ring-[#E5B869]/25 text-white placeholder-slate-500 text-xs transition-all outline-none"
                         />
-                        <Lock className="w-3.5 h-3.5 text-emerald-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#E5B869] transition-colors" />
                         <button
                           type="button"
                           onClick={() => setShowForgotNewPassword(!showForgotNewPassword)}
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 cursor-pointer transition-colors"
                         >
-                          {showForgotNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          {showForgotNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
 
-                      {/* Password Strength Indicator */}
+                      {/* Strength bar */}
                       {forgotNewPassword && (
-                        <div className="pt-1 space-y-1">
-                          <div className="w-full bg-slate-900/80 h-1.5 rounded-full overflow-hidden border border-emerald-500/20">
-                            <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${forgotPasswordStrength.percentage}%` }}
-                              className={`h-full ${forgotPasswordStrength.color} transition-all duration-300`}
-                            />
+                        <div className="pt-1.5 space-y-1">
+                          <div className="grid grid-cols-4 gap-1.5 h-1">
+                            {[1, 2, 3, 4].map((step) => (
+                              <div
+                                key={step}
+                                className={`rounded-full h-full transition-colors duration-200 ${
+                                  step <= forgotPasswordStrength.score ? forgotPasswordStrength.color : 'bg-slate-800'
+                                }`}
+                              />
+                            ))}
                           </div>
-                          <span className="text-[10px] text-[#F5D794] block text-end font-mono font-bold">
+                          <span className="text-[10px] text-slate-400 block text-end font-semibold">
                             {forgotPasswordStrength.label}
                           </span>
                         </div>
@@ -1734,236 +1599,222 @@ export const AuthView: React.FC = () => {
 
                     {/* Confirm Password */}
                     <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-emerald-200 block">
+                      <label className="text-xs font-medium text-slate-300 block">
                         {t('auth.confirmNewPassword')}
                       </label>
-                      <div className="relative">
+                      <div className="relative group">
                         <input
-                          id="forgot-otp-confirm-password"
+                          id="forgot-confirm-pwd"
                           type={showForgotConfirmPassword ? 'text' : 'password'}
                           required
                           value={forgotConfirmPassword}
                           onChange={(e) => setForgotConfirmPassword(e.target.value)}
                           placeholder="••••••••"
-                          className="w-full pl-8 pr-8 py-2 rounded-xl bg-[#020A07] border border-[#E5B869]/25 focus:border-[#E5B869] text-white text-xs outline-none shadow-inner"
+                          className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#05070A]/90 border border-slate-800 group-focus-within:border-[#E5B869] group-focus-within:ring-2 group-focus-within:ring-[#E5B869]/25 text-white placeholder-slate-500 text-xs transition-all outline-none"
                         />
-                        <Lock className="w-3.5 h-3.5 text-emerald-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#E5B869] transition-colors" />
                         <button
                           type="button"
                           onClick={() => setShowForgotConfirmPassword(!showForgotConfirmPassword)}
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 cursor-pointer transition-colors"
                         >
-                          {showForgotConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          {showForgotConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
                     </div>
 
                     <button
-                      id="verify-forgot-submit-btn"
+                      id="btn-verify-forgot-submit"
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full py-3 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 active:scale-[0.99] text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm mt-1 disabled:opacity-50"
+                      className="w-full py-2.5 px-4 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-105 active:scale-[0.99] text-slate-950 rounded-xl font-bold transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm shadow-lg shadow-[#E5B869]/20 disabled:opacity-50"
                     >
                       {isSubmitting ? (
                         <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <>
                           <CheckCircle2 className="w-4 h-4" />
-                          <span>{language === 'ar' ? 'تأكيد الرمز وتحديث كلمة المرور' : 'Verify Code & Reset Password'}</span>
+                          <span>{language === 'ar' ? 'تحديث كلمة المرور' : 'Update Password'}</span>
                         </>
                       )}
                     </button>
-
-                    <div className="space-y-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setMode('signin');
-                          setForgotError('');
-                          setForgotSuccess('');
-                        }}
-                        className="w-full py-2.5 rounded-xl bg-[#020A07] border border-emerald-900/40 hover:bg-slate-900 text-slate-300 hover:text-white font-medium text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
-                      >
-                        <span>{t('auth.backToSignIn')}</span>
-                      </button>
-                    </div>
                   </form>
                 </motion.div>
               )}
 
-              {/* ================= 5. ACTION LINK PASSWORD RESET VIEW ================= */}
+              {/* ================= 5. ACTION LINK PASSWORD RESET ================= */}
               {mode === 'action_reset' && (
                 <motion.div
-                  key="action-reset"
-                  initial={{ opacity: 0, scale: 0.96 }}
+                  key="action-reset-view"
+                  initial={{ opacity: 0, scale: 0.98 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.96 }}
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  transition={{ duration: 0.2 }}
                   className="space-y-4 text-xs text-start"
                 >
                   {isVerifyingActionCode && (
-                    <div className="p-3 rounded-xl bg-emerald-950/80 border border-emerald-500/40 text-emerald-200 flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+                    <div className="p-3 rounded-xl bg-[#05070A]/90 border border-slate-800 text-slate-300 flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-[#E5B869] border-t-transparent rounded-full animate-spin" />
                       <span>{language === 'ar' ? 'جاري التحقق من الرابط...' : 'Verifying reset link...'}</span>
                     </div>
                   )}
 
                   {actionEmail && (
-                    <div className="p-2.5 rounded-xl bg-[#020A07] border border-[#E5B869]/30 text-emerald-200 flex items-center justify-between">
-                      <span className="text-emerald-400/80 text-[11px]">{t('auth.accountEmail')}:</span>
-                      <span className="font-mono font-bold text-[#F5D794]">{actionEmail}</span>
+                    <div className="p-2.5 rounded-xl bg-[#05070A]/90 border border-[#E5B869]/25 text-slate-300 flex items-center justify-between">
+                      <span className="text-slate-400 text-xs">{t('auth.accountEmail')}:</span>
+                      <span className="font-mono font-semibold text-[#F5D794]">{actionEmail}</span>
                     </div>
                   )}
 
                   {forgotError && (
-                    <div className="p-3 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-200 flex items-center gap-2">
+                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-200 flex items-center gap-2">
                       <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
                       <span>{forgotError}</span>
                     </div>
                   )}
 
                   {forgotSuccess && (
-                    <div className="p-3 rounded-xl bg-emerald-950/90 border border-emerald-500/50 text-emerald-200 flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                    <div className="p-3 rounded-xl bg-[#0D382A]/60 border border-[#E5B869]/30 text-[#F5D794] flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 shrink-0 text-[#E5B869]" />
                       <span>{forgotSuccess}</span>
                     </div>
                   )}
 
                   <form onSubmit={handleConfirmActionReset} className="space-y-3.5">
-                    {/* New Password */}
                     <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-emerald-200 block">
+                      <label className="text-xs font-medium text-slate-300 block">
                         {t('auth.newPassword')}
                       </label>
-                      <div className="relative">
+                      <div className="relative group">
                         <input
-                          id="forgot-new-password-input"
+                          id="action-new-pwd"
                           type={showForgotNewPassword ? 'text' : 'password'}
                           required
                           value={forgotNewPassword}
                           onChange={(e) => setForgotNewPassword(e.target.value)}
                           placeholder="••••••••"
-                          className="w-full pl-8 pr-8 py-2.5 rounded-xl bg-[#020A07] border border-[#E5B869]/25 focus:border-[#E5B869] text-white text-xs outline-none shadow-inner"
+                          className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#05070A]/90 border border-slate-800 group-focus-within:border-[#E5B869] group-focus-within:ring-2 group-focus-within:ring-[#E5B869]/25 text-white placeholder-slate-500 text-xs transition-all outline-none"
                         />
-                        <Lock className="w-3.5 h-3.5 text-emerald-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#E5B869] transition-colors" />
                         <button
                           type="button"
                           onClick={() => setShowForgotNewPassword(!showForgotNewPassword)}
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 cursor-pointer transition-colors"
                         >
-                          {showForgotNewPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          {showForgotNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
                     </div>
 
-                    {/* Confirm New Password */}
                     <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-emerald-200 block">
+                      <label className="text-xs font-medium text-slate-300 block">
                         {t('auth.confirmNewPassword')}
                       </label>
-                      <div className="relative">
+                      <div className="relative group">
                         <input
-                          id="forgot-confirm-password-input"
+                          id="action-confirm-pwd"
                           type={showForgotConfirmPassword ? 'text' : 'password'}
                           required
                           value={forgotConfirmPassword}
                           onChange={(e) => setForgotConfirmPassword(e.target.value)}
                           placeholder="••••••••"
-                          className="w-full pl-8 pr-8 py-2.5 rounded-xl bg-[#020A07] border border-[#E5B869]/25 focus:border-[#E5B869] text-white text-xs outline-none shadow-inner"
+                          className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#05070A]/90 border border-slate-800 group-focus-within:border-[#E5B869] group-focus-within:ring-2 group-focus-within:ring-[#E5B869]/25 text-white placeholder-slate-500 text-xs transition-all outline-none"
                         />
-                        <Lock className="w-3.5 h-3.5 text-emerald-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#E5B869] transition-colors" />
                         <button
                           type="button"
                           onClick={() => setShowForgotConfirmPassword(!showForgotConfirmPassword)}
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 cursor-pointer transition-colors"
                         >
-                          {showForgotConfirmPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          {showForgotConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
                     </div>
 
                     <button
-                      id="action-reset-submit-btn"
+                      id="btn-action-reset-submit"
                       type="submit"
                       disabled={isSubmitting || isVerifyingActionCode}
-                      className="w-full py-3 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 active:scale-[0.99] text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm disabled:opacity-50"
+                      className="w-full py-2.5 px-4 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-105 active:scale-[0.99] text-slate-950 rounded-xl font-bold transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm shadow-lg shadow-[#E5B869]/20 disabled:opacity-50"
                     >
                       {isSubmitting ? (
                         <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
                       ) : (
-                        <>
-                          <CheckCircle className="w-4 h-4" />
-                          <span>{t('auth.saveNewPassword')}</span>
-                        </>
+                        <span>{t('auth.saveNewPassword')}</span>
                       )}
                     </button>
                   </form>
                 </motion.div>
               )}
 
-              {/* ================= 6. PENDING APPROVAL VIEW ================= */}
+              {/* ================= 6. PENDING APPROVAL ================= */}
               {mode === 'pending' && (
                 <motion.div
-                  key="pending-tab"
-                  initial={{ opacity: 0, scale: 0.95 }}
+                  key="pending-view"
+                  initial={{ opacity: 0, scale: 0.98 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className="space-y-4"
+                  exit={{ opacity: 0, scale: 0.98 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-4 text-center"
                 >
-                  <div className="p-4 rounded-2xl bg-gradient-to-b from-[#0E382A] to-[#082218] border border-[#E5B869]/40 text-amber-100 flex flex-col items-center text-center gap-2.5 shadow-lg">
-                    <div className="w-12 h-12 rounded-2xl bg-[#04130D] border border-[#E5B869]/60 flex items-center justify-center text-[#F5D794] shadow-md">
-                      <Clock className="w-6 h-6 animate-spin text-[#F5D794]" />
-                    </div>
+                  <div className="w-12 h-12 mx-auto rounded-2xl bg-[#E5B869]/10 border border-[#E5B869]/30 flex items-center justify-center text-[#E5B869]">
+                    <Clock className="w-6 h-6 animate-pulse" />
+                  </div>
 
-                    <div className="space-y-1">
-                      <h2 className="text-base font-black text-[#F5D794]">{t('auth.accountPending')}</h2>
-                      <p className="text-xs font-medium text-emerald-100 leading-relaxed">
-                        {t('auth.pendingNotice')}
-                      </p>
+                  <div className="space-y-1">
+                    <h2 className="text-base font-bold text-white">{t('auth.accountPending')}</h2>
+                    <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
+                      {t('auth.pendingNotice')}
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-[#05070A]/90 border border-slate-800 space-y-1 text-xs text-start">
+                    <div className="flex items-center justify-between text-slate-400">
+                      <span>{t('auth.fullName')}:</span>
+                      <span className="font-semibold text-slate-200">{registeredUserName}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-slate-400">
+                      <span>{t('auth.email')}:</span>
+                      <span className="font-mono text-[#E5B869]">{registeredUserEmail}</span>
                     </div>
                   </div>
 
-                  <div className="p-3.5 rounded-2xl bg-[#020A07] border border-[#E5B869]/25 space-y-1.5 text-xs text-start">
-                    <div className="flex items-center justify-between text-emerald-200">
-                      <span className="text-emerald-300/70">{t('auth.fullName')}:</span>
-                      <span className="font-bold text-white">{registeredUserName}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-emerald-200">
-                      <span className="text-emerald-300/70">{t('auth.email')}:</span>
-                      <span className="font-mono text-[#F5D794]">{registeredUserEmail}</span>
-                    </div>
-                  </div>
-
-                  <p className="text-[11px] text-emerald-300/70 text-center leading-relaxed">
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
                     {t('auth.pendingRefreshHint')}
                   </p>
 
                   <button
-                    id="pending-return-signin-btn"
+                    id="btn-pending-back-signin"
                     type="button"
                     onClick={() => {
                       setMode('signin');
                       setSignInError('');
                     }}
-                    className="w-full py-3 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 active:scale-[0.99] text-slate-950 rounded-xl font-black shadow-lg shadow-amber-950/40 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm"
+                    className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer text-xs sm:text-sm"
                   >
                     <span>{t('auth.backToSignIn')}</span>
-                    {isRTL ? <ArrowLeft className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
+                    {isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
                   </button>
                 </motion.div>
               )}
             </AnimatePresence>
-          </motion.div>
+          </div>
         </div>
       </main>
 
-      {/* ================= MINIMAL FOOTER ================= */}
-      <footer className="relative z-20 w-full max-w-5xl mx-auto px-4 sm:px-6 py-4 text-center text-xs text-emerald-300/60 flex items-center justify-between border-t border-emerald-900/20">
-        <div className="flex items-center gap-1.5">
-          <ShieldCheck className="w-3.5 h-3.5 text-[#E5B869]" />
-          <span>PitchMate PRO</span>
+      {/* Clean Professional SaaS Footer */}
+      <footer className="relative z-20 w-full max-w-5xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400 border-t border-[#E5B869]/15">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse shadow-[0_0_8px_#10B981]" />
+          <ShieldCheck className="w-4 h-4 text-[#E5B869]" />
+          <span className="font-medium text-slate-300">
+            {language === 'ar' ? 'منصة كرة القدم المغربية المعتمدة • تشفير سحابي 256-Bit آمن' : 'Official Moroccan Football Platform • 256-Bit Encrypted'}
+          </span>
         </div>
-        <div className="flex items-center gap-2 text-[11px] font-mono text-[#F5D794]">
-          <span>{language === 'ar' ? 'المملكة المغربية 🇲🇦' : 'Morocco 🇲🇦'}</span>
+        <div className="flex items-center gap-3 text-[11px] text-[#E5B869]/80 font-semibold">
+          <span>PitchMate PRO</span>
+          <span className="w-1 h-1 rounded-full bg-[#E5B869]/40" />
+          <span>v2.5 SaaS</span>
         </div>
       </footer>
     </div>

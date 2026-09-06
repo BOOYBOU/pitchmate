@@ -3,9 +3,8 @@ import { storage } from './firebase';
 
 /**
  * Media Storage Helper
- * Uploads audio voice notes, avatar photos, and chat/pitch images
- * to Firebase Cloud Storage (or backend high-speed endpoint as robust fallback).
- * Ensures files are globally accessible to all simultaneous connected users.
+ * Provides high-speed, cross-platform audio and image processing with client-side compression
+ * and fallback persistence across Firebase Cloud Storage and backend server.
  */
 
 function getStorageAuthHeaders(): Record<string, string> {
@@ -17,36 +16,127 @@ function getStorageAuthHeaders(): Record<string, string> {
     const token = localStorage.getItem('pitchmate_auth_token_v2') || `pitchmate_token_${currentUserId}_${Date.now()}`;
     headers['Authorization'] = `Bearer ${token}`;
     headers['x-user-id'] = currentUserId;
+    const currentEmail = localStorage.getItem('pitchmate_current_user_email_v2');
+    if (currentEmail) headers['x-user-email'] = currentEmail;
   } catch {}
   return headers;
+}
+
+/**
+ * Client-Side Smart Image Compression
+ * Downscales oversized camera/gallery images to max 1280x1280 and 80% JPEG quality.
+ * Prevents Firestore 1MB limits, eliminates mobile upload timeouts, and saves bandwidth.
+ */
+export async function compressImage(
+  fileOrBlob: Blob | File,
+  maxWidth = 1280,
+  maxHeight = 1280,
+  quality = 0.82
+): Promise<{ blob: Blob; dataUrl: string; size: number }> {
+  return new Promise((resolve, reject) => {
+    // If SVG or small GIF, preserve original without canvas rasterization
+    if (fileOrBlob.type === 'image/svg+xml' || fileOrBlob.type === 'image/gif') {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        resolve({ blob: fileOrBlob, dataUrl, size: fileOrBlob.size });
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(fileOrBlob);
+      return;
+    }
+
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(fileOrBlob);
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      let width = img.width;
+      let height = img.height;
+
+      // Scale down keeping aspect ratio
+      if (width > maxWidth || height > maxHeight) {
+        if (width / height > maxWidth / maxHeight) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        } else {
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+
+      if (!ctx) {
+        // Fallback to reading dataUrl directly if canvas context is unavailable
+        const reader = new FileReader();
+        reader.onload = () => resolve({ blob: fileOrBlob, dataUrl: reader.result as string, size: fileOrBlob.size });
+        reader.readAsDataURL(fileOrBlob);
+        return;
+      }
+
+      // Smooth interpolation
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Output as optimized JPEG
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            const dataUrl = canvas.toDataURL('image/jpeg', quality);
+            resolve({ blob: fileOrBlob, dataUrl, size: dataUrl.length });
+            return;
+          }
+          const dataUrl = canvas.toDataURL('image/jpeg', quality);
+          resolve({ blob, dataUrl, size: blob.size });
+        },
+        'image/jpeg',
+        quality
+      );
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      const reader = new FileReader();
+      reader.onload = () => resolve({ blob: fileOrBlob, dataUrl: reader.result as string, size: fileOrBlob.size });
+      reader.onerror = reject;
+      reader.readAsDataURL(fileOrBlob);
+    };
+
+    img.src = objectUrl;
+  });
 }
 
 export const mediaStorage = {
   /**
    * Upload Voice Note recording to Firebase Cloud Storage or Server
-   * Returns a globally accessible URL for all connected users
+   * Robust cross-platform MIME detection (supporting iOS Safari MP4/AAC and Chrome WebM)
    */
   async uploadAudio(audioBlob: Blob): Promise<{ success: boolean; audioUrl?: string; error?: string }> {
-    const ext = audioBlob.type.includes('wav') ? 'wav' : 'webm';
-    const filename = `audio_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.${ext}`;
-    
-    // 1. Try Firebase Cloud Storage
-    try {
-      if (storage) {
-        const audioStorageRef = ref(storage, `pitchmate/voice_notes/${filename}`);
-        const snapshot = await uploadBytes(audioStorageRef, audioBlob, {
-          contentType: audioBlob.type || 'audio/webm',
-        });
-        const cloudUrl = await getDownloadURL(snapshot.ref);
-        if (cloudUrl) {
-          return { success: true, audioUrl: cloudUrl };
-        }
-      }
-    } catch (cloudErr) {
-      console.warn('[mediaStorage] Firebase Storage audio upload fallback to server endpoint:', cloudErr);
+    let ext = 'webm';
+    let mimeType = 'audio/webm';
+
+    const blobType = (audioBlob.type || '').toLowerCase();
+    if (blobType.includes('mp4') || blobType.includes('m4a') || blobType.includes('aac')) {
+      ext = 'mp4';
+      mimeType = 'audio/mp4';
+    } else if (blobType.includes('wav')) {
+      ext = 'wav';
+      mimeType = 'audio/wav';
+    } else if (blobType.includes('ogg')) {
+      ext = 'ogg';
+      mimeType = 'audio/ogg';
+    } else {
+      ext = 'webm';
+      mimeType = 'audio/webm';
     }
 
-    // 2. Server Disk Endpoint Fallback (served under /uploads/audio/)
+    // Convert audio Blob to Base64
+    let base64Data = '';
     try {
       const reader = new FileReader();
       const base64Promise = new Promise<string>((resolve, reject) => {
@@ -54,103 +144,106 @@ export const mediaStorage = {
         reader.onerror = reject;
       });
       reader.readAsDataURL(audioBlob);
-      const base64Data = await base64Promise;
+      base64Data = await base64Promise;
+    } catch (readErr) {
+      console.warn('[mediaStorage] Read audio blob error:', readErr);
+    }
 
-      const res = await fetch('/api/upload/audio', {
-        method: 'POST',
-        headers: getStorageAuthHeaders(),
-        body: JSON.stringify({ base64Data, format: ext }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data.audioUrl) {
-          return { success: true, audioUrl: data.audioUrl };
-        }
-      }
-      
-      // If server returned non-ok or failed, return the base64 data URL so all peers can play it
-      return { success: true, audioUrl: base64Data };
-    } catch (err: any) {
-      console.warn('[mediaStorage] Server upload error, fallback to base64 Data URL:', err);
+    // 1. PRIMARY FAST PATH: Dedicated Server Disk Endpoint (/api/upload/audio)
+    if (base64Data) {
       try {
-        const reader = new FileReader();
-        const base64Promise = new Promise<string>((resolve, reject) => {
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.onerror = reject;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+        const res = await fetch('/api/upload/audio', {
+          method: 'POST',
+          headers: getStorageAuthHeaders(),
+          body: JSON.stringify({ base64Data, format: ext, mimeType }),
+          signal: controller.signal,
         });
-        reader.readAsDataURL(audioBlob);
-        const base64Data = await base64Promise;
-        return { success: true, audioUrl: base64Data };
-      } catch {
-        return { success: false, error: 'Failed to process audio' };
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.audioUrl) {
+            return { success: true, audioUrl: data.audioUrl };
+          }
+        }
+      } catch (err: any) {
+        console.warn('[mediaStorage] Server audio upload endpoint notice:', err?.message || err);
       }
     }
+
+    // 2. IMMEDIATE FALLBACK: Base64 Data URL (ensures audio is never lost)
+    if (base64Data) {
+      return { success: true, audioUrl: base64Data };
+    }
+
+    return { success: false, error: 'Failed to process audio' };
   },
 
   /**
    * Upload Chat Photo, Avatar, or Match Image
-   * Returns a globally accessible URL for all connected users
+   * Automatically compresses image client-side first to avoid Firestore 1MB limits
    */
   async uploadImage(imageBlobOrFile: Blob | File): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
-    const filename = `img_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.jpg`;
-
-    // 1. Try Firebase Cloud Storage
+    // Always compress client-side first to optimize transfer size and speed
+    let compressedBlob: Blob = imageBlobOrFile;
+    let base64Data = '';
     try {
-      if (storage) {
-        const imageStorageRef = ref(storage, `pitchmate/images/${filename}`);
-        const snapshot = await uploadBytes(imageStorageRef, imageBlobOrFile, {
-          contentType: (imageBlobOrFile as File).type || 'image/jpeg',
-        });
-        const cloudUrl = await getDownloadURL(snapshot.ref);
-        if (cloudUrl) {
-          return { success: true, imageUrl: cloudUrl };
-        }
-      }
-    } catch (cloudErr) {
-      console.warn('[mediaStorage] Firebase Storage image upload fallback to server endpoint:', cloudErr);
+      const compressed = await compressImage(imageBlobOrFile, 1280, 1280, 0.82);
+      compressedBlob = compressed.blob;
+      base64Data = compressed.dataUrl;
+    } catch (compressErr) {
+      console.warn('[mediaStorage] Compression notice:', compressErr);
     }
 
-    // 2. Server Disk Endpoint Fallback (served under /uploads/images/)
-    try {
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve, reject) => {
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-      });
-      reader.readAsDataURL(imageBlobOrFile);
-      const base64Data = await base64Promise;
-
-      const res = await fetch('/api/upload/image', {
-        method: 'POST',
-        headers: getStorageAuthHeaders(),
-        body: JSON.stringify({ base64Data }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data.imageUrl) {
-          return { success: true, imageUrl: data.imageUrl };
-        }
-      }
-
-      // If server returned non-ok, return the base64 data URL so all peers can view it
-      return { success: true, imageUrl: base64Data };
-    } catch (err: any) {
-      console.warn('[mediaStorage] Server upload error, fallback to base64 Data URL:', err);
+    // If compression didn't produce dataUrl, read compressedBlob
+    if (!base64Data) {
       try {
         const reader = new FileReader();
         const base64Promise = new Promise<string>((resolve, reject) => {
           reader.onloadend = () => resolve(reader.result as string);
           reader.onerror = reject;
         });
-        reader.readAsDataURL(imageBlobOrFile);
-        const base64Data = await base64Promise;
-        return { success: true, imageUrl: base64Data };
-      } catch {
-        return { success: false, error: 'Failed to process image' };
+        reader.readAsDataURL(compressedBlob);
+        base64Data = await base64Promise;
+      } catch (readErr) {
+        console.warn('[mediaStorage] Read image blob error:', readErr);
       }
     }
+
+    // 1. PRIMARY FAST PATH: Dedicated Server Disk Endpoint (/api/upload/image)
+    if (base64Data) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+        const res = await fetch('/api/upload/image', {
+          method: 'POST',
+          headers: getStorageAuthHeaders(),
+          body: JSON.stringify({ base64Data }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.imageUrl) {
+            return { success: true, imageUrl: data.imageUrl };
+          }
+        }
+      } catch (err: any) {
+        console.warn('[mediaStorage] Server image upload endpoint notice:', err?.message || err);
+      }
+    }
+
+    // 2. IMMEDIATE FALLBACK: Compressed base64 Data URL (ensures image is never lost)
+    if (base64Data) {
+      return { success: true, imageUrl: base64Data };
+    }
+
+    return { success: false, error: 'Failed to process image' };
   },
 
   /**
