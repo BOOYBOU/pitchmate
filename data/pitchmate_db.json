@@ -1,6 +1,6 @@
 {
-  "version": 13,
-  "lastUpdated": "2026-09-07T10:55:08.648Z",
+  "version": 26,
+  "lastUpdated": "2026-09-07T11:51:24.571Z",
   "users": [
     {
       "id": "user_mustapha",
@@ -245,7 +245,7 @@
       "receiverId": "user_mustapha",
       "text": "slm",
       "createdAt": "2026-09-07T10:51:29.415Z",
-      "read": false
+      "read": true
     },
     {
       "id": "dm_1788778298026_sncy",
@@ -256,7 +256,7 @@
       "text": "",
       "imageUrl": "/uploads/images/img_1788778296263_3rpt.jpg",
       "createdAt": "2026-09-07T10:51:38.026Z",
-      "read": false
+      "read": true
     },
     {
       "id": "dm_voice_1788778305495_fq52",
@@ -268,10 +268,64 @@
       "audioUrl": "/uploads/audio/audio_1788778305546_xd4h.webm",
       "audioDuration": 3,
       "createdAt": "2026-09-07T10:51:45.495Z",
-      "read": false
+      "read": true
+    },
+    {
+      "id": "dm_voice_1788779175436_4gyn",
+      "senderId": "user_g_SBbwpK8JD3NUgb2EPnXZIEM5tYS2",
+      "senderName": "Your Moment",
+      "senderAvatar": "https://lh3.googleusercontent.com/a/ACg8ocKACQwOnGi5gOJLhEdRa62xtEDmLofbvX-TSfkmAv0xkW2JPA=s96-c",
+      "receiverId": "user_mustapha",
+      "text": "🎤 Voice note (5s)",
+      "audioUrl": "/uploads/audio/audio_1788779175505_x61n.webm",
+      "audioDuration": 5,
+      "createdAt": "2026-09-07T11:06:15.436Z",
+      "read": true
+    },
+    {
+      "id": "dm_voice_1788780334973_h8rx",
+      "senderId": "user_g_SBbwpK8JD3NUgb2EPnXZIEM5tYS2",
+      "senderName": "Your Moment",
+      "senderAvatar": "https://lh3.googleusercontent.com/a/ACg8ocKACQwOnGi5gOJLhEdRa62xtEDmLofbvX-TSfkmAv0xkW2JPA=s96-c",
+      "receiverId": "user_mustapha",
+      "text": "🎤 Voice note (6s)",
+      "audioUrl": "/uploads/audio/audio_1788780335062_0c3r.webm",
+      "audioDuration": 6,
+      "createdAt": "2026-09-07T11:25:34.973Z",
+      "read": true
     }
   ],
   "notifications": [
+    {
+      "id": "notif_dm_dm_voice_1788780381258_8o4w",
+      "userId": "user_g_SBbwpK8JD3NUgb2EPnXZIEM5tYS2",
+      "title": "رسالة من Mustapha Bouhbous",
+      "message": "🎤 أرسل لك رسالة صوتية",
+      "type": "direct_message",
+      "linkId": "user_mustapha",
+      "createdAt": "2026-09-07T11:26:21.258Z",
+      "read": false
+    },
+    {
+      "id": "notif_dm_dm_voice_1788780334973_h8rx",
+      "userId": "user_mustapha",
+      "title": "رسالة من Your Moment",
+      "message": "🎤 أرسل لك رسالة صوتية",
+      "type": "direct_message",
+      "linkId": "user_g_SBbwpK8JD3NUgb2EPnXZIEM5tYS2",
+      "createdAt": "2026-09-07T11:25:34.973Z",
+      "read": false
+    },
+    {
+      "id": "notif_dm_dm_voice_1788779175436_4gyn",
+      "userId": "user_mustapha",
+      "title": "رسالة من Your Moment",
+      "message": "🎤 أرسل لك رسالة صوتية",
+      "type": "direct_message",
+      "linkId": "user_g_SBbwpK8JD3NUgb2EPnXZIEM5tYS2",
+      "createdAt": "2026-09-07T11:06:15.436Z",
+      "read": false
+    },
     {
       "id": "notif_dm_dm_voice_1788778305495_fq52",
       "userId": "user_mustapha",

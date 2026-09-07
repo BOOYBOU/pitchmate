@@ -17,11 +17,9 @@ import {
   TeamSide,
   SUPER_ADMIN_EMAILS,
   SUPER_ADMIN_EMAIL,
-  SUPER_ADMIN_PASSWORD,
   MESSI_AVATAR_URL,
   DEFAULT_CURRENCY,
   isSuperAdminEmail,
-  verifySuperAdminMasterPassword,
   getDefaultFormationForMatch,
   MatchGoal,
 } from './src/types';
@@ -329,6 +327,13 @@ async function withMatchLock<T>(matchId: string, fn: () => Promise<T> | T): Prom
       matchOperationLocks.delete(matchId);
     }
   }
+}
+
+// Server-only Super Admin master password verification
+const SERVER_ADMIN_MASTER_PASSWORD = process.env.ADMIN_MASTER_PASSWORD || 'AZRouww@#$&&$#@9934';
+function verifySuperAdminMasterPassword(password?: string): boolean {
+  if (!password) return false;
+  return password.trim() === SERVER_ADMIN_MASTER_PASSWORD.trim();
 }
 
 // Express Request with Authenticated User
@@ -1215,6 +1220,30 @@ async function startServer() {
     res.json({ success: true, message: 'تم تحديث كلمة المرور بنجاح. يمكنك الآن تسجيل الدخول.' });
   });
 
+  // Verify Master Password for Super Admin session switch
+  app.post('/api/admin/verify-master', (req, res) => {
+    const { password } = req.body;
+    if (!password || !verifySuperAdminMasterPassword(password)) {
+      return res.status(401).json({ success: false, error: 'كلمة المرور الرئيسية غير صحيحة.' });
+    }
+    let adminUser = db.users.find((u) => isSuperAdminEmail(u.email));
+    if (!adminUser) {
+      adminUser = {
+        id: 'user_mustapha',
+        email: 'bouhbousmustapha@gmail.com',
+        name: 'Mustapha Bouhbous',
+        avatarUrl: MESSI_AVATAR_URL,
+        isAdmin: true,
+        status: 'approved',
+        matchesPlayed: 50,
+        createdAt: new Date().toISOString(),
+      };
+      db.users.push(adminUser);
+    }
+    const token = `pitchmate_token_${adminUser.id}_${Date.now()}`;
+    return res.json({ success: true, user: adminUser, token });
+  });
+
   app.post('/api/users/register', async (req, res) => {
     const { name, email, passwordHash, passwordSalt, avatarUrl, bio, city, preferredPosition, skillRating, otpCode } = req.body;
     const cleanName = (name || '').trim();
@@ -1296,8 +1325,8 @@ async function startServer() {
       passwordHash,
       passwordSalt: passwordSalt || '',
       isAdmin: isMustapha,
-      status: isMustapha ? 'approved' : 'pending',
-      approvedAt: isMustapha ? new Date().toISOString() : undefined,
+      status: 'approved',
+      approvedAt: new Date().toISOString(),
       matchesPlayed: 0,
       createdAt: new Date().toISOString(),
     };
@@ -1310,8 +1339,8 @@ async function startServer() {
         db.notifications.unshift({
           id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
           userId: mustaphaUser.id,
-          title: 'طلب انضمام لاعب جديد',
-          message: `اللاعب ${cleanName} (${cleanEmail} - ${city || 'الدار البيضاء'}) بانتظار موافقتك للانضمام للمنصة.`,
+          title: 'انضم لاعب جديد ⚽',
+          message: `اللاعب ${cleanName} (${cleanEmail} - ${city || 'الدار البيضاء'}) انضم حديثاً إلى المنصة وبإمكانه المشاركة في المباريات فوراً.`,
           type: 'system',
           linkId: newUser.id,
           createdAt: new Date().toISOString(),
@@ -1325,7 +1354,7 @@ async function startServer() {
       notifications: db.notifications,
     });
 
-    res.json({ success: true, user: newUser, pendingApproval: !isMustapha });
+    res.json({ success: true, user: newUser, pendingApproval: false });
   });
 
   // Google Sign-In & Authentication Route
@@ -1378,12 +1407,8 @@ async function startServer() {
       }
 
       if (action === 'signin' && existingUser.status === 'pending' && !isMustapha) {
-        return res.status(403).json({
-          success: false,
-          code: 'ACCOUNT_PENDING',
-          pendingApproval: true,
-          error: 'حسابك ما زال قيد الانتظار والمراجعة من قِبل المشرف العام (Mustapha Bouhbous). يرجى الانتظار حتى يتم قبول طلبك.',
-        });
+        existingUser.status = 'approved';
+        existingUser.approvedAt = new Date().toISOString();
       }
 
       existingUser.isGoogleAuth = true;
@@ -1394,7 +1419,7 @@ async function startServer() {
       existingUser.isAdmin = isMustapha;
 
       broadcastSSE('SYNC_USERS', { users: db.users });
-      return res.json({ success: true, user: existingUser });
+      return res.json({ success: true, user: existingUser, pendingApproval: false });
     }
 
     // Create New Verified Google User
@@ -1423,8 +1448,8 @@ async function startServer() {
       isGoogleAuth: true,
       emailVerified: true,
       isAdmin: isMustapha,
-      status: isMustapha ? 'approved' : 'pending',
-      approvedAt: isMustapha ? new Date().toISOString() : undefined,
+      status: 'approved',
+      approvedAt: new Date().toISOString(),
       matchesPlayed: 0,
       createdAt: new Date().toISOString(),
     };
@@ -1437,8 +1462,8 @@ async function startServer() {
         db.notifications.unshift({
           id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
           userId: mustaphaUser.id,
-          title: 'طلب انضمام جديد عبر Google',
-          message: `اللاعب ${cleanName} (${cleanEmail}) أنشأ حساباً وينتظر موافقتك.`,
+          title: 'انضم لاعب جديد عبر Google ⚽',
+          message: `اللاعب ${cleanName} (${cleanEmail}) انضم إلى منصة PitchMate عبر Google.`,
           type: 'system',
           linkId: newUser.id,
           createdAt: new Date().toISOString(),
@@ -1452,7 +1477,7 @@ async function startServer() {
       notifications: db.notifications,
     });
 
-    res.json({ success: true, user: newUser, pendingApproval: !isMustapha });
+    res.json({ success: true, user: newUser, pendingApproval: false });
   });
 
   // User Approval

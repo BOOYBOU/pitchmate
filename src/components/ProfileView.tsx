@@ -98,10 +98,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
     setIsAddingUser(false);
   };
 
-  const handleAdminAuthSubmit = (e: React.FormEvent) => {
+  const handleAdminAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAdminPassError('');
-    const success = authenticateSuperAdmin(adminPassInput);
+    const success = await authenticateSuperAdmin(adminPassInput);
     if (success) {
       const mustapha = users.find((u) => isSuperAdminEmail(u.email));
       if (mustapha) {

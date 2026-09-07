@@ -238,7 +238,6 @@ export const SUPER_ADMIN_EMAILS: readonly string[] = [
 ];
 
 export const SUPER_ADMIN_EMAIL = 'bouhbousmustapha@gmail.com';
-export const SUPER_ADMIN_PASSWORD = 'AZRouww@#$&&$#@9934';
 export const MESSI_AVATAR_URL = 'https://upload.wikimedia.org/wikipedia/commons/b/b4/Lionel-Messi-Argentina-2022-FIFA-World-Cup_%28cropped%29.jpg';
 export const DEFAULT_CURRENCY = 'MAD';
 export const MOROCCO_TIMEZONE = 'Africa/Casablanca';
@@ -254,11 +253,6 @@ export const isSuperAdminEmail = (email?: string): boolean => {
 export const isUserAdmin = (user?: Partial<UserProfile> | null): boolean => {
   if (!user) return false;
   return isSuperAdminEmail(user.email);
-};
-
-/** Strict check to verify the master password for Super Admin */
-export const verifySuperAdminMasterPassword = (password: string): boolean => {
-  return password === SUPER_ADMIN_PASSWORD;
 };
 
 /** Get default tactical formation key for a match format and player count */

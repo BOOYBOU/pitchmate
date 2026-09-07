@@ -13,9 +13,7 @@ import {
   DEFAULT_CURRENCY,
   SUPER_ADMIN_EMAILS,
   SUPER_ADMIN_EMAIL,
-  SUPER_ADMIN_PASSWORD,
   isSuperAdminEmail,
-  verifySuperAdminMasterPassword,
   getDefaultFormationForMatch,
   MatchGoal,
   MESSI_AVATAR_URL,
@@ -231,7 +229,7 @@ interface PitchStoreContextType {
 
   // Profile & User Management
   setCurrentUserById: (userId: string) => void;
-  authenticateSuperAdmin: (password: string) => boolean;
+  authenticateSuperAdmin: (password: string) => Promise<boolean>;
   updateUserProfile: (userId: string, updates: Partial<UserProfile>) => Promise<boolean>;
   createNewUserAccount: (name: string, email: string) => UserProfile;
   approveUser: (userId: string) => Promise<boolean>;
@@ -462,7 +460,6 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       'x-user-id': currentUserId,
       'x-user-email': currentUser.email,
       'x-is-admin': isAdminUser ? 'true' : 'false',
-      ...(isAdminUser ? { 'x-admin-password': SUPER_ADMIN_PASSWORD } : {}),
     };
   }, [currentUserId, currentUser.email]);
 
@@ -696,19 +693,21 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     if (!targetUser) {
       // If super admin email and clean fresh state with no custom password set yet
-      if (isMustapha && verifySuperAdminMasterPassword(cleanPass)) {
-        targetUser = {
-          id: cleanEmail === 'bouhbousmustapha@gmail.com' ? 'user_mustapha' : `user_admin_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}`,
-          email: cleanEmail,
-          name: cleanEmail === 'bouhbousmustapha@gmail.com' ? 'Mustapha Bouhbous' : 'Mustapha (Super Admin)',
-          avatarUrl: MESSI_AVATAR_URL,
-          isAdmin: true,
-          status: 'approved',
-          matchesPlayed: 50,
-          createdAt: new Date().toISOString(),
-        };
-        setUsers((prev) => [targetUser!, ...prev.filter((u) => u.email.toLowerCase() !== cleanEmail)]);
-      } else {
+      if (isMustapha) {
+        try {
+          const vRes = await fetch('/api/admin/verify-master', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: cleanPass }),
+          });
+          const vData = await vRes.json();
+          if (vData.success && vData.user) {
+            targetUser = vData.user;
+            setUsers((prev) => [targetUser!, ...prev.filter((u) => u.email.toLowerCase() !== cleanEmail)]);
+          }
+        } catch {}
+      }
+      if (!targetUser) {
         return { success: false, error: 'لا يوجد حساب مسجل بهذا البريد الإلكتروني. يرجى إنشاء حساب أولاً.' };
       }
     }
@@ -717,11 +716,10 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return { success: false, error: `الحساب موقوف: ${targetUser.banReason || 'تواصل مع إدارة المنصة'}` };
     }
 
-    if (targetUser.status === 'pending' && !isMustapha) {
-      return {
-        success: false,
-        error: 'حسابك في لائحة الانتظار قيد المراجعة من قِبل المشرف العام. يرجى الانتظار حتى يتم قبول طلبك.',
-      };
+    // Auto-approve existing pending accounts smoothly
+    if (targetUser.status === 'pending') {
+      targetUser.status = 'approved';
+      saveUserToFirestore(targetUser);
     }
 
     if (targetUser.status === 'rejected' && !isMustapha) {
@@ -750,8 +748,18 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         targetUser.passwordSalt
       );
     } else if (isMustapha && !targetUser.passwordHash && !targetUser.password) {
-      // Only uninitialized super admin with zero custom passwords
-      isPasswordCorrect = verifySuperAdminMasterPassword(cleanPass);
+      // Super admin master password check via server
+      try {
+        const vRes = await fetch('/api/admin/verify-master', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: cleanPass }),
+        });
+        const vData = await vRes.json();
+        isPasswordCorrect = Boolean(vData.success);
+      } catch {
+        isPasswordCorrect = false;
+      }
     } else if (targetUser.password) {
       // Legacy unhashed user
       isPasswordCorrect = cleanPass === targetUser.password;
@@ -941,7 +949,6 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       const data = await res.json();
       const newUser = data.user;
-      const isPending = !isMustapha;
 
       setUsers((prev) => [...prev.filter((u) => u.id !== newUser.id), newUser]);
       saveUserToFirestore(newUser);
@@ -962,10 +969,6 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
       } catch (fbErr: any) {
         console.warn('Firebase Auth user creation note:', fbErr?.code, fbErr?.message);
-      }
-
-      if (isPending) {
-        return { success: true, pendingApproval: true };
       }
 
       setCurrentUserId(newUser.id);
@@ -1321,12 +1324,8 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
 
         if (existingUser.status === 'pending' && !isMustapha) {
-          return {
-            success: false,
-            pendingApproval: true,
-            user: existingUser,
-            error: 'حسابك في لائحة الانتظار قيد المراجعة من قِبل المشرف العام. يرجى الانتظار حتى يتم قبول طلبك.',
-          };
+          existingUser.status = 'approved';
+          existingUser.approvedAt = new Date().toISOString();
         }
 
         const updatedUser: UserProfile = {
@@ -1370,8 +1369,8 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         isGoogleAuth: true,
         emailVerified: true,
         isAdmin: isMustapha,
-        status: isMustapha ? 'approved' : 'pending',
-        approvedAt: isMustapha ? new Date().toISOString() : undefined,
+        status: 'approved',
+        approvedAt: new Date().toISOString(),
         matchesPlayed: 0,
         createdAt: new Date().toISOString(),
       };
@@ -1390,10 +1389,6 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           action: action,
         }),
       }).catch(() => {});
-
-      if (!isMustapha) {
-        return { success: true, pendingApproval: true, user: newGoogleUser };
-      }
 
       setCurrentUserId(newGoogleUser.id);
       setIsAuthenticated(true);
@@ -2528,28 +2523,29 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, [users]);
 
-  const authenticateSuperAdmin = useCallback((password: string): boolean => {
-    if (verifySuperAdminMasterPassword(password)) {
-      let mustapha = users.find((u) => isSuperAdminEmail(u.email));
-      if (!mustapha) {
-        mustapha = {
-          id: 'user_mustapha',
-          email: SUPER_ADMIN_EMAIL,
-          name: 'Mustapha Bouhbous',
-          avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-          isAdmin: true,
-          status: 'approved',
-          matchesPlayed: 50,
-          createdAt: new Date().toISOString(),
-        };
-        setUsers((prev) => [mustapha!, ...prev.filter((u) => !isSuperAdminEmail(u.email))]);
+  const authenticateSuperAdmin = useCallback(async (password: string): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/admin/verify-master', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      const data = await res.json();
+      if (data.success && data.user) {
+        setUsers((prev) => [data.user, ...prev.filter((u) => u.id !== data.user.id)]);
+        setCurrentUserId(data.user.id);
+        setIsAuthenticated(true);
+        if (data.token) {
+          localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, data.token);
+        }
+        localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, data.user.id);
+        return true;
       }
-      setCurrentUserId(mustapha.id);
-      setIsAuthenticated(true);
-      return true;
+      return false;
+    } catch {
+      return false;
     }
-    return false;
-  }, [users]);
+  }, []);
 
   const updateUserProfile = useCallback(async (userId: string, updates: Partial<UserProfile>): Promise<boolean> => {
     setUsers((prev) =>
