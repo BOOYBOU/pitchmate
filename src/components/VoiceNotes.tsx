@@ -10,7 +10,8 @@ import {
   VolumeX,
   AlertCircle,
   Sparkles,
-  Loader2
+  Loader2,
+  RotateCcw
 } from 'lucide-react';
 import { SoundEffects } from '../lib/audioService';
 import { useLanguage } from '../lib/useLanguage';
@@ -167,6 +168,13 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
   const stopAndSendRecording = () => {
     if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') return;
 
+    const recorder = mediaRecorderRef.current;
+    if (recorder.state === 'recording') {
+      try {
+        recorder.requestData();
+      } catch {}
+    }
+
     const finalDuration = Math.max(1, Math.round((Date.now() - startTimeRef.current) / 1000));
 
     if (timerRef.current) clearInterval(timerRef.current);
@@ -175,8 +183,8 @@ export const VoiceNoteRecorder: React.FC<VoiceNoteRecorderProps> = ({
     setIsRecording(false);
     setIsSending(true);
 
-    mediaRecorderRef.current.onstop = async () => {
-      const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
+    recorder.onstop = async () => {
+      const mimeType = recorder.mimeType || 'audio/webm';
       const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
 
       // Clean stream tracks
@@ -379,24 +387,12 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    setLoadError(false);
 
     const handleLoadedMetadata = () => {
       if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration) && audio.duration > 0) {
         setDuration(Math.round(audio.duration));
-      } else if (!isFinite(audio.duration)) {
-        // Chrome WebM duration: seek to end and reset to force duration computation
-        const tempTimeUpdate = () => {
-          audio.removeEventListener('timeupdate', tempTimeUpdate);
-          if (isFinite(audio.duration) && audio.duration > 0) {
-            setDuration(Math.round(audio.duration));
-          } else if (durationSeconds > 0) {
-            setDuration(durationSeconds);
-          }
-          audio.currentTime = 0;
-        };
-        audio.addEventListener('timeupdate', tempTimeUpdate);
-        audio.currentTime = 1e101;
+      } else if (durationSeconds > 0) {
+        setDuration(durationSeconds);
       }
     };
 
@@ -417,9 +413,12 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
     };
 
     const handleError = () => {
-      console.warn('Voice note audio loading error for:', audioUrl);
-      setLoadError(true);
-      setIsPlaying(false);
+      console.warn('Voice note audio loading notice for:', audioUrl);
+      // Only set load error if currently playing or play was requested
+      if (isPlaying) {
+        setLoadError(true);
+        setIsPlaying(false);
+      }
     };
 
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
@@ -433,7 +432,7 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('error', handleError);
     };
-  }, [audioUrl, durationSeconds, duration]);
+  }, [audioUrl, durationSeconds]);
 
   const togglePlay = () => {
     const audio = audioRef.current;
@@ -443,19 +442,27 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
       audio.pause();
       setIsPlaying(false);
     } else {
+      setLoadError(false);
       audio.play().then(() => {
         setIsPlaying(true);
         setLoadError(false);
       }).catch((e) => {
-        console.warn('Audio playback error:', e);
-        // Retry once after resetting currentTime
-        audio.currentTime = 0;
-        audio.play().then(() => {
-          setIsPlaying(true);
-        }).catch(() => {
+        console.warn('Audio playback first attempt notice:', e);
+        try {
+          audio.load();
+          audio.currentTime = 0;
+          audio.play().then(() => {
+            setIsPlaying(true);
+            setLoadError(false);
+          }).catch((err) => {
+            console.warn('Audio playback retry notice:', err);
+            setLoadError(true);
+            setIsPlaying(false);
+          });
+        } catch {
           setLoadError(true);
           setIsPlaying(false);
-        });
+        }
       });
     }
   };
@@ -507,30 +514,29 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
           : 'bg-[#141A26] border-[#E5B869]/20 text-white'
       }`}
     >
-      <audio ref={audioRef} src={audioUrl} preload="metadata" crossOrigin="anonymous" />
+      <audio ref={audioRef} src={audioUrl} preload="metadata" playsInline />
 
-      {/* Play/Pause Button */}
+      {/* Play/Pause / Retry Button */}
       <button
         type="button"
         onClick={togglePlay}
-        disabled={loadError}
         className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-95 cursor-pointer shadow-md ${
           loadError
-            ? 'bg-rose-800 text-white opacity-80 cursor-not-allowed'
+            ? 'bg-rose-600 hover:bg-rose-500 text-white animate-pulse'
             : isSender
             ? 'bg-gradient-to-br from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950'
             : 'bg-gradient-to-br from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950'
         }`}
         title={
           loadError
-            ? (language === 'ar' ? 'تعذر تشغيل الملف الصوتي' : 'Audio error')
+            ? (language === 'ar' ? 'تعذر التشغيل، انقر لإعادة المحاولة' : 'Audio error, click to retry')
             : isPlaying
             ? (language === 'ar' ? 'إيقاف مؤقت' : 'Pause voice message')
             : (language === 'ar' ? 'تشغيل الرسالة الصوتية' : 'Play voice message')
         }
       >
         {loadError ? (
-          <AlertCircle className="w-4 h-4" />
+          <RotateCcw className="w-3.5 h-3.5" />
         ) : isPlaying ? (
           <Pause className="w-4 h-4 fill-current" />
         ) : (
@@ -587,7 +593,7 @@ export const VoiceNotePlayer: React.FC<VoiceNotePlayerProps> = ({
         <div className={`flex items-center justify-between text-[10px] font-mono ${
           isSender ? 'text-slate-950/80 font-bold' : 'text-slate-400'
         }`}>
-          <span>
+          <span dir="ltr" className="tabular-nums select-none">
             {formatTime(currentTime)} / {formatTime(effectiveTotal)}
           </span>
           <span className="flex items-center gap-1">

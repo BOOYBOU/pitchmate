@@ -1,0 +1,325 @@
+{
+  "version": 13,
+  "lastUpdated": "2026-09-07T10:55:08.648Z",
+  "users": [
+    {
+      "id": "user_mustapha",
+      "email": "bouhbousmustapha@gmail.com",
+      "name": "Mustapha Bouhbous",
+      "avatarUrl": "https://upload.wikimedia.org/wikipedia/commons/b/b4/Lionel-Messi-Argentina-2022-FIFA-World-Cup_%28cropped%29.jpg",
+      "phone": "+212 661-234567",
+      "city": "Casablanca",
+      "isAdmin": true,
+      "status": "approved",
+      "preferredPosition": "MID",
+      "skillRating": 5,
+      "reliabilityScore": 100,
+      "matchesAttended": 50,
+      "noShowCount": 0,
+      "matchesPlayed": 50,
+      "mvpCount": 8,
+      "goalsCount": 24,
+      "badges": [
+        {
+          "id": "b1",
+          "key": "reliable",
+          "title": "Reliable Captain",
+          "description": "100% attendance rate",
+          "icon": "🛡️",
+          "unlockedAt": "2026-01-10"
+        },
+        {
+          "id": "b2",
+          "key": "mvp",
+          "title": "Match MVP",
+          "description": "Voted Best Player 8 times",
+          "icon": "🌟",
+          "unlockedAt": "2026-02-14"
+        },
+        {
+          "id": "b3",
+          "key": "ironman",
+          "title": "Iron Man",
+          "description": "10 consecutive matches attended",
+          "icon": "⚡",
+          "unlockedAt": "2026-03-01"
+        }
+      ],
+      "createdAt": "2026-06-09T10:41:11.372Z",
+      "approvedAt": "2026-06-09T10:41:11.373Z"
+    },
+    {
+      "id": "user_g_SBbwpK8JD3NUgb2EPnXZIEM5tYS2",
+      "name": "Your Moment",
+      "email": "la7adatok@gmail.com",
+      "avatarUrl": "https://lh3.googleusercontent.com/a/ACg8ocKACQwOnGi5gOJLhEdRa62xtEDmLofbvX-TSfkmAv0xkW2JPA=s96-c",
+      "city": "Casablanca",
+      "bio": "Verified Google Player",
+      "preferredPosition": "MID",
+      "skillRating": 4.5,
+      "reliabilityScore": 100,
+      "matchesAttended": 0,
+      "noShowCount": 0,
+      "mvpCount": 0,
+      "goalsCount": 0,
+      "badges": [
+        {
+          "id": "b_welcome",
+          "key": "welcome",
+          "title": "New PitchMate",
+          "description": "Joined the community",
+          "icon": "⚽",
+          "unlockedAt": "2026-09-07T10:50:36.973Z"
+        },
+        {
+          "id": "b_verified",
+          "key": "verified",
+          "title": "Google Verified",
+          "description": "Identity verified via Google",
+          "icon": "🔒",
+          "unlockedAt": "2026-09-07T10:50:36.973Z"
+        }
+      ],
+      "isGoogleAuth": true,
+      "emailVerified": true,
+      "isAdmin": false,
+      "status": "approved",
+      "approvedAt": "2026-09-07T10:51:00.719Z",
+      "matchesPlayed": 0,
+      "createdAt": "2026-09-07T10:50:36.973Z",
+      "approvedBy": "Mustapha Bouhbous"
+    }
+  ],
+  "matches": [
+    {
+      "id": "match_01_casablanca_lights",
+      "title": "Casablanca 7v7 Under The Floodlights",
+      "dateTime": "2026-09-08T20:30:00.000Z",
+      "durationMinutes": 90,
+      "location": {
+        "venueName": "Oasis Soccer Club",
+        "address": "Route de l’Oasis, Near Tramway Station",
+        "city": "Casablanca",
+        "latitude": 33.5658,
+        "longitude": -7.6324,
+        "googleMapsUrl": "https://maps.google.com/?q=33.5658,-7.6324",
+        "pitchNumber": "Terrain 2 (Synthetic Turf)"
+      },
+      "format": "7v7",
+      "maxPlayers": 14,
+      "pricePerPlayer": 50,
+      "currency": "MAD",
+      "totalPitchCost": 700,
+      "paidPlayerIds": [
+        "user_mustapha"
+      ],
+      "formationGreen": "7v7-2-3-1",
+      "formationBlue": "7v7-2-3-1",
+      "score": {
+        "green": 0,
+        "blue": 0
+      },
+      "goals": [],
+      "notes": "Match rental split is 50 MAD/player (Total 700 MAD). Bibs and official match balls provided. Payment via CIH Bank or Cash on pitch.",
+      "creatorId": "user_mustapha",
+      "creatorName": "Mustapha Bouhbous",
+      "creatorEmail": "bouhbousmustapha@gmail.com",
+      "roster": [
+        {
+          "userId": "user_mustapha",
+          "name": "Mustapha Bouhbous",
+          "email": "bouhbousmustapha@gmail.com",
+          "avatarUrl": "https://upload.wikimedia.org/wikipedia/commons/b/b4/Lionel-Messi-Argentina-2022-FIFA-World-Cup_%28cropped%29.jpg",
+          "joinedAt": "2026-09-07T10:39:11.373Z",
+          "team": "green",
+          "position": "MID",
+          "jerseyNumber": 10,
+          "isHost": true,
+          "reliabilityScore": 100,
+          "rating": 5,
+          "paymentStatus": "paid",
+          "paymentMethod": "cash"
+        }
+      ],
+      "waitlist": [],
+      "isLocked": false,
+      "status": "upcoming",
+      "createdAt": "2026-09-07T10:38:41.373Z",
+      "updatedAt": "2026-09-07T10:40:51.373Z",
+      "tacticalAssignments": {},
+      "attendedPlayerIds": [],
+      "noShowPlayerIds": [],
+      "mvpVotes": {}
+    },
+    {
+      "id": "match_02_rabat_agdal",
+      "title": "Rabat Agdal Weekend 6v6 Cup",
+      "dateTime": "2026-09-10T19:00:00.000Z",
+      "durationMinutes": 80,
+      "location": {
+        "venueName": "Complexe Sportif Agdal",
+        "address": "Avenue de France, Agdal",
+        "city": "Rabat",
+        "latitude": 33.9982,
+        "longitude": -6.8489,
+        "googleMapsUrl": "https://maps.google.com/?q=33.9982,-6.8489",
+        "pitchNumber": "Terrain 1"
+      },
+      "format": "6v6",
+      "maxPlayers": 12,
+      "pricePerPlayer": 45,
+      "currency": "MAD",
+      "totalPitchCost": 540,
+      "paidPlayerIds": [
+        "user_mustapha"
+      ],
+      "formationGreen": "6v6-2-2-1",
+      "formationBlue": "6v6-2-2-1",
+      "score": {
+        "green": 0,
+        "blue": 0
+      },
+      "goals": [],
+      "notes": "Kickoff at 19:00 Morocco Time sharp! Please arrive 15 minutes before for warm-up.",
+      "creatorId": "user_mustapha",
+      "creatorName": "Mustapha Bouhbous",
+      "creatorEmail": "bouhbousmustapha@gmail.com",
+      "roster": [
+        {
+          "userId": "user_mustapha",
+          "name": "Mustapha Bouhbous",
+          "email": "bouhbousmustapha@gmail.com",
+          "avatarUrl": "https://upload.wikimedia.org/wikipedia/commons/b/b4/Lionel-Messi-Argentina-2022-FIFA-World-Cup_%28cropped%29.jpg",
+          "joinedAt": "2026-09-07T10:39:41.373Z",
+          "team": "green",
+          "position": "MID",
+          "jerseyNumber": 10,
+          "isHost": true,
+          "reliabilityScore": 100,
+          "rating": 5,
+          "paymentStatus": "paid",
+          "paymentMethod": "cash"
+        }
+      ],
+      "waitlist": [],
+      "isLocked": false,
+      "status": "upcoming",
+      "createdAt": "2026-09-07T10:39:31.373Z",
+      "updatedAt": "2026-09-07T10:41:01.373Z",
+      "tacticalAssignments": {},
+      "attendedPlayerIds": [],
+      "noShowPlayerIds": [],
+      "mvpVotes": {}
+    }
+  ],
+  "comments": {
+    "match_01_casablanca_lights": [
+      {
+        "id": "c1",
+        "matchId": "match_01_casablanca_lights",
+        "userId": "user_mustapha",
+        "userName": "Mustapha Bouhbous",
+        "userEmail": "bouhbousmustapha@gmail.com",
+        "userAvatar": "https://upload.wikimedia.org/wikipedia/commons/b/b4/Lionel-Messi-Argentina-2022-FIFA-World-Cup_%28cropped%29.jpg",
+        "text": "Terrain 2 at Oasis Soccer Club is booked and confirmed! 50 MAD fee per player. Bibs and match balls ready.",
+        "createdAt": "2026-09-07T09:41:11.373Z"
+      }
+    ]
+  },
+  "announcements": [
+    {
+      "id": "ann_1",
+      "title": "PitchMate Morocco League Guidelines & Dirham (MAD) Fees",
+      "message": "Welcome to PitchMate Morocco! All matches are now scheduled in Morocco GMT+1 (Casablanca time) with transparent Dirham (MAD) fee tracking, live scoreboard, and MVP voting.",
+      "authorName": "Mustapha Bouhbous (Super Admin)",
+      "createdAt": "2026-09-05T10:41:11.373Z",
+      "type": "info"
+    }
+  ],
+  "directMessages": [
+    {
+      "id": "dm_1788778289415_6dxm",
+      "senderId": "user_g_SBbwpK8JD3NUgb2EPnXZIEM5tYS2",
+      "senderName": "Your Moment",
+      "senderAvatar": "https://lh3.googleusercontent.com/a/ACg8ocKACQwOnGi5gOJLhEdRa62xtEDmLofbvX-TSfkmAv0xkW2JPA=s96-c",
+      "receiverId": "user_mustapha",
+      "text": "slm",
+      "createdAt": "2026-09-07T10:51:29.415Z",
+      "read": false
+    },
+    {
+      "id": "dm_1788778298026_sncy",
+      "senderId": "user_g_SBbwpK8JD3NUgb2EPnXZIEM5tYS2",
+      "senderName": "Your Moment",
+      "senderAvatar": "https://lh3.googleusercontent.com/a/ACg8ocKACQwOnGi5gOJLhEdRa62xtEDmLofbvX-TSfkmAv0xkW2JPA=s96-c",
+      "receiverId": "user_mustapha",
+      "text": "",
+      "imageUrl": "/uploads/images/img_1788778296263_3rpt.jpg",
+      "createdAt": "2026-09-07T10:51:38.026Z",
+      "read": false
+    },
+    {
+      "id": "dm_voice_1788778305495_fq52",
+      "senderId": "user_g_SBbwpK8JD3NUgb2EPnXZIEM5tYS2",
+      "senderName": "Your Moment",
+      "senderAvatar": "https://lh3.googleusercontent.com/a/ACg8ocKACQwOnGi5gOJLhEdRa62xtEDmLofbvX-TSfkmAv0xkW2JPA=s96-c",
+      "receiverId": "user_mustapha",
+      "text": "🎤 Voice note (3s)",
+      "audioUrl": "/uploads/audio/audio_1788778305546_xd4h.webm",
+      "audioDuration": 3,
+      "createdAt": "2026-09-07T10:51:45.495Z",
+      "read": false
+    }
+  ],
+  "notifications": [
+    {
+      "id": "notif_dm_dm_voice_1788778305495_fq52",
+      "userId": "user_mustapha",
+      "title": "رسالة من Your Moment",
+      "message": "🎤 أرسل لك رسالة صوتية",
+      "type": "direct_message",
+      "linkId": "user_g_SBbwpK8JD3NUgb2EPnXZIEM5tYS2",
+      "createdAt": "2026-09-07T10:51:45.495Z",
+      "read": false
+    },
+    {
+      "id": "notif_dm_dm_1788778298026_sncy",
+      "userId": "user_mustapha",
+      "title": "رسالة من Your Moment",
+      "message": "📷 أرسل لك صورة",
+      "type": "direct_message",
+      "linkId": "user_g_SBbwpK8JD3NUgb2EPnXZIEM5tYS2",
+      "createdAt": "2026-09-07T10:51:38.026Z",
+      "read": false
+    },
+    {
+      "id": "notif_dm_dm_1788778289415_6dxm",
+      "userId": "user_mustapha",
+      "title": "رسالة من Your Moment",
+      "message": "slm",
+      "type": "direct_message",
+      "linkId": "user_g_SBbwpK8JD3NUgb2EPnXZIEM5tYS2",
+      "createdAt": "2026-09-07T10:51:29.415Z",
+      "read": false
+    },
+    {
+      "id": "notif_1788778260719_1gt3",
+      "userId": "user_g_SBbwpK8JD3NUgb2EPnXZIEM5tYS2",
+      "title": "Registration Approved!",
+      "message": "Your PitchMate account has been approved by the Admin. You can now join matches and RSVP.",
+      "type": "approval",
+      "createdAt": "2026-09-07T10:51:00.719Z",
+      "read": false
+    },
+    {
+      "id": "notif_1788778236973_4fwr",
+      "userId": "user_mustapha",
+      "title": "طلب انضمام جديد عبر Google",
+      "message": "اللاعب Your Moment (la7adatok@gmail.com) أنشأ حساباً وينتظر موافقتك.",
+      "type": "system",
+      "linkId": "user_g_SBbwpK8JD3NUgb2EPnXZIEM5tYS2",
+      "createdAt": "2026-09-07T10:50:36.973Z",
+      "read": false
+    }
+  ]
+}

@@ -566,12 +566,16 @@ async function startServer() {
       const filename = `audio_${Date.now()}_${Math.random().toString(36).substring(2, 6)}.${ext}`;
       const filePath = path.join(AUDIO_DIR, filename);
 
-      const base64Pure = base64Data.replace(/^data:[^;]+;base64,/, '');
+      const base64Pure = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
       const buffer = Buffer.from(base64Pure, 'base64');
+      if (buffer.length === 0) {
+        return res.status(400).json({ success: false, error: 'Decoded audio data is empty' });
+      }
       await fs.promises.writeFile(filePath, buffer);
+      console.log(`[Upload Audio] Saved ${filename}, size: ${buffer.length} bytes`);
 
       const audioUrl = `/uploads/audio/${filename}`;
-      res.json({ success: true, audioUrl });
+      res.json({ success: true, audioUrl, size: buffer.length });
     } catch (err) {
       console.error('[Upload Error]:', err);
       res.status(500).json({ success: false, error: 'Failed to save audio file' });
@@ -586,19 +590,22 @@ async function startServer() {
       }
 
       let ext = 'jpg';
-      if (base64Data.startsWith('data:image/png')) {
+      if (base64Data.startsWith('data:image/png') || base64Data.includes('image/png')) {
         ext = 'png';
-      } else if (base64Data.startsWith('data:image/webp')) {
+      } else if (base64Data.startsWith('data:image/webp') || base64Data.includes('image/webp')) {
         ext = 'webp';
-      } else if (base64Data.startsWith('data:image/gif')) {
+      } else if (base64Data.startsWith('data:image/gif') || base64Data.includes('image/gif')) {
         ext = 'gif';
       }
 
       const filename = `avatar_${Date.now()}_${Math.random().toString(36).substring(2, 6)}.${ext}`;
       const filePath = path.join(AVATAR_DIR, filename);
 
-      const base64Pure = base64Data.replace(/^data:[^;]+;base64,/, '');
+      const base64Pure = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
       const buffer = Buffer.from(base64Pure, 'base64');
+      if (buffer.length === 0) {
+        return res.status(400).json({ success: false, error: 'Decoded image data is empty' });
+      }
       await fs.promises.writeFile(filePath, buffer);
 
       const avatarUrl = `/uploads/avatars/${filename}`;
@@ -617,22 +624,26 @@ async function startServer() {
       }
 
       let ext = 'jpg';
-      if (base64Data.startsWith('data:image/png')) {
+      if (base64Data.startsWith('data:image/png') || base64Data.includes('image/png')) {
         ext = 'png';
-      } else if (base64Data.startsWith('data:image/webp')) {
+      } else if (base64Data.startsWith('data:image/webp') || base64Data.includes('image/webp')) {
         ext = 'webp';
-      } else if (base64Data.startsWith('data:image/gif')) {
+      } else if (base64Data.startsWith('data:image/gif') || base64Data.includes('image/gif')) {
         ext = 'gif';
       }
 
       const filename = `img_${Date.now()}_${Math.random().toString(36).substring(2, 6)}.${ext}`;
       const filePath = path.join(IMAGES_DIR, filename);
 
-      const base64Pure = base64Data.replace(/^data:[^;]+;base64,/, '');
+      const base64Pure = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
       const buffer = Buffer.from(base64Pure, 'base64');
+      if (buffer.length === 0) {
+        return res.status(400).json({ success: false, error: 'Decoded image data is empty' });
+      }
       await fs.promises.writeFile(filePath, buffer);
 
       const imageUrl = `/uploads/images/${filename}`;
+      res.json({ success: true, imageUrl });
       res.json({ success: true, imageUrl });
     } catch (err) {
       console.error('[Upload Error]:', err);
