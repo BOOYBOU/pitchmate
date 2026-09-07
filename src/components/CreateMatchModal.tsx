@@ -191,18 +191,18 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
   return (
     <div
       id="create-match-modal"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
     >
-      <div className="relative w-full max-w-xl bg-[#0A3A2A] border border-[#E5B869]/35 rounded-3xl shadow-2xl shadow-black/80 overflow-hidden flex flex-col max-h-[92vh]">
+      <div className="relative w-full max-w-xl bg-[#0A3A2A] border-0 sm:border border-[#E5B869]/35 rounded-none sm:rounded-3xl shadow-2xl shadow-black/80 overflow-hidden flex flex-col h-full sm:h-auto sm:max-h-[92vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E5B869]/20 bg-[#081813]/90">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-[#E5B869]/20 bg-[#081813]/90">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-[#0E4836] border border-[#E5B869]/35 flex items-center justify-center text-[#E5B869] shadow-md shadow-[#081813]">
               <PlusCircle className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold font-display text-white">{t('createMatch.modalTitle')}</h2>
-              <p className="text-xs text-emerald-300/70">{t('createMatch.modalSubtitle')}</p>
+              <h2 className="text-base sm:text-lg font-bold font-display text-white">{t('createMatch.modalTitle')}</h2>
+              <p className="text-[11px] sm:text-xs text-emerald-300/70">{t('createMatch.modalSubtitle')}</p>
             </div>
           </div>
           <button
@@ -215,7 +215,7 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
         </div>
 
         {/* Form Content */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-5">
           {/* Match Title */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-emerald-200 mb-1.5">

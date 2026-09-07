@@ -283,37 +283,93 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
         </div>
 
         {/* Avatars & Action Buttons */}
-        <div className="flex items-center justify-between gap-3 pt-1">
-          <div className="flex items-center -space-x-2 rtl:space-x-reverse overflow-hidden">
-            {match.roster.slice(0, 5).map((player) => (
-              <img
-                key={player.userId}
-                src={player.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
-                alt={player.name}
-                className={`w-7 h-7 rounded-full object-cover border-2 shadow-md ${
-                  player.team === 'green'
-                    ? 'border-emerald-400'
-                    : player.team === 'blue'
-                    ? 'border-blue-400'
-                    : 'border-slate-500'
-                }`}
-                referrerPolicy="no-referrer"
-              />
-            ))}
-            {match.roster.length > 5 && (
-              <div className="w-7 h-7 rounded-full bg-[#141A26] border-2 border-[#E5B869]/30 text-[10px] font-extrabold text-[#F5D794] flex items-center justify-center shadow-md">
-                +{match.roster.length - 5}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 pt-2 border-t border-[#E5B869]/15">
+          {/* Top row on mobile / Left side on desktop: Avatars + Mobile share/calendar */}
+          <div className="flex items-center justify-between sm:justify-start w-full sm:w-auto gap-2">
+            <div className="flex items-center -space-x-2 rtl:space-x-reverse overflow-hidden">
+              {match.roster.slice(0, 5).map((player) => (
+                <img
+                  key={player.userId}
+                  src={player.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
+                  alt={player.name}
+                  className={`w-7 h-7 rounded-full object-cover border-2 shadow-md ${
+                    player.team === 'green'
+                      ? 'border-emerald-400'
+                      : player.team === 'blue'
+                      ? 'border-blue-400'
+                      : 'border-slate-500'
+                  }`}
+                  referrerPolicy="no-referrer"
+                />
+              ))}
+              {match.roster.length > 5 && (
+                <div className="w-7 h-7 rounded-full bg-[#141A26] border-2 border-[#E5B869]/30 text-[10px] font-extrabold text-[#F5D794] flex items-center justify-center shadow-md">
+                  +{match.roster.length - 5}
+                </div>
+              )}
+              {match.roster.length === 0 && (
+                <span className="text-[11px] text-slate-500 font-medium">{language === 'ar' ? 'كن أول المسجلين في المباراة!' : 'Be first on the pitch!'}</span>
+              )}
+            </div>
+
+            {/* Mobile-only Calendar & Share icons */}
+            <div className="flex sm:hidden items-center gap-1.5">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowCalendarMenu(!showCalendarMenu);
+                  }}
+                  className="p-2 text-slate-300 hover:text-[#F5D794] bg-[#0A2B20] rounded-xl border border-[#E5B869]/25 transition-all cursor-pointer"
+                  title={t('matches.addToCalendar')}
+                  aria-label="Add to Calendar"
+                >
+                  <CalendarPlus className="w-4 h-4 text-[#E5B869]" />
+                </button>
+
+                {showCalendarMenu && (
+                  <div
+                    className={`absolute ${isRTL ? 'left-0' : 'right-0'} bottom-full mb-2 w-44 bg-[#141A26] border border-[#E5B869]/30 rounded-xl shadow-2xl p-1 z-50 text-xs space-y-1`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <button
+                      onClick={handleGoogleCalendar}
+                      className="w-full text-start px-2.5 py-1.5 rounded-lg text-slate-200 hover:bg-[#0D503C]/30 hover:text-[#F5D794] transition-colors flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Calendar className="w-3.5 h-3.5 text-[#E5B869]" />
+                      <span>Google Calendar</span>
+                    </button>
+                    <button
+                      onClick={handleDownloadIcs}
+                      className="w-full text-start px-2.5 py-1.5 rounded-lg text-slate-200 hover:bg-[#0D503C]/30 hover:text-[#F5D794] transition-colors flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <CalendarPlus className="w-3.5 h-3.5 text-[#E5B869]" />
+                      <span>{language === 'ar' ? 'تحميل ملف (.ics)' : 'Download .ics file'}</span>
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
-            {match.roster.length === 0 && (
-              <span className="text-[11px] text-slate-500 font-medium">{language === 'ar' ? 'كن أول المسجلين في المباراة!' : 'Be first on the pitch!'}</span>
-            )}
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsShareModalOpen(true);
+                }}
+                className="p-2 text-slate-300 hover:text-[#F5D794] bg-[#0A2B20] rounded-xl border border-[#E5B869]/25 transition-all cursor-pointer"
+                title={t('matches.shareMatch')}
+                aria-label="Share Match"
+              >
+                <Share2 className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-1.5 relative">
-            {/* Add to Calendar Button */}
-            <div className="relative">
+          {/* Action Buttons: Delete + Primary CTA */}
+          <div className="flex items-center gap-2 relative w-full sm:w-auto justify-end">
+            {/* Desktop-only Add to Calendar Button */}
+            <div className="hidden sm:block relative">
               <button
                 id={`card-calendar-btn-${match.id}`}
                 type="button"
@@ -350,6 +406,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
               )}
             </div>
 
+            {/* Desktop-only Share Button */}
             <button
               id={`card-share-btn-${match.id}`}
               type="button"
@@ -357,7 +414,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
                 e.stopPropagation();
                 setIsShareModalOpen(true);
               }}
-              className="p-1.5 text-slate-400 hover:text-[#F5D794] hover:bg-[#E5B869]/10 rounded-xl border border-transparent hover:border-[#E5B869]/30 transition-all cursor-pointer"
+              className="hidden sm:block p-1.5 text-slate-400 hover:text-[#F5D794] hover:bg-[#E5B869]/10 rounded-xl border border-transparent hover:border-[#E5B869]/30 transition-all cursor-pointer"
               title={t('matches.shareMatch')}
             >
               <Share2 className="w-4 h-4" />
@@ -373,7 +430,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
                       e.stopPropagation();
                       deleteMatch(match.id);
                     }}
-                    className="flex items-center gap-1 px-2.5 py-1.5 text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-all cursor-pointer text-xs font-bold shadow-md shadow-rose-950 animate-pulse"
+                    className="flex items-center gap-1 px-2.5 py-2 text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-all cursor-pointer text-xs font-bold shadow-md shadow-rose-950 animate-pulse"
                     title="Confirm Permanent Deletion"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -385,7 +442,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
                       e.stopPropagation();
                       setConfirmDelete(false);
                     }}
-                    className="px-2 py-1.5 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl text-xs cursor-pointer"
+                    className="px-2 py-2 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl text-xs cursor-pointer"
                   >
                     {t('common.cancel')}
                   </button>
@@ -398,7 +455,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
                     e.stopPropagation();
                     setConfirmDelete(true);
                   }}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 text-rose-300 hover:text-white bg-rose-500/10 hover:bg-rose-600/30 rounded-xl border border-rose-500/30 hover:border-rose-500/60 transition-all cursor-pointer text-xs font-bold shadow-sm"
+                  className="flex items-center gap-1.5 px-2.5 py-2 text-rose-300 hover:text-white bg-rose-500/10 hover:bg-rose-600/30 rounded-xl border border-rose-500/30 hover:border-rose-500/60 transition-all cursor-pointer text-xs font-bold shadow-sm"
                   title={isAdmin ? 'Super Admin: Universal Delete Permission' : 'Host: Delete match'}
                 >
                   <Trash2 className="w-3.5 h-3.5 text-rose-400" />
@@ -413,7 +470,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
                 type="button"
                 onClick={handleLeaveClick}
                 disabled={isProcessing}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 transition-all cursor-pointer"
+                className="flex-1 sm:flex-initial min-h-[38px] flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/30 transition-all cursor-pointer"
               >
                 <UserX className="w-3.5 h-3.5" />
                 <span>{t('matches.leaveMatch')}</span>
@@ -424,13 +481,13 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
                 type="button"
                 onClick={handleLeaveClick}
                 disabled={isProcessing}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 transition-all cursor-pointer"
+                className="flex-1 sm:flex-initial min-h-[38px] flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 transition-all cursor-pointer"
               >
                 <UserX className="w-3.5 h-3.5" />
                 <span>{t('matches.waitlisted')}</span>
               </button>
             ) : match.isLocked ? (
-              <span className="px-3 py-1.5 rounded-xl text-xs font-medium bg-slate-800 text-slate-500 border border-slate-700">
+              <span className="flex-1 sm:flex-initial text-center px-3 py-2 rounded-xl text-xs font-medium bg-slate-800 text-slate-500 border border-slate-700">
                 {language === 'ar' ? 'مغلقة' : 'Locked'}
               </span>
             ) : (
@@ -439,7 +496,7 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
                 type="button"
                 onClick={handleJoinClick}
                 disabled={isProcessing}
-                className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-black text-slate-950 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 shadow-md shadow-amber-950/60 transition-all cursor-pointer"
+                className="flex-1 sm:flex-initial min-h-[38px] flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black text-slate-950 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 shadow-md shadow-amber-950/60 transition-all cursor-pointer"
               >
                 <UserCheck className="w-3.5 h-3.5 stroke-[2.5]" />
                 <span>{spotsLeft === 0 ? t('matches.joinWaitlist') : t('matches.joinMatch')}</span>

@@ -152,12 +152,12 @@ export const MatchList: React.FC<MatchListProps> = ({ onOpenCreate, onOpenDetail
               placeholder={t('matches.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-2.5 bg-[#081813] border border-[#E5B869]/25 focus:border-[#E5B869] rounded-xl text-xs sm:text-sm text-white placeholder-slate-400 focus:outline-none transition-all shadow-inner`}
+              className={`w-full ${isRTL ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-2.5 bg-[#081813] border border-[#E5B869]/25 focus:border-[#E5B869] rounded-xl text-base sm:text-sm text-white placeholder-slate-400 focus:outline-none transition-all shadow-inner`}
             />
           </div>
 
           {/* Quick toggle filters */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 no-scrollbar">
             <button
               type="button"
               onClick={() => {

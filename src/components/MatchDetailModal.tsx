@@ -274,12 +274,12 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
     <>
       <div
         id="match-detail-modal-overlay"
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200"
+        className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200"
         onClick={onClose}
       >
         <div
           id="match-detail-modal-card"
-          className="relative w-full max-w-4xl bg-[#081813] border border-[#E5B869]/35 rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.9)] overflow-hidden my-6 max-h-[92vh] flex flex-col"
+          className="relative w-full max-w-4xl bg-[#081813] border-0 sm:border border-[#E5B869]/35 rounded-none sm:rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.9)] overflow-hidden my-0 sm:my-6 h-full sm:h-auto sm:max-h-[92vh] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Modal Header Bar */}
@@ -394,80 +394,85 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
           </div>
 
           {/* Modal Tab Navigator */}
-          <div className="flex items-center gap-1.5 px-4 sm:px-5 py-2.5 bg-[#06140F] border-b border-[#E5B869]/25 overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-1 sm:gap-1.5 px-3 sm:px-5 py-2.5 bg-[#06140F] border-b border-[#E5B869]/25 overflow-x-auto no-scrollbar">
             <button
               onClick={() => setActiveModalTab('overview')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                 activeModalTab === 'overview'
                   ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 font-black shadow-md'
                   : 'text-slate-300 hover:text-white hover:bg-[#0A2B20]'
               }`}
             >
               <Users className="w-3.5 h-3.5" />
-              <span>{language === 'ar' ? 'التشكيلة واللاعبون' : 'Squads & Roster'}</span>
+              <span className="sm:hidden">{language === 'ar' ? 'التشكيلة' : 'Squads'}</span>
+              <span className="hidden sm:inline">{language === 'ar' ? 'التشكيلة واللاعبون' : 'Squads & Roster'}</span>
             </button>
 
             <button
               onClick={() => setActiveModalTab('live')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                 activeModalTab === 'live'
                   ? 'bg-[#0A3A2A] text-[#F5D794] font-black border border-[#E5B869] shadow-md'
                   : 'text-slate-300 hover:text-white hover:bg-[#0A2B20]'
               }`}
             >
               <Clock className="w-3.5 h-3.5 text-[#E5B869]" />
-              <span>{language === 'ar' ? 'توقيت المباراة والتبديلات' : 'Live Clock & Subs'}</span>
+              <span className="sm:hidden">{language === 'ar' ? 'التبديلات' : 'Live Clock'}</span>
+              <span className="hidden sm:inline">{language === 'ar' ? 'توقيت المباراة والتبديلات' : 'Live Clock & Subs'}</span>
             </button>
 
             <button
               onClick={() => setActiveModalTab('payments')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                 activeModalTab === 'payments'
                   ? 'bg-gradient-to-r from-[#F5D794] to-[#E5B869] text-slate-950 font-black shadow-md'
                   : 'text-slate-300 hover:text-white hover:bg-[#0A2B20]'
               }`}
             >
               <Coins className="w-3.5 h-3.5 text-[#E5B869]" />
-              <span>{language === 'ar' ? 'تتبع مدفوعات CIH' : 'CIH Payments (MAD)'}</span>
+              <span className="sm:hidden">{language === 'ar' ? 'الدفع' : 'Payments'}</span>
+              <span className="hidden sm:inline">{language === 'ar' ? 'تتبع مدفوعات CIH' : 'CIH Payments (MAD)'}</span>
             </button>
 
             <button
               id="match-detail-motm-tab-btn"
               onClick={() => setActiveModalTab('motm')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                 activeModalTab === 'motm'
                   ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 shadow-md font-black'
                   : 'text-slate-300 hover:text-white hover:bg-[#0A2B20]'
               }`}
             >
               <Trophy className={`w-3.5 h-3.5 ${activeModalTab === 'motm' ? 'fill-slate-950 text-slate-950' : 'text-[#E5B869]'}`} />
-              <span>{t('motm.title')}</span>
+              <span>MOTM</span>
             </button>
 
             <button
               id="match-detail-tactical-tab-btn"
               onClick={() => setActiveModalTab('tactical')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                 activeModalTab === 'tactical'
                   ? 'bg-[#0A3A2A] text-[#F5D794] border border-[#E5B869] shadow-md font-black'
                   : 'text-slate-300 hover:text-white hover:bg-[#0A2B20]'
               }`}
             >
               <Activity className="w-3.5 h-3.5 text-[#E5B869]" />
-              <span>{language === 'ar' ? 'الرسم التكتيكي' : 'Tactical Pitch'}</span>
+              <span className="sm:hidden">{language === 'ar' ? 'الخطة' : 'Tactics'}</span>
+              <span className="hidden sm:inline">{language === 'ar' ? 'الرسم التكتيكي' : 'Tactical Pitch'}</span>
             </button>
 
             {canManage && (
               <button
                 onClick={() => setActiveModalTab('attendance')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
                   activeModalTab === 'attendance'
                     ? 'bg-[#0A3A2A] text-[#F5D794] border border-[#E5B869] shadow-md font-black'
                     : 'text-slate-300 hover:text-white hover:bg-[#0A2B20]'
                 }`}
               >
                 <ClipboardList className="w-3.5 h-3.5 text-[#E5B869]" />
-                <span>{language === 'ar' ? 'تسجيل الحضور' : 'Attendance'}</span>
+                <span className="sm:hidden">{language === 'ar' ? 'الحضور' : 'Attendance'}</span>
+                <span className="hidden sm:inline">{language === 'ar' ? 'تسجيل الحضور' : 'Attendance'}</span>
               </button>
             )}
           </div>

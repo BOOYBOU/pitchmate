@@ -19,7 +19,8 @@ import {
   ExternalLink,
   Download,
   Mic,
-  AlertCircle
+  AlertCircle,
+  ArrowLeft
 } from 'lucide-react';
 import { UserProfile, DirectMessage, SUPER_ADMIN_EMAIL } from '../types';
 import { usePitchStore } from '../lib/usePitchStore';
@@ -48,6 +49,7 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
   } = usePitchStore();
 
   const [selectedUserId, setSelectedUserId] = useState<string | null>(initialSelectedUserId || null);
+  const [mobileChatActive, setMobileChatActive] = useState<boolean>(Boolean(initialSelectedUserId));
   const [searchQuery, setSearchQuery] = useState('');
   const [messageInput, setMessageInput] = useState('');
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
@@ -65,6 +67,7 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
   useEffect(() => {
     if (initialSelectedUserId) {
       setSelectedUserId(initialSelectedUserId);
+      setMobileChatActive(true);
     } else if (!selectedUserId && users.length > 1) {
       const otherUser = users.find((u) => u.id !== currentUser.id);
       if (otherUser) {
@@ -223,16 +226,16 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
   return (
     <>
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in"
+        className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in"
         onClick={onClose}
       >
         <div
           id="direct-messages-modal"
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-5xl h-[90vh] sm:h-[84vh] bg-[#0A3A2A] border border-[#E5B869]/35 rounded-3xl shadow-2xl flex overflow-hidden text-white relative"
+          className="w-full max-w-5xl h-full sm:h-[84vh] bg-[#0A3A2A] border-0 sm:border border-[#E5B869]/35 rounded-none sm:rounded-3xl shadow-2xl flex overflow-hidden text-white relative"
         >
           {/* Left Sidebar: User List */}
-          <div className="w-full max-w-[280px] sm:max-w-[320px] bg-[#081813] border-r border-[#E5B869]/20 flex flex-col h-full shrink-0">
+          <div className={`w-full md:w-[300px] lg:w-[320px] bg-[#081813] border-r border-[#E5B869]/20 flex flex-col h-full shrink-0 ${mobileChatActive ? 'hidden md:flex' : 'flex'}`}>
             {/* Header & Search */}
             <div className="p-4 border-b border-[#E5B869]/20 space-y-3">
               <div className="flex items-center justify-between">
@@ -299,7 +302,10 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                   return (
                     <button
                       key={u.id}
-                      onClick={() => setSelectedUserId(u.id)}
+                      onClick={() => {
+                        setSelectedUserId(u.id);
+                        setMobileChatActive(true);
+                      }}
                       className={`w-full p-3.5 flex items-center gap-3 text-left transition-all cursor-pointer ${
                         isSelected
                           ? 'bg-[#0E4836] border-l-4 border-[#E5B869]'
@@ -386,7 +392,7 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
 
           {/* Right Panel: Active Chat Thread */}
           <div
-            className="flex-1 flex flex-col bg-[#0A3A2A] h-full min-w-0 relative"
+            className={`flex-1 flex flex-col bg-[#0A3A2A] h-full min-w-0 relative ${mobileChatActive ? 'flex' : 'hidden md:flex'}`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
@@ -404,7 +410,18 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
               <>
                 {/* Chat Thread Header */}
                 <div className="p-3.5 sm:p-4 border-b border-[#E5B869]/20 bg-[#0A3A2A] flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    {/* Mobile Back to Teammate list */}
+                    <button
+                      type="button"
+                      onClick={() => setMobileChatActive(false)}
+                      className="md:hidden p-1.5 rounded-xl bg-[#081813] hover:bg-[#0E4836] border border-[#E5B869]/30 text-[#F5D794] transition-all cursor-pointer flex items-center justify-center shadow-sm"
+                      title="Back to teammates list"
+                      aria-label="Back"
+                    >
+                      <ArrowLeft className="w-4 h-4 rtl:rotate-180" />
+                    </button>
+
                     <img
                       src={selectedUser.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
                       alt={selectedUser.name}
@@ -732,7 +749,17 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
               <div className="h-full flex flex-col">
                 {/* Top bar with corner close button as in screenshot */}
                 <div className="p-3.5 sm:p-4 border-b border-[#E5B869]/20 bg-[#0A3A2A] flex items-center justify-between">
-                  <div className="text-xs text-emerald-300/70 font-medium">PitchMate Direct Chat</div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setMobileChatActive(false)}
+                      className="md:hidden p-1.5 rounded-xl bg-[#081813] hover:bg-[#0E4836] border border-[#E5B869]/30 text-[#F5D794] transition-all cursor-pointer flex items-center justify-center shadow-sm"
+                      title="Back to teammates list"
+                    >
+                      <ArrowLeft className="w-4 h-4 rtl:rotate-180" />
+                    </button>
+                    <div className="text-xs text-emerald-300/70 font-medium">PitchMate Direct Chat</div>
+                  </div>
                   <button
                     type="button"
                     onClick={onClose}

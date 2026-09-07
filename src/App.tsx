@@ -17,6 +17,7 @@ import { ChangeAvatarModal } from './components/ChangeAvatarModal';
 import { AuthView } from './components/AuthView';
 import { DirectMessagesModal } from './components/DirectMessagesModal';
 import { NotificationDrawer } from './components/NotificationDrawer';
+import { MobileBottomNav } from './components/MobileBottomNav';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { SoccerMatch, isSuperAdminEmail } from './types';
 import { Shield, Sparkles, MapPin, Database, Heart } from 'lucide-react';
@@ -88,7 +89,7 @@ function PitchMateApp() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-24 md:pb-8">
         {activeTab === 'matches' && (
           <MatchList
             onOpenCreate={() => setIsCreateModalOpen(true)}
@@ -204,6 +205,17 @@ function PitchMateApp() {
           </div>
         </div>
       </footer>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <MobileBottomNav
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onOpenCreateMatch={() => setIsCreateModalOpen(true)}
+        onOpenDirectMessages={() => {
+          setDirectMessageRecipientId(null);
+          setIsDirectMessagesOpen(true);
+        }}
+      />
     </div>
   );
 }

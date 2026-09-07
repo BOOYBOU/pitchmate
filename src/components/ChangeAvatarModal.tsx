@@ -79,10 +79,10 @@ export const ChangeAvatarModal: React.FC<ChangeAvatarModalProps> = ({ isOpen, on
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
       <div
         id="change-avatar-modal"
-        className="w-full max-w-md bg-[#0A3A2A] border border-[#E5B869]/35 rounded-3xl p-6 shadow-2xl space-y-5 text-white"
+        className="w-full max-w-md bg-[#0A3A2A] border border-[#E5B869]/35 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 text-white max-h-[92vh] overflow-y-auto"
       >
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-[#E5B869]/20">
