@@ -15,19 +15,27 @@ export const PitchMateLogo: React.FC<PitchMateLogoProps> = ({
 }) => {
   // Dimensions mapping
   const iconSizes = {
-    xs: 'w-6 h-6',
-    sm: 'w-8 h-8',
+    xs: 'w-7 h-7',
+    sm: 'w-9 h-9',
     md: 'w-10 h-10',
     lg: 'w-13 h-13',
     xl: 'w-18 h-18',
   };
 
   const textSizes = {
-    xs: 'text-sm',
-    sm: 'text-base',
+    xs: 'text-xs sm:text-sm',
+    sm: 'text-[17px] font-black tracking-tight',
     md: 'text-xl',
     lg: 'text-2xl',
     xl: 'text-4xl',
+  };
+
+  const gapSizes = {
+    xs: 'gap-1.5',
+    sm: 'gap-2',
+    md: 'gap-2.5 sm:gap-3',
+    lg: 'gap-3',
+    xl: 'gap-4',
   };
 
   const subtitleSizes = {
@@ -39,7 +47,7 @@ export const PitchMateLogo: React.FC<PitchMateLogoProps> = ({
   };
 
   return (
-    <div className={`inline-flex items-center gap-3 select-none ${className}`}>
+    <div className={`inline-flex items-center ${gapSizes[size]} select-none ${className}`}>
       {/* High-Resolution Royal Moroccan Gold Crest */}
       <div
         className={`relative ${iconSizes[size]} rounded-2xl p-[1.5px] bg-gradient-to-br from-[#F5D794] via-[#E5B869] to-[#0D503C] shadow-xl shadow-black/80 shrink-0 group`}

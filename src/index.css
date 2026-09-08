@@ -36,6 +36,15 @@
   }
 }
 
+/* royal scrollbar and no-scrollbar utilities */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* Royal Moroccan Obsidian & Gold Custom scrollbars */
 ::-webkit-scrollbar {
   width: 6px;

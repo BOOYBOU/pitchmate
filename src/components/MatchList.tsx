@@ -90,21 +90,21 @@ export const MatchList: React.FC<MatchListProps> = ({ onOpenCreate, onOpenDetail
       )}
 
       {/* Hero Stats & Quick Create Banner */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-[#0A2B20] via-[#0E3D2E] to-[#071610] border border-[#E5B869]/35 hover:border-[#E5B869]/60 transition-all duration-300 rounded-3xl p-6 sm:p-8 lg:p-9 shadow-[0_20px_50px_rgba(0,0,0,0.85)]">
+      <div className="relative overflow-hidden bg-gradient-to-br from-[#0A2B20] via-[#0E3D2E] to-[#071610] border border-[#E5B869]/35 hover:border-[#E5B869]/60 transition-all duration-300 rounded-3xl p-4 sm:p-7 lg:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.85)]">
         {/* Subtle Ambient Radial Lighting & Pitch Grid */}
         <div className="absolute -top-20 -left-20 w-80 h-80 bg-[#E5B869]/15 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-[#0A3A2A]/40 rounded-full blur-3xl pointer-events-none" />
         <div className="pitch-lines absolute inset-0 opacity-25 pointer-events-none" />
         
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex items-center gap-4 sm:gap-5 max-w-2xl">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
+          <div className="flex items-center gap-3 sm:gap-4 max-w-2xl">
             {/* Sleek Moroccan Gold Icon Badge */}
-            <div className="relative flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-[#0A3A2A] border border-[#E5B869] text-[#F5D794] shadow-[0_0_20px_rgba(229,184,105,0.25)] shrink-0 transition-all duration-300 hover:scale-105 hover:border-[#E5B869] hover:shadow-[0_0_30px_rgba(229,184,105,0.4)]">
-              <Trophy className="w-6 h-6 sm:w-7 sm:h-7 text-[#E5B869] drop-shadow-[0_0_8px_rgba(229,184,105,0.5)]" />
+            <div className="relative flex items-center justify-center w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-[#0A3A2A] border border-[#E5B869] text-[#F5D794] shadow-[0_0_20px_rgba(229,184,105,0.25)] shrink-0 transition-all duration-300 hover:scale-105 hover:border-[#E5B869] hover:shadow-[0_0_30px_rgba(229,184,105,0.4)]">
+              <Trophy className="w-5 h-5 sm:w-7 sm:h-7 text-[#E5B869] drop-shadow-[0_0_8px_rgba(229,184,105,0.5)]" />
             </div>
             
             {/* Modern Gradient Headline */}
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold font-display tracking-tight leading-tight bg-gradient-to-r from-white via-[#F5D794] to-[#E5B869] bg-clip-text text-transparent">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold font-display tracking-tight leading-snug bg-gradient-to-r from-white via-[#F5D794] to-[#E5B869] bg-clip-text text-transparent">
               {language === 'ar' ? 'اعثر على مباراتك وانزل للملعب الآن' : 'Find Your Match & Hit The Pitch'}
             </h1>
           </div>
@@ -113,7 +113,7 @@ export const MatchList: React.FC<MatchListProps> = ({ onOpenCreate, onOpenDetail
             <button
               id="hero-create-match-btn"
               onClick={onOpenCreate}
-              className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-black text-slate-950 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 shadow-lg shadow-amber-950/40 hover:shadow-amber-900/60 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+              className="flex items-center justify-center gap-2 px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl text-xs sm:text-sm font-black text-slate-950 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 shadow-lg shadow-amber-950/40 hover:shadow-amber-900/60 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
             >
               <Plus className="w-4 h-4 stroke-[2.5]" />
               <span>{t('matches.createMatch')}</span>
@@ -121,27 +121,27 @@ export const MatchList: React.FC<MatchListProps> = ({ onOpenCreate, onOpenDetail
           </div>
         </div>
 
-        {/* Quick Numbers Bar */}
-        <div className="relative z-10 grid grid-cols-3 gap-3 pt-6 mt-6 border-t border-[#E5B869]/25 text-center sm:text-start">
-          <div>
-            <div className="text-xl sm:text-2xl font-black font-display text-[#F5D794]">{matches.length}</div>
-            <div className="text-xs text-slate-300">{t('admin.totalMatches')}</div>
+        {/* Quick Numbers Bar - Framed and clearly visible boxes */}
+        <div className="relative z-10 grid grid-cols-3 gap-2 sm:gap-3 pt-4 sm:pt-5 mt-4 sm:mt-5 border-t border-[#E5B869]/25 text-center">
+          <div className="p-2.5 sm:p-3.5 rounded-2xl bg-[#081813]/85 border border-[#E5B869]/30 shadow-md">
+            <div className="text-lg sm:text-2xl font-black font-display text-[#F5D794]">{matches.length}</div>
+            <div className="text-[10px] sm:text-xs text-slate-300 font-semibold mt-0.5">{t('admin.totalMatches')}</div>
           </div>
-          <div>
-            <div className="text-xl sm:text-2xl font-black font-display text-[#E5B869]">
+          <div className="p-2.5 sm:p-3.5 rounded-2xl bg-[#081813]/85 border border-[#E5B869]/30 shadow-md">
+            <div className="text-lg sm:text-2xl font-black font-display text-[#E5B869]">
               {matches.reduce((acc, m) => acc + m.roster.length, 0)}
             </div>
-            <div className="text-xs text-slate-300">{t('stats.activePlayers')}</div>
+            <div className="text-[10px] sm:text-xs text-slate-300 font-semibold mt-0.5">{t('stats.activePlayers')}</div>
           </div>
-          <div>
-            <div className="text-xl sm:text-2xl font-black font-display text-white">{myJoinedCount}</div>
-            <div className="text-xs text-slate-300">{t('matches.myMatches')}</div>
+          <div className="p-2.5 sm:p-3.5 rounded-2xl bg-[#081813]/85 border border-[#E5B869]/30 shadow-md">
+            <div className="text-lg sm:text-2xl font-black font-display text-white">{myJoinedCount}</div>
+            <div className="text-[10px] sm:text-xs text-slate-300 font-semibold mt-0.5">{t('matches.myMatches')}</div>
           </div>
         </div>
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="space-y-3 broadcast-card rounded-2xl p-4 sm:p-5 shadow-xl">
+      <div className="space-y-3 broadcast-card rounded-2xl p-3 sm:p-4 shadow-xl border border-[#E5B869]/35">
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           {/* Search box */}
           <div className="relative flex-1">

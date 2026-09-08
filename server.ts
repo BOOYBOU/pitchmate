@@ -649,7 +649,6 @@ async function startServer() {
 
       const imageUrl = `/uploads/images/${filename}`;
       res.json({ success: true, imageUrl });
-      res.json({ success: true, imageUrl });
     } catch (err) {
       console.error('[Upload Error]:', err);
       res.status(500).json({ success: false, error: 'Failed to save image file' });
