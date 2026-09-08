@@ -474,6 +474,16 @@ async function startServer() {
     })
   );
 
+  // Serve static assets from public/images
+  app.use(
+    '/images',
+    (req, res, next) => {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      next();
+    },
+    express.static(path.join(process.cwd(), 'public', 'images'))
+  );
+
   app.use(extractUserMiddleware);
 
   // =========================================================

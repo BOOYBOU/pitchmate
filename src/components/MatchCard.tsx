@@ -170,6 +170,9 @@ export const MatchCard: React.FC<MatchCardProps> = ({ match, onOpenDetails }) =>
               alt={match.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               referrerPolicy="no-referrer"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = '/images/stadiums/floodlit_night_arena.jpg';
+              }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
             <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-xs text-white">

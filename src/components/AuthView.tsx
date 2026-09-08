@@ -404,7 +404,7 @@ export const AuthView: React.FC = () => {
     try {
       const defaultAvatar = isMustapha
         ? MESSI_AVATAR_URL
-        : 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=300&auto=format&fit=crop&q=80';
+        : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&auto=format&fit=crop&q=80';
 
       const res = await signupWithCredentials(
         cleanName,

@@ -27,20 +27,28 @@ import { getDefaultFormationForFormat } from './TacticalPitchFormation';
 
 const PITCH_PRESET_IMAGES = [
   {
-    name: 'Casablanca Oasis Turf',
-    url: 'https://images.unsplash.com/photo-1529900245534-47fbf8221565?w=800&auto=format&fit=crop&q=80',
+    id: 'floodlit-arena',
+    name: 'ملعب النخبة بالأضواء الليلية',
+    nameEn: 'Grand Floodlit Stadium',
+    url: '/images/stadiums/floodlit_night_arena.jpg',
   },
   {
-    name: 'Floodlit Night Stadium',
-    url: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800&auto=format&fit=crop&q=80',
+    id: 'coastal-stadium',
+    name: 'المركب الرياضي الساحلي',
+    nameEn: 'Modern Coastal Stadium',
+    url: '/images/stadiums/coastal_stadium.jpg',
   },
   {
-    name: 'Marrakech Red Arena',
-    url: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&auto=format&fit=crop&q=80',
+    id: 'grand-sunset-arena',
+    name: 'ملعب الأرينا وقت الغروب الذهبي',
+    nameEn: 'Grand Sunset Arena',
+    url: '/images/stadiums/grand_sunset_arena.jpg',
   },
   {
-    name: 'Rabat Coastal Complex',
-    url: 'https://images.unsplash.com/photo-1489944440615-453fc2b6a9a9?w=800&auto=format&fit=crop&q=80',
+    id: 'premier-championship',
+    name: 'ستاد البطولة والمدرجات الأولمبية',
+    nameEn: 'Premier Championship Arena',
+    url: '/images/stadiums/premier_championship_pitch.jpg',
   },
 ];
 
@@ -265,19 +273,19 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
           </div>
 
           {/* Pitch Cover Photo (Presets or Custom Upload) */}
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <div className="flex items-center justify-between">
               <label className="block text-xs font-semibold uppercase tracking-wider text-emerald-200 flex items-center gap-1.5">
                 <ImageIcon className="w-3.5 h-3.5 text-[#E5B869]" />
-                <span>{language === 'ar' ? 'صورة الملعب أو غلاف المباراة' : 'Pitch Photo / Cover'}</span>
+                <span>{language === 'ar' ? 'صورة الملعب أو غلاف المباراة' : 'Pitch Photo / Match Cover'}</span>
               </label>
               <button
                 type="button"
                 onClick={() => photoInputRef.current?.click()}
                 disabled={isUploadingPhoto}
-                className="text-[11px] font-bold text-[#F5D794] hover:text-[#E5B869] flex items-center gap-1 cursor-pointer transition-colors"
+                className="text-[11px] font-bold text-[#F5D794] hover:text-[#E5B869] flex items-center gap-1.5 cursor-pointer transition-colors bg-[#081813] px-2.5 py-1 rounded-lg border border-[#E5B869]/30 hover:border-[#E5B869]/60"
               >
-                <Upload className="w-3 h-3" />
+                <Upload className="w-3 h-3 text-[#E5B869]" />
                 <span>{isUploadingPhoto ? (language === 'ar' ? 'جاري الرفع...' : 'Uploading...') : (language === 'ar' ? 'رفع صورة من جهازك' : 'Upload custom photo')}</span>
               </button>
               <input
@@ -289,35 +297,69 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
               />
             </div>
 
-            {/* Presets Grid */}
-            <div className="grid grid-cols-4 gap-2">
+            {/* Selected Cover Live Banner Preview */}
+            {pitchImageUrl && (
+              <div className="relative w-full h-28 sm:h-32 rounded-2xl overflow-hidden border border-[#E5B869]/40 shadow-xl group">
+                <img
+                  src={pitchImageUrl}
+                  alt="Selected Pitch Cover"
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/images/stadiums/floodlit_night_arena.jpg';
+                  }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#080B10]/85 via-transparent to-transparent pointer-events-none" />
+                <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-full bg-[#0A3A2A]/90 text-[#F5D794] text-[10px] font-black border border-[#E5B869]/60 flex items-center gap-1 shadow-md">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#E5B869] animate-pulse" />
+                      {language === 'ar' ? 'الغلاف المختار للمباراة' : 'Selected Match Cover'}
+                    </span>
+                    <span className="text-white font-bold text-xs drop-shadow hidden sm:inline">
+                      {PITCH_PRESET_IMAGES.find((p) => p.url === pitchImageUrl)?.[language === 'ar' ? 'name' : 'nameEn'] || (language === 'ar' ? 'صورة مخصصة' : 'Custom Image')}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 4 Clear High-Definition Stadium Presets Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {PITCH_PRESET_IMAGES.map((preset) => {
                 const isSelected = pitchImageUrl === preset.url;
+                const displayName = language === 'ar' ? preset.name : preset.nameEn;
                 return (
                   <button
-                    key={preset.name}
+                    key={preset.id}
                     type="button"
                     onClick={() => setPitchImageUrl(preset.url)}
-                    className={`relative h-16 rounded-xl overflow-hidden border-2 transition-all cursor-pointer group ${
+                    className={`relative h-20 sm:h-22 rounded-xl overflow-hidden border-2 transition-all cursor-pointer group text-left ${
                       isSelected
-                        ? 'border-[#E5B869] ring-2 ring-[#E5B869]/50 scale-[1.02]'
-                        : 'border-white/10 opacity-70 hover:opacity-100 hover:border-white/30'
+                        ? 'border-[#E5B869] ring-2 ring-[#E5B869]/60 shadow-lg shadow-[#E5B869]/20 scale-[1.02]'
+                        : 'border-white/10 opacity-80 hover:opacity-100 hover:border-white/40'
                     }`}
                   >
                     <img
                       src={preset.url}
-                      alt={preset.name}
-                      className="w-full h-full object-cover"
+                      alt={displayName}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/images/stadiums/floodlit_night_arena.jpg';
+                      }}
                     />
-                    <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors" />
+                    {/* Subtle soft gradient at bottom for text legibility without blocking the stadium */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+
                     {isSelected && (
-                      <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#E5B869] text-slate-950 flex items-center justify-center text-[10px] font-black">
-                        <Check className="w-2.5 h-2.5 stroke-[3]" />
+                      <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-gradient-to-tr from-[#E5B869] to-[#F5D794] text-slate-950 flex items-center justify-center text-[10px] font-black shadow-md">
+                        <Check className="w-3 h-3 stroke-[3]" />
                       </div>
                     )}
-                    <span className="absolute bottom-1 left-1 right-1 text-[9px] font-bold text-white truncate drop-shadow">
-                      {preset.name}
+
+                    <span className="absolute bottom-1.5 left-2 right-2 text-[10px] font-bold text-white truncate drop-shadow block">
+                      {displayName}
                     </span>
                   </button>
                 );

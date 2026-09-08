@@ -1,6 +1,6 @@
 {
-  "version": 26,
-  "lastUpdated": "2026-09-07T11:51:24.571Z",
+  "version": 37,
+  "lastUpdated": "2026-09-08T18:08:22.994Z",
   "users": [
     {
       "id": "user_mustapha",
@@ -25,7 +25,7 @@
           "key": "reliable",
           "title": "Reliable Captain",
           "description": "100% attendance rate",
-          "icon": "🛡️",
+          "icon": "\ud83d\udee1\ufe0f",
           "unlockedAt": "2026-01-10"
         },
         {
@@ -33,7 +33,7 @@
           "key": "mvp",
           "title": "Match MVP",
           "description": "Voted Best Player 8 times",
-          "icon": "🌟",
+          "icon": "\ud83c\udf1f",
           "unlockedAt": "2026-02-14"
         },
         {
@@ -41,7 +41,7 @@
           "key": "ironman",
           "title": "Iron Man",
           "description": "10 consecutive matches attended",
-          "icon": "⚡",
+          "icon": "\u26a1",
           "unlockedAt": "2026-03-01"
         }
       ],
@@ -68,7 +68,7 @@
           "key": "welcome",
           "title": "New PitchMate",
           "description": "Joined the community",
-          "icon": "⚽",
+          "icon": "\u26bd",
           "unlockedAt": "2026-09-07T10:50:36.973Z"
         },
         {
@@ -76,7 +76,7 @@
           "key": "verified",
           "title": "Google Verified",
           "description": "Identity verified via Google",
-          "icon": "🔒",
+          "icon": "\ud83d\udd12",
           "unlockedAt": "2026-09-07T10:50:36.973Z"
         }
       ],
@@ -98,7 +98,7 @@
       "durationMinutes": 90,
       "location": {
         "venueName": "Oasis Soccer Club",
-        "address": "Route de l’Oasis, Near Tramway Station",
+        "address": "Route de l\u2019Oasis, Near Tramway Station",
         "city": "Casablanca",
         "latitude": 33.5658,
         "longitude": -7.6324,
@@ -149,7 +149,8 @@
       "tacticalAssignments": {},
       "attendedPlayerIds": [],
       "noShowPlayerIds": [],
-      "mvpVotes": {}
+      "mvpVotes": {},
+      "pitchImageUrl": "/images/stadiums/floodlit_night_arena.jpg"
     },
     {
       "id": "match_02_rabat_agdal",
@@ -209,7 +210,8 @@
       "tacticalAssignments": {},
       "attendedPlayerIds": [],
       "noShowPlayerIds": [],
-      "mvpVotes": {}
+      "mvpVotes": {},
+      "pitchImageUrl": "/images/stadiums/coastal_stadium.jpg"
     }
   ],
   "comments": {
@@ -226,16 +228,7 @@
       }
     ]
   },
-  "announcements": [
-    {
-      "id": "ann_1",
-      "title": "PitchMate Morocco League Guidelines & Dirham (MAD) Fees",
-      "message": "Welcome to PitchMate Morocco! All matches are now scheduled in Morocco GMT+1 (Casablanca time) with transparent Dirham (MAD) fee tracking, live scoreboard, and MVP voting.",
-      "authorName": "Mustapha Bouhbous (Super Admin)",
-      "createdAt": "2026-09-05T10:41:11.373Z",
-      "type": "info"
-    }
-  ],
+  "announcements": [],
   "directMessages": [
     {
       "id": "dm_1788778289415_6dxm",
@@ -264,7 +257,7 @@
       "senderName": "Your Moment",
       "senderAvatar": "https://lh3.googleusercontent.com/a/ACg8ocKACQwOnGi5gOJLhEdRa62xtEDmLofbvX-TSfkmAv0xkW2JPA=s96-c",
       "receiverId": "user_mustapha",
-      "text": "🎤 Voice note (3s)",
+      "text": "\ud83c\udfa4 Voice note (3s)",
       "audioUrl": "/uploads/audio/audio_1788778305546_xd4h.webm",
       "audioDuration": 3,
       "createdAt": "2026-09-07T10:51:45.495Z",
@@ -276,7 +269,7 @@
       "senderName": "Your Moment",
       "senderAvatar": "https://lh3.googleusercontent.com/a/ACg8ocKACQwOnGi5gOJLhEdRa62xtEDmLofbvX-TSfkmAv0xkW2JPA=s96-c",
       "receiverId": "user_mustapha",
-      "text": "🎤 Voice note (5s)",
+      "text": "\ud83c\udfa4 Voice note (5s)",
       "audioUrl": "/uploads/audio/audio_1788779175505_x61n.webm",
       "audioDuration": 5,
       "createdAt": "2026-09-07T11:06:15.436Z",
@@ -288,19 +281,41 @@
       "senderName": "Your Moment",
       "senderAvatar": "https://lh3.googleusercontent.com/a/ACg8ocKACQwOnGi5gOJLhEdRa62xtEDmLofbvX-TSfkmAv0xkW2JPA=s96-c",
       "receiverId": "user_mustapha",
-      "text": "🎤 Voice note (6s)",
+      "text": "\ud83c\udfa4 Voice note (6s)",
       "audioUrl": "/uploads/audio/audio_1788780335062_0c3r.webm",
       "audioDuration": 6,
       "createdAt": "2026-09-07T11:25:34.973Z",
       "read": true
+    },
+    {
+      "id": "dm_voice_1788888881615_u6ts",
+      "senderId": "user_mustapha",
+      "senderName": "Mustapha Bouhbous",
+      "senderAvatar": "https://upload.wikimedia.org/wikipedia/commons/b/b4/Lionel-Messi-Argentina-2022-FIFA-World-Cup_%28cropped%29.jpg",
+      "receiverId": "user_g_SBbwpK8JD3NUgb2EPnXZIEM5tYS2",
+      "text": "\ud83c\udfa4 Voice note (5s)",
+      "audioUrl": "/uploads/audio/audio_1788888882338_ib4k.webm",
+      "audioDuration": 5,
+      "createdAt": "2026-09-08T17:34:41.615Z",
+      "read": false
     }
   ],
   "notifications": [
     {
+      "id": "notif_dm_dm_voice_1788888881615_u6ts",
+      "userId": "user_g_SBbwpK8JD3NUgb2EPnXZIEM5tYS2",
+      "title": "\u0631\u0633\u0627\u0644\u0629 \u0645\u0646 Mustapha Bouhbous",
+      "message": "\ud83c\udfa4 \u0623\u0631\u0633\u0644 \u0644\u0643 \u0631\u0633\u0627\u0644\u0629 \u0635\u0648\u062a\u064a\u0629",
+      "type": "direct_message",
+      "linkId": "user_mustapha",
+      "createdAt": "2026-09-08T17:34:41.615Z",
+      "read": false
+    },
+    {
       "id": "notif_dm_dm_voice_1788780381258_8o4w",
       "userId": "user_g_SBbwpK8JD3NUgb2EPnXZIEM5tYS2",
-      "title": "رسالة من Mustapha Bouhbous",
-      "message": "🎤 أرسل لك رسالة صوتية",
+      "title": "\u0631\u0633\u0627\u0644\u0629 \u0645\u0646 Mustapha Bouhbous",
+      "message": "\ud83c\udfa4 \u0623\u0631\u0633\u0644 \u0644\u0643 \u0631\u0633\u0627\u0644\u0629 \u0635\u0648\u062a\u064a\u0629",
       "type": "direct_message",
       "linkId": "user_mustapha",
       "createdAt": "2026-09-07T11:26:21.258Z",
@@ -309,8 +324,8 @@
     {
       "id": "notif_dm_dm_voice_1788780334973_h8rx",
       "userId": "user_mustapha",
-      "title": "رسالة من Your Moment",
-      "message": "🎤 أرسل لك رسالة صوتية",
+      "title": "\u0631\u0633\u0627\u0644\u0629 \u0645\u0646 Your Moment",
+      "message": "\ud83c\udfa4 \u0623\u0631\u0633\u0644 \u0644\u0643 \u0631\u0633\u0627\u0644\u0629 \u0635\u0648\u062a\u064a\u0629",
       "type": "direct_message",
       "linkId": "user_g_SBbwpK8JD3NUgb2EPnXZIEM5tYS2",
       "createdAt": "2026-09-07T11:25:34.973Z",
@@ -319,8 +334,8 @@
     {
       "id": "notif_dm_dm_voice_1788779175436_4gyn",
       "userId": "user_mustapha",
-      "title": "رسالة من Your Moment",
-      "message": "🎤 أرسل لك رسالة صوتية",
+      "title": "\u0631\u0633\u0627\u0644\u0629 \u0645\u0646 Your Moment",
+      "message": "\ud83c\udfa4 \u0623\u0631\u0633\u0644 \u0644\u0643 \u0631\u0633\u0627\u0644\u0629 \u0635\u0648\u062a\u064a\u0629",
       "type": "direct_message",
       "linkId": "user_g_SBbwpK8JD3NUgb2EPnXZIEM5tYS2",
       "createdAt": "2026-09-07T11:06:15.436Z",
@@ -329,8 +344,8 @@
     {
       "id": "notif_dm_dm_voice_1788778305495_fq52",
       "userId": "user_mustapha",
-      "title": "رسالة من Your Moment",
-      "message": "🎤 أرسل لك رسالة صوتية",
+      "title": "\u0631\u0633\u0627\u0644\u0629 \u0645\u0646 Your Moment",
+      "message": "\ud83c\udfa4 \u0623\u0631\u0633\u0644 \u0644\u0643 \u0631\u0633\u0627\u0644\u0629 \u0635\u0648\u062a\u064a\u0629",
       "type": "direct_message",
       "linkId": "user_g_SBbwpK8JD3NUgb2EPnXZIEM5tYS2",
       "createdAt": "2026-09-07T10:51:45.495Z",
@@ -339,8 +354,8 @@
     {
       "id": "notif_dm_dm_1788778298026_sncy",
       "userId": "user_mustapha",
-      "title": "رسالة من Your Moment",
-      "message": "📷 أرسل لك صورة",
+      "title": "\u0631\u0633\u0627\u0644\u0629 \u0645\u0646 Your Moment",
+      "message": "\ud83d\udcf7 \u0623\u0631\u0633\u0644 \u0644\u0643 \u0635\u0648\u0631\u0629",
       "type": "direct_message",
       "linkId": "user_g_SBbwpK8JD3NUgb2EPnXZIEM5tYS2",
       "createdAt": "2026-09-07T10:51:38.026Z",
@@ -349,7 +364,7 @@
     {
       "id": "notif_dm_dm_1788778289415_6dxm",
       "userId": "user_mustapha",
-      "title": "رسالة من Your Moment",
+      "title": "\u0631\u0633\u0627\u0644\u0629 \u0645\u0646 Your Moment",
       "message": "slm",
       "type": "direct_message",
       "linkId": "user_g_SBbwpK8JD3NUgb2EPnXZIEM5tYS2",
@@ -368,8 +383,8 @@
     {
       "id": "notif_1788778236973_4fwr",
       "userId": "user_mustapha",
-      "title": "طلب انضمام جديد عبر Google",
-      "message": "اللاعب Your Moment (la7adatok@gmail.com) أنشأ حساباً وينتظر موافقتك.",
+      "title": "\u0637\u0644\u0628 \u0627\u0646\u0636\u0645\u0627\u0645 \u062c\u062f\u064a\u062f \u0639\u0628\u0631 Google",
+      "message": "\u0627\u0644\u0644\u0627\u0639\u0628 Your Moment (la7adatok@gmail.com) \u0623\u0646\u0634\u0623 \u062d\u0633\u0627\u0628\u0627\u064b \u0648\u064a\u0646\u062a\u0638\u0631 \u0645\u0648\u0627\u0641\u0642\u062a\u0643.",
       "type": "system",
       "linkId": "user_g_SBbwpK8JD3NUgb2EPnXZIEM5tYS2",
       "createdAt": "2026-09-07T10:50:36.973Z",
