@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 interface PitchMateLogoProps {
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
@@ -10,16 +10,17 @@ interface PitchMateLogoProps {
 export const PitchMateLogo: React.FC<PitchMateLogoProps> = ({
   size = 'md',
   iconOnly = false,
-  withSubtitle = true,
   className = '',
 }) => {
+  const [imageError, setImageError] = useState(false);
+
   // Dimensions mapping
   const iconSizes = {
     xs: 'w-7 h-7',
     sm: 'w-9 h-9',
     md: 'w-10 h-10',
-    lg: 'w-13 h-13',
-    xl: 'w-18 h-18',
+    lg: 'w-12 h-12',
+    xl: 'w-16 h-16',
   };
 
   const textSizes = {
@@ -38,126 +39,58 @@ export const PitchMateLogo: React.FC<PitchMateLogoProps> = ({
     xl: 'gap-4',
   };
 
-  const subtitleSizes = {
-    xs: 'text-[9px]',
-    sm: 'text-[10px]',
-    md: 'text-[11px]',
-    lg: 'text-xs',
-    xl: 'text-sm',
-  };
-
   return (
     <div className={`inline-flex items-center ${gapSizes[size]} select-none ${className}`}>
-      {/* High-Resolution Royal Moroccan Gold Crest */}
+      {/* High-Resolution Professional GoMatch Emblem */}
       <div
         className={`relative ${iconSizes[size]} rounded-2xl p-[1.5px] bg-gradient-to-br from-[#F5D794] via-[#E5B869] to-[#0D503C] shadow-xl shadow-black/80 shrink-0 group`}
       >
-        {/* Inner Obsidian Pitch Badge */}
-        <div className="w-full h-full bg-[#080B10] rounded-[14px] flex items-center justify-center relative overflow-hidden">
-          {/* Subtle luminous ambient gold glow */}
-          <div className="absolute inset-0 bg-gradient-to-tr from-[#E5B869]/25 via-transparent to-[#0D503C]/30 pointer-events-none" />
-
-          {/* SVG Vector Artwork: Soccer Pitch Crest & Moroccan Gold Geometry */}
-          <svg
-            className="w-full h-full p-1.5"
-            viewBox="0 0 100 100"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <defs>
-              {/* Royal Moroccan Gold Gradient */}
-              <linearGradient id="pitchGoldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#F5D794" />
-                <stop offset="50%" stopColor="#E5B869" />
-                <stop offset="100%" stopColor="#C69238" />
-              </linearGradient>
-
-              {/* Crest Background */}
-              <linearGradient id="shieldBg" x1="50" y1="0" x2="50" y2="100" gradientUnits="userSpaceOnUse">
-                <stop offset="0%" stopColor="#141B26" />
-                <stop offset="100%" stopColor="#080B10" />
-              </linearGradient>
-
-              {/* Gold Ball Glow Accent */}
-              <radialGradient id="ballGlow" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#F5D794" stopOpacity="0.45" />
-                <stop offset="100%" stopColor="#C69238" stopOpacity="0" />
-              </radialGradient>
-            </defs>
-
-            {/* Shield Outline Path */}
-            <path
-              d="M50 5 L88 18 C88 56 68 85 50 95 C32 85 12 56 12 18 Z"
-              fill="url(#shieldBg)"
-              stroke="url(#pitchGoldGrad)"
-              strokeWidth="2.5"
-              strokeLinejoin="round"
+        <div className="w-full h-full bg-[#080B10] rounded-[14px] flex items-center justify-center relative overflow-hidden ring-1 ring-white/10">
+          {!imageError ? (
+            <img
+              src="/images/brand/gomatch_logo_512.png?v=5"
+              alt="GoMatch Emblem"
+              className="w-full h-full object-cover rounded-[13px] transition-transform duration-500 group-hover:scale-105"
+              referrerPolicy="no-referrer"
+              onError={() => setImageError(true)}
             />
-
-            {/* Tactical Pitch Lines Inside Shield */}
-            {/* Center Line */}
-            <line x1="20" y1="50" x2="80" y2="50" stroke="#E5B869" strokeWidth="1.5" strokeOpacity="0.5" />
-
-            {/* Center Circle */}
-            <circle cx="50" cy="50" r="16" stroke="#E5B869" strokeWidth="1.5" strokeOpacity="0.55" />
-
-            {/* Penalty Box Top */}
-            <rect
-              x="32"
-              y="12"
-              width="36"
-              height="18"
-              stroke="#E5B869"
-              strokeWidth="1.2"
-              strokeOpacity="0.4"
+          ) : (
+            /* Premium Vector Fallback: Soccer Crest with Geometric GoMatch Monogram */
+            <svg
+              className="w-full h-full p-1.5"
+              viewBox="0 0 100 100"
               fill="none"
-            />
-            {/* Penalty Arc Top */}
-            <path
-              d="M40 30 C45 35 55 35 60 30"
-              stroke="#E5B869"
-              strokeWidth="1.2"
-              strokeOpacity="0.4"
-              fill="none"
-            />
-
-            {/* Penalty Box Bottom */}
-            <rect
-              x="32"
-              y="70"
-              width="36"
-              height="18"
-              stroke="#E5B869"
-              strokeWidth="1.2"
-              strokeOpacity="0.4"
-              fill="none"
-            />
-
-            {/* Central Precision Soccer Ball with Facets */}
-            <circle cx="50" cy="50" r="14" fill="#080B10" stroke="#E5B869" strokeWidth="1.5" />
-            <circle cx="50" cy="50" r="14" fill="url(#ballGlow)" />
-
-            {/* Central Pentagon in Moroccan Gold */}
-            <polygon
-              points="50,42 57,47 54,55 46,55 43,47"
-              fill="url(#pitchGoldGrad)"
-            />
-
-            {/* Seam Lines Radiating */}
-            <line x1="50" y1="42" x2="50" y2="36" stroke="#F5D794" strokeWidth="1.2" strokeLinecap="round" />
-            <line x1="57" y1="47" x2="63" y2="44" stroke="#F5D794" strokeWidth="1.2" strokeLinecap="round" />
-            <line x1="54" y1="55" x2="59" y2="60" stroke="#F5D794" strokeWidth="1.2" strokeLinecap="round" />
-            <line x1="46" y1="55" x2="41" y2="60" stroke="#F5D794" strokeWidth="1.2" strokeLinecap="round" />
-            <line x1="43" y1="47" x2="37" y2="44" stroke="#F5D794" strokeWidth="1.2" strokeLinecap="round" />
-
-            {/* Outer Speed Accent Arc */}
-            <path
-              d="M75 22 C84 32 86 46 82 60"
-              stroke="url(#pitchGoldGrad)"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <defs>
+                <linearGradient id="fallbackGold" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#F5D794" />
+                  <stop offset="50%" stopColor="#E5B869" />
+                  <stop offset="100%" stopColor="#C69238" />
+                </linearGradient>
+                <linearGradient id="fallbackBg" x1="50" y1="0" x2="50" y2="100" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stopColor="#141B26" />
+                  <stop offset="100%" stopColor="#080B10" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M50 6 L86 19 C86 55 67 84 50 94 C33 84 14 55 14 19 Z"
+                fill="url(#fallbackBg)"
+                stroke="url(#fallbackGold)"
+                strokeWidth="2.5"
+                strokeLinejoin="round"
+              />
+              <circle cx="50" cy="48" r="18" fill="#0A131F" stroke="url(#fallbackGold)" strokeWidth="2" />
+              <polygon points="50,38 58,44 55,54 45,54 42,44" fill="url(#fallbackGold)" />
+              <line x1="50" y1="38" x2="50" y2="30" stroke="#F5D794" strokeWidth="1.5" strokeLinecap="round" />
+              <line x1="58" y1="44" x2="65" y2="40" stroke="#F5D794" strokeWidth="1.5" strokeLinecap="round" />
+              <line x1="55" y1="54" x2="61" y2="61" stroke="#F5D794" strokeWidth="1.5" strokeLinecap="round" />
+              <line x1="45" y1="54" x2="39" y2="61" stroke="#F5D794" strokeWidth="1.5" strokeLinecap="round" />
+              <line x1="42" y1="44" x2="35" y2="40" stroke="#F5D794" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+          )}
+          {/* Subtle luminous gloss reflection overlay */}
+          <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent pointer-events-none rounded-[14px]" />
         </div>
       </div>
 
@@ -166,10 +99,12 @@ export const PitchMateLogo: React.FC<PitchMateLogoProps> = ({
         <div className="flex flex-col justify-center">
           <div className="flex items-center gap-1.5 leading-none">
             <span
-              className={`font-black font-display tracking-tight text-white ${textSizes[size]}`}
+              className={`font-black font-display tracking-tight ${textSizes[size]}`}
             >
-              GO
-              <span className="bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] bg-clip-text text-transparent ml-0.5">
+              <span className="text-white drop-shadow-[0_2px_8px_rgba(255,255,255,0.2)]">
+                GO
+              </span>
+              <span className="bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] bg-clip-text text-transparent ml-1 drop-shadow-[0_0_8px_rgba(229,184,105,0.2)]">
                 MATCH
               </span>
             </span>
@@ -182,16 +117,12 @@ export const PitchMateLogo: React.FC<PitchMateLogoProps> = ({
               </span>
             )}
           </div>
-
-          {withSubtitle && (
-            <span
-              className={`text-slate-400 font-medium tracking-normal mt-0.5 hidden sm:block ${subtitleSizes[size]}`}
-            >
-              Match Organizer &amp; Roster Hub
-            </span>
-          )}
         </div>
       )}
     </div>
   );
 };
+
+// Aliased export for modern GoMatch naming convention
+export const GoMatchLogo = PitchMateLogo;
+

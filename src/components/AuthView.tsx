@@ -771,9 +771,9 @@ export const AuthView: React.FC = () => {
 
       {/* Top Navigation Bar */}
       <header className="relative z-20 w-full max-w-5xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between">
-        {/* Brand identity using authentic PitchMate logo */}
+        {/* Brand identity using authentic GoMatch logo */}
         <div className="flex items-center gap-3">
-          <PitchMateLogo size="sm" withSubtitle={true} />
+          <PitchMateLogo size="sm" />
         </div>
 
         {/* Clean Language Selector */}

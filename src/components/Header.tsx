@@ -64,7 +64,7 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setActiveTab('matches')}
           >
             <div className="sm:hidden">
-              <PitchMateLogo size="sm" withSubtitle={false} />
+              <PitchMateLogo size="sm" />
             </div>
             <div className="hidden sm:block">
               <PitchMateLogo size="md" />
