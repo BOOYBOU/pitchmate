@@ -162,7 +162,7 @@ function PitchMateApp() {
       <footer className="mt-auto border-t border-[#E5B869]/25 bg-[#081813]/95 py-6 text-xs text-emerald-300/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <span className="font-bold text-[#F5D794] font-display">PitchMate</span>
+            <span className="font-bold text-[#F5D794] font-display">GoMatch</span>
             <span className="text-[#E5B869]/40">•</span>
             <span className="text-emerald-200/80">{t('brand.tagline')}</span>
           </div>

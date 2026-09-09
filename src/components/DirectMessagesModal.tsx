@@ -758,7 +758,7 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                     >
                       <ArrowLeft className="w-4 h-4 rtl:rotate-180" />
                     </button>
-                    <div className="text-xs text-emerald-300/70 font-medium">PitchMate Direct Chat</div>
+                    <div className="text-xs text-emerald-300/70 font-medium">GoMatch Direct Chat</div>
                   </div>
                   <button
                     type="button"

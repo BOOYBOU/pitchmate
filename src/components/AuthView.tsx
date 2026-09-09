@@ -1812,7 +1812,7 @@ export const AuthView: React.FC = () => {
           </span>
         </div>
         <div className="flex items-center gap-3 text-[11px] text-[#E5B869]/80 font-semibold">
-          <span>PitchMate PRO</span>
+          <span>GoMatch PRO</span>
           <span className="w-1 h-1 rounded-full bg-[#E5B869]/40" />
           <span>v2.5 SaaS</span>
         </div>

@@ -1,6 +1,6 @@
 {
-  "name": "PitchMate - Soccer Match Organizer",
-  "short_name": "PitchMate",
+  "name": "GoMatch - Soccer Match Organizer",
+  "short_name": "GoMatch",
   "description": "Organize local soccer matches, manage rosters, and join games in real-time.",
   "start_url": "/",
   "display": "standalone",

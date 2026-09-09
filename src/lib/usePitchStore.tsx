@@ -1363,7 +1363,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         mvpCount: 0,
         goalsCount: 0,
         badges: [
-          { id: 'b_welcome', key: 'welcome', title: 'New PitchMate', description: 'Joined the community', icon: '⚽', unlockedAt: new Date().toISOString() },
+          { id: 'b_welcome', key: 'welcome', title: 'New GoMatch Player', description: 'Joined the community', icon: '⚽', unlockedAt: new Date().toISOString() },
           { id: 'b_verified', key: 'verified', title: 'Google Verified', description: 'Identity verified via Google', icon: '🔒', unlockedAt: new Date().toISOString() },
         ],
         isGoogleAuth: true,

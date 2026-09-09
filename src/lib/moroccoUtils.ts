@@ -38,7 +38,7 @@ export const MOROCCAN_BANKS = [
 
 export const DEFAULT_CIH_BANK_DETAILS = {
   bankName: 'CIH Bank',
-  accountHolder: 'Mustapha (PitchMate Captain)',
+  accountHolder: 'Mustapha (GoMatch Captain)',
   rib: '230 780 1234567890123456 78',
   phone: '+212 661 234567',
   notes: 'Virement instantané gratuit via CIH Mobile',
@@ -180,10 +180,10 @@ export function generateGoogleCalendarUrl(match: {
   const endUtc = formatUtcForGCal(endDate);
 
   const details = encodeURIComponent(
-    `${match.title}\nVenue: ${match.location.venueName}, ${match.location.address} (${match.location.city || 'Casablanca'})\nTimezone: Morocco Time (GMT+1 / Casablanca)\n\n${match.notes || 'Organized via PitchMate'}`
+    `${match.title}\nVenue: ${match.location.venueName}, ${match.location.address} (${match.location.city || 'Casablanca'})\nTimezone: Morocco Time (GMT+1 / Casablanca)\n\n${match.notes || 'Organized via GoMatch'}`
   );
   const location = encodeURIComponent(`${match.location.venueName}, ${match.location.address}, ${match.location.city || 'Casablanca'}, Morocco`);
-  const title = encodeURIComponent(`⚽ PitchMate: ${match.title}`);
+  const title = encodeURIComponent(`⚽ GoMatch: ${match.title}`);
 
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startUtc}/${endUtc}&details=${details}&location=${location}&ctz=${MOROCCO_TIMEZONE}`;
 }
@@ -204,16 +204,16 @@ export function downloadIcsFile(match: {
   const icsContent = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//PitchMate//Soccer Match Organizer//EN',
+    'PRODID:-//GoMatch//Soccer Match Organizer//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'BEGIN:VEVENT',
-    `UID:pitchmate-match-${match.id}@pitchmate.ma`,
+    `UID:gomatch-match-${match.id}@gomatch.ma`,
     `DTSTAMP:${formatIcsTime(new Date())}`,
     `DTSTART:${formatIcsTime(startDate)}`,
     `DTEND:${formatIcsTime(endDate)}`,
     `SUMMARY:⚽ ${match.title}`,
-    `DESCRIPTION:${match.notes ? match.notes.replace(/\n/g, '\\n') : 'PitchMate Soccer Match'} (Morocco GMT+1)`,
+    `DESCRIPTION:${match.notes ? match.notes.replace(/\n/g, '\\n') : 'GoMatch Soccer Match'} (Morocco GMT+1)`,
     `LOCATION:${match.location.venueName}, ${match.location.address}, ${match.location.city || 'Casablanca'}`,
     'STATUS:CONFIRMED',
     'END:VEVENT',

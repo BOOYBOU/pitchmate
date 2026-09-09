@@ -476,7 +476,7 @@ export const MatchShareModal: React.FC<MatchShareModalProps> = ({ isOpen, onClos
             <div className="relative rounded-2xl overflow-hidden border-2 border-[#E5B869]/60 bg-gradient-to-br from-[#080B10] via-[#141A26] to-[#0D503C] p-5 shadow-2xl space-y-4">
               <div className="flex items-center justify-between border-b border-[#E5B869]/20 pb-3">
                 <span className="text-[11px] font-black uppercase tracking-wider text-[#F5D794]">
-                  🇲🇦 PitchMate Official Fixture
+                  🇲🇦 GoMatch Official Fixture
                 </span>
                 <span className="px-2.5 py-0.5 bg-[#241A0B] border border-[#E5B869]/40 text-[#F5D794] text-[10px] font-black rounded-full">
                   {match.format || '7v7'}

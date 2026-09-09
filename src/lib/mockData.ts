@@ -200,8 +200,8 @@ export const POPULAR_PITCH_PRESETS = [
 export const INITIAL_ANNOUNCEMENTS: AdminAnnouncement[] = [
   {
     id: 'ann_1',
-    title: 'PitchMate Morocco League Guidelines & Dirham (MAD) Fees',
-    message: 'Welcome to PitchMate Morocco! All matches are now scheduled in Morocco GMT+1 (Casablanca time) with transparent Dirham (MAD) fee tracking, live scoreboard, and MVP voting.',
+    title: 'GoMatch Morocco League Guidelines & Dirham (MAD) Fees',
+    message: 'Welcome to GoMatch Morocco! All matches are now scheduled in Morocco GMT+1 (Casablanca time) with transparent Dirham (MAD) fee tracking, live scoreboard, and MVP voting.',
     authorName: 'Mustapha Bouhbous (Super Admin)',
     createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
     type: 'info',

@@ -775,12 +775,12 @@ async function startServer() {
   ): Promise<{ success: boolean; method: string; messageId?: string }> {
     const isForgot = type === 'forgot_password';
     const subject = isForgot
-      ? `PitchMate - رمز استعادة كلمة المرور: ${code}`
-      : `PitchMate - رمز تأكيد الحساب: ${code}`;
+      ? `GoMatch - رمز استعادة كلمة المرور: ${code}`
+      : `GoMatch - رمز تأكيد الحساب: ${code}`;
 
     const fromAddress =
       process.env.SMTP_FROM ||
-      (process.env.SMTP_USER ? `"PitchMate Security" <${process.env.SMTP_USER}>` : '"PitchMate Security" <security@pitchmate.ma>');
+      (process.env.SMTP_USER ? `"GoMatch Security" <${process.env.SMTP_USER}>` : '"GoMatch Security" <security@gomatch.ma>');
 
     // Clean, well-formatted email containing only the 6-digit numbers in the main highlight box
     const htmlContent = `
@@ -800,7 +800,7 @@ async function startServer() {
           <tr>
             <td style="padding: 26px 20px 20px; text-align: center; background: linear-gradient(180deg, #0E382A 0%, #082218 100%); border-bottom: 1px solid rgba(229, 184, 105, 0.25);">
               <div style="display: inline-block; padding: 8px 18px; background-color: #020A07; border: 1px solid rgba(229, 184, 105, 0.35); border-radius: 10px; margin-bottom: 12px;">
-                <span style="font-size: 19px; font-weight: 900; color: #F5D794; letter-spacing: 1px;">⚽ PitchMate</span>
+                <span style="font-size: 19px; font-weight: 900; color: #F5D794; letter-spacing: 1px;">⚽ GoMatch</span>
               </div>
               <h2 style="margin: 0; font-size: 20px; font-weight: 800; color: #F5D794;">
                 ${isForgot ? 'استعادة كلمة المرور' : 'تأكيد الحساب'}
@@ -818,8 +818,8 @@ async function startServer() {
                 مرحباً،
                 <br>
                 ${isForgot
-                  ? 'لقد تلقينا طلباً لاستعادة كلمة المرور الخاصة بحسابك المسجل في منصة <strong>PitchMate</strong>.'
-                  : 'شكراً لانضمامك إلى منصة <strong>PitchMate</strong>.'}
+                  ? 'لقد تلقينا طلباً لاستعادة كلمة المرور الخاصة بحسابك المسجل في منصة <strong>GoMatch</strong>.'
+                  : 'شكراً لانضمامك إلى منصة <strong>GoMatch</strong>.'}
                 <br>
                 أدخل رمز التحقق التالي المكون من 6 أرقام في شاشة التحقق داخل التطبيق:
               </p>
@@ -835,7 +835,7 @@ async function startServer() {
                 ⏱️ هذا الرمز صالح للاستخدام لمدة <strong>10 دقائق</strong> فقط.
               </p>
               <p style="margin: 8px 0 0; font-size: 11px; color: #64748B; line-height: 1.5;">
-                ${isForgot ? 'إذا لم تكن أنت من طلب استعادة كلمة المرور، يرجى تجاهل هذه الرسالة بأمان ولن يطرأ أي تغيير على حسابك.' : 'إذا لم تكن أنت من قام بإنشاء هذا الحساب في منصة PitchMate، يرجى تجاهل هذه الرسالة بأمان.'}
+                ${isForgot ? 'إذا لم تكن أنت من طلب استعادة كلمة المرور، يرجى تجاهل هذه الرسالة بأمان ولن يطرأ أي تغيير على حسابك.' : 'إذا لم تكن أنت من قام بإنشاء هذا الحساب في منصة GoMatch، يرجى تجاهل هذه الرسالة بأمان.'}
               </p>
             </td>
           </tr>
@@ -843,7 +843,7 @@ async function startServer() {
           <!-- Footer -->
           <tr>
             <td style="padding: 16px 20px; background-color: #04130D; border-top: 1px solid rgba(229, 184, 105, 0.2); text-align: center; font-size: 11px; color: #64748B;">
-              منصة PitchMate لتنظيم مباريات وحجوزات ملاعب كرة القدم بالمغرب 🇲🇦
+              منصة GoMatch لتنظيم مباريات وحجوزات ملاعب كرة القدم بالمغرب 🇲🇦
             </td>
           </tr>
         </table>
@@ -854,7 +854,7 @@ async function startServer() {
 </html>
     `;
 
-    const textContent = `كود التحقق في PitchMate هو: ${code}\nصالح لمدة 10 دقائق فقط.\nإذا لم تطلب هذا الرمز، يرجى تجاهل هذه الرسالة.`;
+    const textContent = `كود التحقق في GoMatch هو: ${code}\nصالح لمدة 10 دقائق فقط.\nإذا لم تطلب هذا الرمز، يرجى تجاهل هذه الرسالة.`;
 
     const transporter = getEmailTransporter();
     if (transporter) {
@@ -1330,7 +1330,7 @@ async function startServer() {
       noShowCount: 0,
       mvpCount: 0,
       goalsCount: 0,
-      badges: [{ id: 'b_welcome', key: 'welcome', title: 'New PitchMate', description: 'Joined the community', icon: '⚽', unlockedAt: new Date().toISOString() }],
+      badges: [{ id: 'b_welcome', key: 'welcome', title: 'New GoMatch Player', description: 'Joined the community', icon: '⚽', unlockedAt: new Date().toISOString() }],
       passwordHash,
       passwordSalt: passwordSalt || '',
       isAdmin: isMustapha,
@@ -1451,7 +1451,7 @@ async function startServer() {
       mvpCount: 0,
       goalsCount: 0,
       badges: [
-        { id: 'b_welcome', key: 'welcome', title: 'New PitchMate', description: 'Joined the community', icon: '⚽', unlockedAt: new Date().toISOString() },
+        { id: 'b_welcome', key: 'welcome', title: 'New GoMatch Player', description: 'Joined the community', icon: '⚽', unlockedAt: new Date().toISOString() },
         { id: 'b_verified', key: 'verified', title: 'Google Verified', description: 'Identity verified via Google', icon: '🔒', unlockedAt: new Date().toISOString() },
       ],
       isGoogleAuth: true,
@@ -1472,7 +1472,7 @@ async function startServer() {
           id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
           userId: mustaphaUser.id,
           title: 'انضم لاعب جديد عبر Google ⚽',
-          message: `اللاعب ${cleanName} (${cleanEmail}) انضم إلى منصة PitchMate عبر Google.`,
+          message: `اللاعب ${cleanName} (${cleanEmail}) انضم إلى منصة GoMatch عبر Google.`,
           type: 'system',
           linkId: newUser.id,
           createdAt: new Date().toISOString(),
@@ -1506,7 +1506,7 @@ async function startServer() {
       id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       userId: targetUser.id,
       title: 'Registration Approved!',
-      message: 'Your PitchMate account has been approved by the Admin. You can now join matches and RSVP.',
+      message: 'Your GoMatch account has been approved by the Admin. You can now join matches and RSVP.',
       type: 'approval',
       createdAt: new Date().toISOString(),
       read: false,
@@ -1543,7 +1543,7 @@ async function startServer() {
         id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
         userId: p.id,
         title: 'Account Approved!',
-        message: 'Your PitchMate registration has been approved by the Admin. Welcome to the league!',
+        message: 'Your GoMatch registration has been approved by the Admin. Welcome to the league!',
         type: 'approval',
         createdAt: new Date().toISOString(),
         read: false,
@@ -1590,7 +1590,7 @@ async function startServer() {
       id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       userId: user.id,
       title: 'Registration Declined',
-      message: `Your PitchMate account registration was declined: ${reason || 'Contact administrator for details.'}`,
+      message: `Your GoMatch account registration was declined: ${reason || 'Contact administrator for details.'}`,
       type: 'system',
       createdAt: new Date().toISOString(),
       read: false,

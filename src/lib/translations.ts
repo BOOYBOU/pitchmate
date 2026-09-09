@@ -9,7 +9,7 @@ export const TRANSLATIONS = {
   ar: {
     // Brand & Header
     brand: {
-      name: 'PitchMate',
+      name: 'GoMatch',
       tagline: 'منصة تنظيم مباريات كرة القدم في المغرب',
       pro: 'احترافي',
       fc: 'FC',
@@ -83,7 +83,7 @@ export const TRANSLATIONS = {
     },
     // Authentication
     auth: {
-      welcomeBack: 'مرحباً بك مجدداً في PitchMate',
+      welcomeBack: 'مرحباً بك مجدداً في GoMatch',
       signInSubtitle: 'سجّل دخولك للوصول إلى المباريات والتشكيلات التكتيكية',
       createAccount: 'إنشاء حساب لاعب جديد',
       signUpSubtitle: 'انضم إلى مجتمع لاعبي كرة القدم في المغرب وشارك في المباريات الأسبوعية',
@@ -119,7 +119,7 @@ export const TRANSLATIONS = {
       signUpWithGoogle: 'إنشاء حساب جديد باستخدام Google',
       continueWithGoogle: 'المتابعة باستخدام Google',
       googleAccountChooserTitle: 'اختيار حساب Google للمتابعة',
-      googleAccountChooserSub: 'اختر حساب Google للمتابعة إلى تطبيق PitchMate',
+      googleAccountChooserSub: 'اختر حساب Google للمتابعة إلى تطبيق GoMatch',
       googleUseAnotherAccount: 'استخدام حساب Google آخر',
       googleOpenNewTab: 'فتح في نافذة جديدة للمصادقة المباشرة',
       googleAuthHelpNotice: 'ملاحظة: لتمكين نافذة Google المنبثقة التلقائية مباشرة من Firebase، تأكد من تفعيل Google في Firebase Console وإضافة النطاق إلى Authorized Domains.',
@@ -387,7 +387,7 @@ export const TRANSLATIONS = {
       deleteMatch: 'حذف المباراة',
       title: 'مركز القيادة والإدارة العامة',
       subtitle: 'إدارة مجتمع اللاعبين، مراجعة طلبات الانضمام، مراقبة المباريات، ونشر الإعلانات الرسمية',
-      superAdminNotice: 'مرحباً مصطفى بوهبوس، تمتلك كامل الصلاحيات الإدارية على منصة PitchMate.',
+      superAdminNotice: 'مرحباً مصطفى بوهبوس، تمتلك كامل الصلاحيات الإدارية على منصة GoMatch.',
       tabOverview: 'نظرة عامة وإحصائيات',
       tabPendingUsers: 'طلبات الانضمام المعلقة',
       tabAllUsers: 'إدارة اللاعبين والحسابات',
@@ -470,7 +470,7 @@ export const TRANSLATIONS = {
   },
   en: {
     brand: {
-      name: 'PitchMate',
+      name: 'GoMatch',
       tagline: 'Soccer Match Organizer & Community in Morocco',
       pro: 'PRO',
       fc: 'FC',
@@ -541,7 +541,7 @@ export const TRANSLATIONS = {
       ANY: 'Any Position',
     },
     auth: {
-      welcomeBack: 'Welcome Back to PitchMate',
+      welcomeBack: 'Welcome Back to GoMatch',
       signInSubtitle: 'Sign in with your verified credentials to access matches and lineups',
       createAccount: 'Create Player Account',
       signUpSubtitle: 'Join the local soccer community in Morocco and participate in weekly matches',
@@ -577,7 +577,7 @@ export const TRANSLATIONS = {
       signUpWithGoogle: 'Create Account with Google',
       continueWithGoogle: 'Continue with Google',
       googleAccountChooserTitle: 'Choose a Google Account to continue',
-      googleAccountChooserSub: 'Select a Google account to proceed to PitchMate',
+      googleAccountChooserSub: 'Select a Google account to proceed to GoMatch',
       googleUseAnotherAccount: 'Use another Google account',
       googleOpenNewTab: 'Open in new window for direct OAuth',
       googleAuthHelpNotice: 'Note: To enable direct browser popup from Firebase, make sure Google is enabled in Firebase Console and domain is added to Authorized Domains.',
@@ -837,7 +837,7 @@ export const TRANSLATIONS = {
       deleteMatch: 'Delete Match',
       title: 'Admin Command Center',
       subtitle: 'Manage player community, review pending signups, monitor matches, and publish official announcements',
-      superAdminNotice: 'Welcome Mustapha Bouhbous, you have full administrative privileges on PitchMate.',
+      superAdminNotice: 'Welcome Mustapha Bouhbous, you have full administrative privileges on GoMatch.',
       tabOverview: 'Platform Overview',
       tabPendingUsers: 'Pending Registrations',
       tabAllUsers: 'Manage Players',

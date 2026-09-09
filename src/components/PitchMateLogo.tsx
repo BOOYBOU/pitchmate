@@ -168,9 +168,9 @@ export const PitchMateLogo: React.FC<PitchMateLogoProps> = ({
             <span
               className={`font-black font-display tracking-tight text-white ${textSizes[size]}`}
             >
-              PITCH
+              GO
               <span className="bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] bg-clip-text text-transparent ml-0.5">
-                MATE
+                MATCH
               </span>
             </span>
 
