@@ -675,34 +675,46 @@ export async function clearPasswordResetOTPInFirestore(email: string): Promise<v
  * Real-time listener for partner venues and their booking schedules
  */
 export function subscribeToVenues(onUpdate: (venues: PartnerVenue[]) => void): () => void {
-  try {
-    const venuesCol = collection(db, COLLECTIONS.VENUES);
-    const unsubscribe = onSnapshot(
-      venuesCol,
-      (snapshot) => {
-        if (snapshot.empty) {
-          // If Firestore venues collection is empty, populate with INITIAL_PARTNER_VENUES
-          seedInitialVenuesIfEmpty();
+  let unsub: (() => void) | null = null;
+  let active = true;
+
+  checkFirestoreAvailable().then((ready) => {
+    if (!ready || !active) {
+      onUpdate(INITIAL_PARTNER_VENUES);
+      return;
+    }
+    try {
+      const venuesCol = collection(db, COLLECTIONS.VENUES);
+      unsub = onSnapshot(
+        venuesCol,
+        (snapshot) => {
+          if (snapshot.empty) {
+            // If Firestore venues collection is empty, populate with INITIAL_PARTNER_VENUES
+            seedInitialVenuesIfEmpty();
+            onUpdate(INITIAL_PARTNER_VENUES);
+            return;
+          }
+          const venues: PartnerVenue[] = [];
+          snapshot.forEach((d) => {
+            venues.push({ id: d.id, ...d.data() } as PartnerVenue);
+          });
+          onUpdate(venues);
+        },
+        (error) => {
+          handleFirestoreError(error, OperationType.LIST, COLLECTIONS.VENUES);
           onUpdate(INITIAL_PARTNER_VENUES);
-          return;
         }
-        const venues: PartnerVenue[] = [];
-        snapshot.forEach((d) => {
-          venues.push({ id: d.id, ...d.data() } as PartnerVenue);
-        });
-        onUpdate(venues);
-      },
-      (error) => {
-        handleFirestoreError(error, OperationType.LIST, COLLECTIONS.VENUES);
-        onUpdate(INITIAL_PARTNER_VENUES);
-      }
-    );
-    return unsubscribe;
-  } catch (err) {
-    console.warn('[Firestore] Note subscribing to venues:', err);
-    onUpdate(INITIAL_PARTNER_VENUES);
-    return () => {};
-  }
+      );
+    } catch (err) {
+      console.warn('[Firestore] Note subscribing to venues:', err);
+      onUpdate(INITIAL_PARTNER_VENUES);
+    }
+  });
+
+  return () => {
+    active = false;
+    if (unsub) unsub();
+  };
 }
 
 /**
