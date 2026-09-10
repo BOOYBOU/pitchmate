@@ -1,16 +1,88 @@
 import React, { useState, useRef } from 'react';
-import { Camera, Upload, Link, X, Check, Sparkles, Loader2 } from 'lucide-react';
+import { Camera, Upload, X, Check, Sparkles, Loader2 } from 'lucide-react';
 import { usePitchStore } from '../lib/usePitchStore';
 import { useLanguage } from '../lib/useLanguage';
 import { mediaStorage } from '../lib/mediaStorage';
 
-const PRESET_AVATARS = [
-  { name: 'Captain Striker', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80' },
-  { name: 'Playmaker', url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80' },
-  { name: 'Winger Pro', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80' },
-  { name: 'Solid Defender', url: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80' },
-  { name: 'Goalkeeper Ace', url: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=200&auto=format&fit=crop&q=80' },
-  { name: 'Midfield Maestro', url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&auto=format&fit=crop&q=80' },
+export interface FootballLegendAvatar {
+  id: string;
+  nameAr: string;
+  nameEn: string;
+  nickname: string;
+  url: string;
+}
+
+export const FOOTBALL_LEGEND_AVATARS: FootballLegendAvatar[] = [
+  {
+    id: 'zidane',
+    nameAr: 'زين الدين زيدان',
+    nameEn: 'Zinedine Zidane',
+    nickname: 'Zizou 🇫🇷',
+    url: '/images/avatars/zidane.jpg',
+  },
+  {
+    id: 'messi',
+    nameAr: 'ليونيل ميسي',
+    nameEn: 'Lionel Messi',
+    nickname: 'La Pulga 🇦🇷',
+    url: '/images/avatars/messi.jpg',
+  },
+  {
+    id: 'ronaldo',
+    nameAr: 'كريستيانو رونالدو',
+    nameEn: 'Cristiano Ronaldo',
+    nickname: 'CR7 🇵🇹',
+    url: '/images/avatars/ronaldo.jpg',
+  },
+  {
+    id: 'maradona',
+    nameAr: 'دييغو مارادونا',
+    nameEn: 'Diego Maradona',
+    nickname: 'El Pibe de Oro 🇦🇷',
+    url: '/images/avatars/maradona.jpg',
+  },
+  {
+    id: 'ronaldinho',
+    nameAr: 'رونالدينيو',
+    nameEn: 'Ronaldinho',
+    nickname: 'O Bruxo 🇧🇷',
+    url: '/images/avatars/ronaldinho.jpg',
+  },
+  {
+    id: 'hakimi',
+    nameAr: 'أشرف حكيمي',
+    nameEn: 'Achraf Hakimi',
+    nickname: 'The Moroccan Flash 🇲🇦',
+    url: '/images/avatars/hakimi.jpg',
+  },
+  {
+    id: 'mbappe',
+    nameAr: 'كيليان مبابي',
+    nameEn: 'Kylian Mbappé',
+    nickname: 'Kyks 🇫🇷',
+    url: '/images/avatars/mbappe.jpg',
+  },
+  {
+    id: 'modric',
+    nameAr: 'لوكا مودريتش',
+    nameEn: 'Luka Modrić',
+    nickname: 'Maestro 🇭🇷',
+    url: '/images/avatars/modric.jpg',
+  },
+  {
+    id: 'iniesta',
+    nameAr: 'أندريس إنييستا',
+    nameEn: 'Andrés Iniesta',
+    nickname: 'Don Andrés 🇪🇸',
+    url: '/images/avatars/iniesta.jpg',
+  },
+  {
+    id: 'neymar',
+    nameAr: 'نيمار جونيور',
+    nameEn: 'Neymar Jr',
+    nickname: 'Ney 🇧🇷',
+    url: '/images/avatars/neymar.jpg',
+  },
 ];
 
 interface ChangeAvatarModalProps {
@@ -21,7 +93,6 @@ interface ChangeAvatarModalProps {
 export const ChangeAvatarModal: React.FC<ChangeAvatarModalProps> = ({ isOpen, onClose }) => {
   const { currentUser, updateUserProfile } = usePitchStore();
   const { t, language } = useLanguage();
-  const [avatarUrlInput, setAvatarUrlInput] = useState(currentUser.avatarUrl);
   const [avatarPreview, setAvatarPreview] = useState(currentUser.avatarUrl);
   const [uploadError, setUploadError] = useState('');
   const [isUploading, setIsUploading] = useState(false);
@@ -35,12 +106,18 @@ export const ChangeAvatarModal: React.FC<ChangeAvatarModalProps> = ({ isOpen, on
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      setUploadError(language === 'ar' ? 'يرجى اختيار ملف صورة صالح (PNG, JPG, WebP)' : 'Please select a valid image file (PNG, JPG, WebP)');
+      setUploadError(
+        language === 'ar'
+          ? 'يرجى اختيار ملف صورة صالح (PNG, JPG, WebP)'
+          : 'Please select a valid image file (PNG, JPG, WebP)'
+      );
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setUploadError(language === 'ar' ? 'حجم الصورة يجب أن لا يتعدى 5 ميغابايت' : 'Image size should be under 5MB');
+      setUploadError(
+        language === 'ar' ? 'حجم الصورة يجب أن لا يتعدى 5 ميغابايت' : 'Image size should be under 5MB'
+      );
       return;
     }
 
@@ -50,19 +127,17 @@ export const ChangeAvatarModal: React.FC<ChangeAvatarModalProps> = ({ isOpen, on
       const uploadRes = await mediaStorage.uploadAvatar(file);
       if (uploadRes.success && uploadRes.avatarUrl) {
         setAvatarPreview(uploadRes.avatarUrl);
-        setAvatarUrlInput(uploadRes.avatarUrl);
       } else {
         const reader = new FileReader();
         reader.onload = (event) => {
           if (typeof event.target?.result === 'string') {
             setAvatarPreview(event.target.result);
-            setAvatarUrlInput(event.target.result);
           }
         };
         reader.readAsDataURL(file);
       }
     } catch {
-      setUploadError(language === 'ar' ? 'فشل رفع الصورة إلى السحابة.' : 'Cloud upload failed.');
+      setUploadError(language === 'ar' ? 'فشل رفع الصورة.' : 'Image upload failed.');
     } finally {
       setIsUploading(false);
     }
@@ -78,16 +153,21 @@ export const ChangeAvatarModal: React.FC<ChangeAvatarModalProps> = ({ isOpen, on
     onClose();
   };
 
+  // Find if current preview matches one of the legends
+  const selectedLegend = FOOTBALL_LEGEND_AVATARS.find(
+    (legend) => legend.url === avatarPreview || avatarPreview.includes(legend.id)
+  );
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
       <div
         id="change-avatar-modal"
-        className="w-full max-w-md bg-[#0A3A2A] border border-[#E5B869]/35 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 text-white max-h-[92vh] overflow-y-auto"
+        className="w-full max-w-lg bg-[#0A3A2A] border border-[#E5B869]/35 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 text-white max-h-[92vh] overflow-y-auto"
       >
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-[#E5B869]/20">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[#0E4836] text-[#F5D794] flex items-center justify-center border border-[#E5B869]/40">
+            <div className="w-10 h-10 rounded-xl bg-[#0E4836] text-[#F5D794] flex items-center justify-center border border-[#E5B869]/40">
               <Camera className="w-5 h-5 text-[#E5B869]" />
             </div>
             <div>
@@ -95,7 +175,9 @@ export const ChangeAvatarModal: React.FC<ChangeAvatarModalProps> = ({ isOpen, on
                 {t('profile.updateAvatar', 'تغيير الصورة الشخصية')}
               </h3>
               <p className="text-xs text-emerald-300/70">
-                {language === 'ar' ? 'قم برفع صورة من جهازك أو وضع رابط صورة مباشر' : 'Set your avatar via file upload or image URL'}
+                {language === 'ar'
+                  ? 'اختر أسطورة كروية جاهزة أو ارفع صورتك من جهازك'
+                  : 'Choose a football legend avatar or upload from your device'}
               </p>
             </div>
           </div>
@@ -111,28 +193,92 @@ export const ChangeAvatarModal: React.FC<ChangeAvatarModalProps> = ({ isOpen, on
         {/* Live Preview */}
         <div className="flex items-center gap-4 p-3.5 bg-[#081813] border border-[#E5B869]/25 rounded-2xl">
           <img
-            src={avatarPreview || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'}
+            src={avatarPreview || '/images/avatars/zidane.jpg'}
             alt="Preview"
             className="w-16 h-16 rounded-2xl object-cover border-2 border-[#E5B869] shadow-md shrink-0"
             onError={(e) => {
-              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200';
+              (e.target as HTMLImageElement).src = '/images/avatars/zidane.jpg';
             }}
             referrerPolicy="no-referrer"
           />
-          <div className="space-y-1">
-            <span className="text-xs font-bold text-white block">{currentUser.name}</span>
+          <div className="space-y-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-bold text-white block truncate">{currentUser.name}</span>
+              {selectedLegend && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E5B869]/20 text-[#F5D794] border border-[#E5B869]/40">
+                  <Sparkles className="w-3 h-3 text-[#E5B869]" />
+                  {language === 'ar' ? selectedLegend.nameAr : selectedLegend.nameEn}
+                </span>
+              )}
+            </div>
             <span className="text-[11px] text-emerald-300/70 block">
               {language === 'ar'
-                ? 'تظهر في قوائم وتشكيلات المباريات والتعليقات والشريط العلوي.'
-                : 'Displayed in match rosters, comments, and top navigation.'}
+                ? 'تظهر في بطاقة اللاعب، تشكيلات المباريات، والتعليقات الحية.'
+                : 'Visible in player card, match formations, and live chat.'}
             </span>
           </div>
         </div>
 
-        {/* Option 1: File Upload */}
+        {/* 10 Football Legends Selection */}
         <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-bold uppercase tracking-wider text-emerald-200 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-[#E5B869]" />
+              {language === 'ar' ? 'اختر شخصية جاهزة (10 أساطير كرة القدم):' : 'Choose Ready-Made Legend (10 Football Icons):'}
+            </label>
+            <span className="text-[10px] text-emerald-300/60">
+              {language === 'ar' ? 'صور احترافية جاهزة' : 'Pro Quality'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-5 gap-2 sm:gap-2.5">
+            {FOOTBALL_LEGEND_AVATARS.map((legend) => {
+              const isSelected = avatarPreview === legend.url || avatarPreview.includes(legend.id);
+              return (
+                <button
+                  key={legend.id}
+                  type="button"
+                  onClick={() => {
+                    setAvatarPreview(legend.url);
+                    setUploadError('');
+                  }}
+                  className={`group relative flex flex-col items-center rounded-2xl p-1.5 border transition-all cursor-pointer text-center ${
+                    isSelected
+                      ? 'bg-[#0E4836] border-[#E5B869] ring-2 ring-[#E5B869]/50 shadow-lg scale-102'
+                      : 'bg-[#081813]/80 border-[#E5B869]/15 hover:border-[#E5B869]/60 hover:bg-[#0E4836]/40'
+                  }`}
+                  title={`${legend.nameAr} - ${legend.nickname}`}
+                >
+                  <div className="relative w-full aspect-square rounded-xl overflow-hidden mb-1">
+                    <img
+                      src={legend.url}
+                      alt={legend.nameEn}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      referrerPolicy="no-referrer"
+                    />
+                    {isSelected && (
+                      <div className="absolute inset-0 bg-[#E5B869]/20 flex items-center justify-center">
+                        <div className="w-5 h-5 rounded-full bg-[#E5B869] text-slate-950 flex items-center justify-center shadow-md">
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <span className={`text-[10px] font-bold leading-tight line-clamp-1 ${
+                    isSelected ? 'text-[#F5D794]' : 'text-emerald-100 group-hover:text-white'
+                  }`}>
+                    {language === 'ar' ? legend.nameAr : legend.nameEn}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Upload From Device */}
+        <div className="space-y-2 pt-2 border-t border-[#E5B869]/15">
           <label className="block text-xs font-bold uppercase tracking-wider text-emerald-200">
-            {language === 'ar' ? 'رفع صورة من الجهاز' : 'Upload From Device'}
+            {language === 'ar' ? 'أو ارفع صورة خاصة من جهازك:' : 'Or Upload From Your Device:'}
           </label>
           <input
             type="file"
@@ -150,68 +296,16 @@ export const ChangeAvatarModal: React.FC<ChangeAvatarModalProps> = ({ isOpen, on
             {isUploading ? (
               <>
                 <Loader2 className="w-4 h-4 text-[#E5B869] animate-spin" />
-                <span>{language === 'ar' ? 'جاري رفع الصورة إلى التخزين السحابي (Firebase)...' : 'Uploading to Cloud Storage (Firebase)...'}</span>
+                <span>{language === 'ar' ? 'جاري معالجة الصورة...' : 'Processing photo...'}</span>
               </>
             ) : (
               <>
                 <Upload className="w-4 h-4 text-[#E5B869]" />
-                <span>{language === 'ar' ? 'اختيار ملف صورة (JPG, PNG, WebP)' : 'Choose Photo File (JPG, PNG, WebP)'}</span>
+                <span>{language === 'ar' ? 'اختيار صورة من هاتفك أو حاسوبك (JPG, PNG, WebP)' : 'Choose Photo From Device (JPG, PNG, WebP)'}</span>
               </>
             )}
           </button>
           {uploadError && <p className="text-xs text-rose-400">{uploadError}</p>}
-        </div>
-
-        {/* Option 2: Image URL */}
-        <div className="space-y-1.5">
-          <label className="block text-xs font-bold uppercase tracking-wider text-emerald-200">
-            {language === 'ar' ? 'أو أدخل رابط الصورة المباشر' : 'Or Paste Image URL'}
-          </label>
-          <div className="relative">
-            <Link className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400/50" />
-            <input
-              type="url"
-              placeholder="https://images.unsplash.com/photo-..."
-              value={avatarUrlInput}
-              onChange={(e) => {
-                setAvatarUrlInput(e.target.value);
-                setAvatarPreview(e.target.value);
-              }}
-              className="w-full pl-9 rtl:pl-3 rtl:pr-9 pr-3 py-2 bg-[#081813] border border-[#E5B869]/25 rounded-xl text-xs text-white placeholder-emerald-400/40 focus:outline-none focus:border-[#E5B869]"
-            />
-          </div>
-        </div>
-
-        {/* Presets */}
-        <div className="space-y-1.5">
-          <label className="block text-xs font-bold uppercase tracking-wider text-emerald-300/70">
-            {language === 'ar' ? 'أو اختر شخصية جاهزة:' : 'Or Choose Soccer Pro:'}
-          </label>
-          <div className="grid grid-cols-6 gap-2">
-            {PRESET_AVATARS.map((preset, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => {
-                  setAvatarPreview(preset.url);
-                  setAvatarUrlInput(preset.url);
-                }}
-                className={`relative rounded-xl overflow-hidden aspect-square border-2 transition-all cursor-pointer ${
-                  avatarPreview === preset.url
-                    ? 'border-[#E5B869] ring-2 ring-[#E5B869]/40 scale-105'
-                    : 'border-[#0E4836] hover:border-[#E5B869]/60 opacity-80 hover:opacity-100'
-                }`}
-                title={preset.name}
-              >
-                <img
-                  src={preset.url}
-                  alt={preset.name}
-                  className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* Actions */}
