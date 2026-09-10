@@ -226,10 +226,53 @@ export interface InAppNotification {
   userId: string;
   title: string;
   message: string;
-  type: 'approval' | 'match_join' | 'match_leave' | 'waitlist_promoted' | 'cost_reminder' | 'system' | 'team_balance' | 'mvp_vote' | 'goal_scored' | 'warning' | 'direct_message';
+  type: 'approval' | 'match_join' | 'match_leave' | 'waitlist_promoted' | 'cost_reminder' | 'system' | 'team_balance' | 'mvp_vote' | 'goal_scored' | 'warning' | 'direct_message' | 'new_match' | 'voting_started';
   createdAt: string;
   read: boolean;
   linkId?: string;
+}
+
+export interface VenueBookingSlot {
+  id: string;
+  venueId: string;
+  pitchNumber?: string; // e.g. 'Terrain 1', 'Terrain 2', 'القاعة المغطاة'
+  format: string; // '5v5' | '7v7' | '8v8' | '9v9' | '11v11'
+  date: string; // YYYY-MM-DD
+  startTime: string; // HH:mm e.g. '18:30'
+  endTime: string; // HH:mm e.g. '20:00'
+  priceTotal: number; // in MAD (e.g. 500)
+  status: 'available' | 'booked' | 'maintenance';
+  bookedByName?: string;
+  bookedByPhone?: string;
+  notes?: string;
+  matchId?: string; // If converted to GoMatch game
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface PartnerVenue {
+  id: string;
+  name: string;
+  city: string;
+  address: string;
+  googleMapsUrl?: string;
+  phone: string;
+  whatsapp?: string;
+  managerName: string;
+  managerUserId?: string;
+  managerEmail?: string;
+  formats: string[]; // ['5v5', '7v7', '9v9', '11v11']
+  turfType: 'synthetic_fifa' | 'indoor_hall' | 'natural_grass';
+  hourlyRateMAD: number;
+  pitchCount: number;
+  imageUrl?: string;
+  amenities: string[]; // ['parking', 'showers', 'night_lighting', 'cafeteria', 'bibs_balls', 'prayer_room']
+  openingTime: string; // '08:00'
+  closingTime: string; // '01:00'
+  isVerifiedPartner: boolean;
+  slots: VenueBookingSlot[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export const SUPER_ADMIN_EMAILS: readonly string[] = [

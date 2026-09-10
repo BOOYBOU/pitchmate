@@ -56,10 +56,24 @@ interface CreateMatchModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: (matchId: string) => void;
+  initialVenueData?: {
+    venueName: string;
+    city: string;
+    address: string;
+    date: string;
+    time: string;
+    format: string;
+    totalCost: number;
+  } | null;
 }
 
-export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onClose, onSuccess }) => {
-  const { createMatch } = usePitchStore();
+export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({
+  isOpen,
+  onClose,
+  onSuccess,
+  initialVenueData,
+}) => {
+  const { createMatch, venues } = usePitchStore();
   const { t, language, isRTL, formatMAD } = useLanguage();
 
   const [title, setTitle] = useState('');
@@ -84,6 +98,38 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Sync initial venue data when provided (e.g. from partner venue slot)
+  React.useEffect(() => {
+    if (initialVenueData && isOpen) {
+      setVenueName(initialVenueData.venueName);
+      setCity(initialVenueData.city);
+      if (initialVenueData.address) {
+        setLocationLink(initialVenueData.address);
+      }
+      if (initialVenueData.date) {
+        setMatchDate(initialVenueData.date);
+      }
+      if (initialVenueData.time) {
+        setMatchTime(initialVenueData.time);
+      }
+      if (initialVenueData.format) {
+        setFormat(initialVenueData.format);
+        const derivedMax = initialVenueData.format === '5v5' ? 10 : initialVenueData.format === '7v7' ? 14 : 16;
+        setMaxPlayers(derivedMax);
+      }
+      if (initialVenueData.totalCost) {
+        setTotalPitchCost(initialVenueData.totalCost);
+        const derivedPerPlayer = Math.ceil(initialVenueData.totalCost / 14);
+        setPricePerPlayer(derivedPerPlayer);
+      }
+      setTitle(
+        language === 'ar'
+          ? `مباراة في ${initialVenueData.venueName}`
+          : `Match at ${initialVenueData.venueName}`
+      );
+    }
+  }, [initialVenueData, isOpen, language]);
 
   if (!isOpen) return null;
 
@@ -239,6 +285,49 @@ export const CreateMatchModal: React.FC<CreateMatchModalProps> = ({ isOpen, onCl
               className="w-full px-4 py-2.5 bg-[#081813] border border-[#E5B869]/30 rounded-xl text-sm text-white placeholder-emerald-400/40 focus:outline-none focus:border-[#E5B869] focus:ring-1 focus:ring-[#E5B869]/40"
             />
           </div>
+
+          {/* Quick Select from Partner Venues */}
+          {venues && venues.length > 0 && (
+            <div className="p-3 rounded-xl bg-[#061e16] border border-[#E5B869]/25 space-y-1.5">
+              <label className="block text-[11px] font-bold text-[#F5D794] flex items-center justify-between">
+                <span>{language === 'ar' ? '⚽ اختيار سريع من الملاعب الشريكة المعتمدة:' : '⚽ Quick Select from Partner Venues:'}</span>
+                <span className="text-[10px] text-emerald-400 font-normal">
+                  {language === 'ar' ? 'تعبئة تلقائية للمعلومات والسعر' : 'Auto-fills location & price'}
+                </span>
+              </label>
+              <select
+                id="partner-venue-quick-select"
+                onChange={(e) => {
+                  const v = venues.find((x) => x.id === e.target.value);
+                  if (v) {
+                    setVenueName(v.name);
+                    setCity(v.city);
+                    if (v.address) setLocationLink(v.address);
+                    if (v.hourlyRateMAD) {
+                      setTotalPitchCost(v.hourlyRateMAD);
+                      setPricePerPlayer(Math.ceil(v.hourlyRateMAD / maxPlayers));
+                    }
+                    if (v.formats && v.formats.length > 0) {
+                      setFormat(v.formats[0]);
+                      const dMax = v.formats[0] === '5v5' ? 10 : v.formats[0] === '7v7' ? 14 : 16;
+                      setMaxPlayers(dMax);
+                    }
+                  }
+                }}
+                className="w-full px-3 py-2 bg-[#081813] border border-[#E5B869]/30 rounded-lg text-xs text-white focus:outline-none focus:border-[#E5B869] cursor-pointer"
+                defaultValue=""
+              >
+                <option value="" disabled>
+                  {language === 'ar' ? '-- اضغط لاختيار ملعب شريك --' : '-- Choose a certified pitch --'}
+                </option>
+                {venues.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name} ({v.city}) • {v.hourlyRateMAD} MAD
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Venue Name & City */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

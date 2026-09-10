@@ -1,23 +1,44 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: 'Cairo', 'Almarai', 'Alexandria', 'IBM Plex Sans Arabic', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-display: 'Cairo', 'Alexandria', 'Outfit', sans-serif;
+  --font-arabic: 'Cairo', 'Almarai', 'Alexandria', 'IBM Plex Sans Arabic', sans-serif;
+}
+
 @layer base {
   :root {
-    --font-arabic: 'Cairo', 'Alexandria', 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-arabic: 'Cairo', 'Almarai', 'Alexandria', 'IBM Plex Sans Arabic', 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     --font-latin: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
 
   body {
-    font-family: 'Cairo', 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Cairo', 'Almarai', 'Alexandria', 'IBM Plex Sans Arabic', 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background-color: #080B10;
     color: #FDFEFE;
     overflow-x: hidden;
     letter-spacing: normal;
   }
 
+  /* Professional, Tier-1 modern Arabic typography */
+  [dir="rtl"],
   [dir="rtl"] body,
-  [dir="rtl"] {
-    font-family: 'Cairo', 'Alexandria', system-ui, sans-serif;
+  [dir="rtl"] input,
+  [dir="rtl"] button,
+  [dir="rtl"] select,
+  [dir="rtl"] textarea {
+    font-family: 'Cairo', 'Almarai', 'Alexandria', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     text-align: right;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "liga" 1, "calt" 1, "rlig" 1, "kern" 1;
+    line-height: 1.6;
+  }
+
+  /* Prevent letter-spacing in Arabic from disconnecting cursive ligatures */
+  [dir="rtl"] * {
+    letter-spacing: 0 !important;
   }
 
   [dir="ltr"] body,
@@ -27,12 +48,41 @@
   }
 
   h1, h2, h3, h4, .font-display {
-    font-family: 'Cairo', 'Outfit', 'Alexandria', sans-serif;
+    font-family: 'Cairo', 'Alexandria', 'Outfit', sans-serif;
     font-feature-settings: "ss01", "ss02", "cv01";
   }
 
+  [dir="rtl"] h1,
+  [dir="rtl"] h2,
+  [dir="rtl"] h3,
+  [dir="rtl"] h4,
+  [dir="rtl"] .font-display {
+    font-family: 'Cairo', 'Alexandria', sans-serif;
+    font-weight: 800;
+    line-height: 1.35;
+  }
+
   [dir="rtl"] .font-mono {
-    font-family: 'Alexandria', 'Cairo', monospace, sans-serif;
+    font-family: 'Cairo', monospace, sans-serif;
+  }
+
+  /* Refined labels & placeholders for Arabic forms */
+  [dir="rtl"] label {
+    line-height: 1.6;
+    font-family: 'Cairo', 'Almarai', sans-serif;
+    font-weight: 600;
+  }
+
+  [dir="rtl"] input,
+  [dir="rtl"] textarea,
+  [dir="rtl"] select {
+    font-family: 'Cairo', 'Almarai', sans-serif;
+  }
+
+  [dir="rtl"] input::placeholder,
+  [dir="rtl"] textarea::placeholder {
+    font-family: 'Cairo', 'Almarai', sans-serif;
+    opacity: 0.65;
   }
 }
 

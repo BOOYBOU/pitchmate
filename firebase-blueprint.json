@@ -104,6 +104,25 @@
         "createdAt": { "type": "string" }
       },
       "required": ["email", "code", "expiresAt", "type"]
+    },
+    "PartnerVenue": {
+      "title": "PartnerVenue",
+      "description": "Partner football pitch or indoor arena with booking slots",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "city": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "managerName": { "type": "string" },
+        "hourlyRateMAD": { "type": "number" },
+        "turfType": { "type": "string" },
+        "formats": { "type": "array", "items": { "type": "string" } },
+        "amenities": { "type": "array", "items": { "type": "string" } },
+        "slots": { "type": "array", "items": { "type": "object" } }
+      },
+      "required": ["id", "name", "city", "address", "phone"]
     }
   },
   "firestore": {
@@ -114,6 +133,10 @@
     "/users/{userId}": {
       "schema": "UserProfile",
       "description": "User profiles and player details"
+    },
+    "/venues/{venueId}": {
+      "schema": "PartnerVenue",
+      "description": "Partner pitch complexes and booking schedules"
     },
     "/match_comments/{commentId}": {
       "schema": "MatchComment",

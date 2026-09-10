@@ -16,6 +16,9 @@ import {
   Star,
   MapPin,
   Coins,
+  Bell,
+  Smartphone,
+  Check
 } from 'lucide-react';
 import { SUPER_ADMIN_EMAIL, isSuperAdminEmail, SoccerMatch, PlayerPosition } from '../types';
 import { usePitchStore } from '../lib/usePitchStore';
@@ -36,8 +39,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
     authenticateSuperAdmin,
     updateUserProfile,
     createNewUserAccount,
+    pushNotificationPermission,
+    requestPushPermission,
+    sendTestPushNotification,
   } = usePitchStore();
   const { t, language, isRTL, formatMoroccoDate } = useLanguage();
+
+  const [isPushLoading, setIsPushLoading] = useState(false);
+  const [testPushSent, setTestPushSent] = useState(false);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(currentUser.name);
@@ -494,6 +503,89 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
         isOpen={isAvatarModalOpen}
         onClose={() => setIsAvatarModalOpen(false)}
       />
+
+      {/* Push Notifications Settings Card */}
+      <div className="bg-[#0A3A2A]/95 border border-[#E5B869]/30 rounded-3xl p-6 shadow-xl relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border shrink-0 ${
+              pushNotificationPermission === 'granted'
+                ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
+                : 'bg-[#E5B869]/20 border-[#E5B869]/40 text-[#F5D794]'
+            }`}>
+              <Smartphone className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h3 className="text-base font-bold font-display text-white">
+                  {t('notifications.pushTitle')}
+                </h3>
+                {pushNotificationPermission === 'granted' ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    {language === 'ar' ? 'مفعلة وتعمل' : 'Active & Ready'}
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    {language === 'ar' ? 'غير مفعلة' : 'Not Enabled'}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-emerald-200/80 mt-1 max-w-xl leading-relaxed">
+                {language === 'ar'
+                  ? `تنبيهك فور انطلاق مباراة جديدة في مدينتك (${currentUser.city || 'الدار البيضاء'}) وبدء تصويت رجل المباراة (MOTM) مباشرة على هاتفك.`
+                  : `Instant alert when a new match is organized in your city (${currentUser.city || 'Casablanca'}) or when MOTM voting begins.`}
+              </p>
+            </div>
+          </div>
+
+          <div className="w-full sm:w-auto flex sm:flex-col gap-2 shrink-0">
+            {pushNotificationPermission === 'granted' ? (
+              <button
+                id="profile-test-push-btn"
+                type="button"
+                disabled={testPushSent}
+                onClick={async () => {
+                  setTestPushSent(true);
+                  await sendTestPushNotification();
+                  setTimeout(() => setTestPushSent(false), 3500);
+                }}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#0E4836] hover:bg-[#145d46] text-[#F5D794] border border-[#E5B869]/40 hover:border-[#E5B869] text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
+              >
+                {testPushSent ? (
+                  <>
+                    <Check className="w-4 h-4 text-emerald-400" />
+                    <span>{language === 'ar' ? 'تم إرسال الإشعار! 🔔' : 'Alert Sent!'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Bell className="w-4 h-4 text-[#E5B869]" />
+                    <span>{t('notifications.pushTestBtn')}</span>
+                  </>
+                )}
+              </button>
+            ) : (
+              <button
+                id="profile-enable-push-btn"
+                type="button"
+                disabled={isPushLoading}
+                onClick={async () => {
+                  setIsPushLoading(true);
+                  try {
+                    await requestPushPermission();
+                  } finally {
+                    setIsPushLoading(false);
+                  }
+                }}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:opacity-95 text-slate-950 text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-amber-950/30"
+              >
+                <Bell className="w-4 h-4 text-slate-950" />
+                <span>{isPushLoading ? t('common.loading') : t('notifications.pushEnableBtn')}</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Confirmed Matches */}
       <div className="space-y-4">

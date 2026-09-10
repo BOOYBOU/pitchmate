@@ -13,7 +13,8 @@ import {
   Bell,
   Trophy,
   Globe,
-  Check
+  Check,
+  Building2,
 } from 'lucide-react';
 import { usePitchStore } from '../lib/usePitchStore';
 import { useLanguage } from '../lib/useLanguage';
@@ -21,8 +22,8 @@ import { SUPER_ADMIN_EMAIL, isSuperAdminEmail } from '../types';
 import { PitchMateLogo } from './PitchMateLogo';
 
 interface HeaderProps {
-  activeTab: 'matches' | 'leaderboard' | 'profile' | 'admin';
-  setActiveTab: (tab: 'matches' | 'leaderboard' | 'profile' | 'admin') => void;
+  activeTab: 'matches' | 'venues' | 'leaderboard' | 'profile' | 'admin';
+  setActiveTab: (tab: 'matches' | 'venues' | 'leaderboard' | 'profile' | 'admin') => void;
   onOpenCreateMatch: () => void;
   onOpenChangeAvatar?: () => void;
   onOpenDirectMessages?: () => void;
@@ -85,6 +86,20 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Calendar className="w-4 h-4" />
               <span>{t('nav.matches')}</span>
+            </button>
+
+            <button
+              id="nav-tab-venues"
+              type="button"
+              onClick={() => setActiveTab('venues')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'venues'
+                  ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 shadow-lg shadow-amber-950/50 font-black'
+                  : 'text-slate-300 hover:text-[#F5D794] hover:bg-[#0D382B]/40'
+              }`}
+            >
+              <Building2 className={`w-4 h-4 ${activeTab === 'venues' ? 'text-slate-950' : 'text-[#E5B869]'}`} />
+              <span>{t('nav.venues')}</span>
             </button>
 
             <button
@@ -415,6 +430,20 @@ export const Header: React.FC<HeaderProps> = ({
                 }`}
               >
                 {t('nav.matches')}
+              </button>
+
+              <button
+                onClick={() => {
+                  setActiveTab('venues');
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`py-2 rounded-xl text-xs font-bold text-center ${
+                  activeTab === 'venues'
+                    ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 font-black shadow-md'
+                    : 'bg-[#0B211A] text-slate-300 border border-[#E5B869]/20'
+                }`}
+              >
+                {t('nav.venues')}
               </button>
 
               <button

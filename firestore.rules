@@ -44,6 +44,12 @@ service cloud.firestore {
       allow write: if true;
     }
 
+    // Partner venues and booking schedules collection
+    match /venues/{venueId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
     // Password resets and OTP verification collection
     match /password_resets/{resetId} {
       allow read: if true;

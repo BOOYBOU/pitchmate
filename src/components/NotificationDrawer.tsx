@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Bell,
   X,
@@ -9,7 +9,11 @@ import {
   Trash2,
   Calendar,
   Phone,
-  Sparkles
+  Sparkles,
+  Smartphone,
+  Trophy,
+  Award,
+  Check
 } from 'lucide-react';
 import { usePitchStore } from '../lib/usePitchStore';
 import { useLanguage } from '../lib/useLanguage';
@@ -31,10 +35,31 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
     currentUser,
     markNotificationAsRead,
     clearAllNotifications,
+    isPushNotificationSupported,
+    pushNotificationPermission,
+    requestPushPermission,
+    sendTestPushNotification,
   } = usePitchStore();
   const { t, language, isRTL } = useLanguage();
+  const [isRequestingPush, setIsRequestingPush] = useState(false);
+  const [testSent, setTestSent] = useState(false);
 
   if (!isOpen) return null;
+
+  const handleTogglePush = async () => {
+    setIsRequestingPush(true);
+    try {
+      await requestPushPermission();
+    } finally {
+      setIsRequestingPush(false);
+    }
+  };
+
+  const handleTestPush = async () => {
+    setTestSent(true);
+    await sendTestPushNotification();
+    setTimeout(() => setTestSent(false), 3000);
+  };
 
   const userNotifications = notifications.filter(
     (n) => n.userId === currentUser.id || n.userId === 'all'
@@ -44,6 +69,10 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
 
   const getIcon = (type: InAppNotification['type']) => {
     switch (type) {
+      case 'new_match':
+        return <Trophy className="w-4 h-4 text-[#10B981]" />;
+      case 'voting_started':
+        return <Award className="w-4 h-4 text-[#F5D794]" />;
       case 'approval':
         return <CheckCircle2 className="w-4 h-4 text-[#F5D794]" />;
       case 'match_join':
@@ -119,6 +148,74 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
             >
               <X className="w-5 h-5" />
             </button>
+          </div>
+        </div>
+
+        {/* Push Notification Controls Card */}
+        <div className="p-4 border-b border-[#E5B869]/20 bg-gradient-to-b from-[#081813] to-[#0A3A2A]/40">
+          <div className="p-3.5 rounded-2xl bg-[#081813]/90 border border-[#E5B869]/30 shadow-lg">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className={`p-2.5 rounded-xl border shrink-0 mt-0.5 ${
+                  pushNotificationPermission === 'granted'
+                    ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
+                    : 'bg-[#E5B869]/20 border-[#E5B869]/40 text-[#F5D794]'
+                }`}>
+                  <Smartphone className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xs font-bold text-white">
+                      {t('notifications.pushTitle')}
+                    </h3>
+                    {pushNotificationPermission === 'granted' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        {language === 'ar' ? 'مفعلة' : 'Active'}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-emerald-200/70 mt-1 leading-relaxed">
+                    {t('notifications.pushDesc')}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-3 pt-3 border-t border-[#E5B869]/15 flex items-center justify-between gap-2">
+              {pushNotificationPermission === 'granted' ? (
+                <button
+                  id="test-push-notification-btn"
+                  type="button"
+                  onClick={handleTestPush}
+                  disabled={testSent}
+                  className="w-full py-2 px-3 rounded-xl bg-[#0E4836] hover:bg-[#145d46] text-[#F5D794] text-xs font-bold border border-[#E5B869]/40 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:border-[#E5B869]"
+                >
+                  {testSent ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>{language === 'ar' ? 'تم إرسال الإشعار بنجاح! 🔔' : 'Alert sent to your device!'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Bell className="w-3.5 h-3.5 text-[#E5B869]" />
+                      <span>{t('notifications.pushTestBtn')}</span>
+                    </>
+                  )}
+                </button>
+              ) : (
+                <button
+                  id="enable-push-notifications-btn"
+                  type="button"
+                  onClick={handleTogglePush}
+                  disabled={isRequestingPush}
+                  className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#E5B869] to-[#C99E50] hover:from-[#f0c57c] hover:to-[#dfaf5a] text-slate-950 text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                >
+                  <Bell className="w-3.5 h-3.5 text-slate-950" />
+                  <span>{isRequestingPush ? t('common.loading') : t('notifications.pushEnableBtn')}</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

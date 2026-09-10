@@ -995,11 +995,17 @@ export const AuthView: React.FC = () => {
                           value={signInEmail}
                           onChange={(e) => setSignInEmail(e.target.value)}
                           placeholder="user@example.com"
-                          className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#040B08]/90 border border-[#16382B] group-hover:border-[#E5B869]/40 group-focus-within:border-[#E5B869] group-focus-within:ring-2 group-focus-within:ring-[#E5B869]/25 text-white placeholder-slate-500 text-xs transition-all outline-none shadow-inner"
+                          className={`w-full py-2.5 rounded-xl bg-[#040B08]/90 border border-[#16382B] group-hover:border-[#E5B869]/40 group-focus-within:border-[#E5B869] group-focus-within:ring-2 group-focus-within:ring-[#E5B869]/25 text-white placeholder-slate-500 text-xs transition-all outline-none shadow-inner ${
+                            isRTL ? 'pr-9 pl-9 text-right' : 'pl-9 pr-9 text-left'
+                          }`}
                         />
-                        <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#E5B869] transition-colors" />
+                        <Mail className={`w-4 h-4 text-slate-400 absolute top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#E5B869] transition-colors ${
+                          isRTL ? 'right-3' : 'left-3'
+                        }`} />
                         {isSignInEmailValid && (
-                          <Check className="w-4 h-4 text-[#E5B869] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <Check className={`w-4 h-4 text-[#E5B869] absolute top-1/2 -translate-y-1/2 pointer-events-none ${
+                            isRTL ? 'left-3' : 'right-3'
+                          }`} />
                         )}
                       </div>
                     </div>
@@ -1031,13 +1037,19 @@ export const AuthView: React.FC = () => {
                           value={signInPassword}
                           onChange={(e) => setSignInPassword(e.target.value)}
                           placeholder="••••••••"
-                          className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#040B08]/90 border border-[#16382B] group-hover:border-[#E5B869]/40 group-focus-within:border-[#E5B869] group-focus-within:ring-2 group-focus-within:ring-[#E5B869]/25 text-white placeholder-slate-500 text-xs transition-all outline-none shadow-inner"
+                          className={`w-full py-2.5 rounded-xl bg-[#040B08]/90 border border-[#16382B] group-hover:border-[#E5B869]/40 group-focus-within:border-[#E5B869] group-focus-within:ring-2 group-focus-within:ring-[#E5B869]/25 text-white placeholder-slate-500 text-xs transition-all outline-none shadow-inner ${
+                            isRTL ? 'pr-9 pl-9 text-right' : 'pl-9 pr-9 text-left'
+                          }`}
                         />
-                        <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#E5B869] transition-colors" />
+                        <Lock className={`w-4 h-4 text-slate-400 absolute top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#E5B869] transition-colors ${
+                          isRTL ? 'right-3' : 'left-3'
+                        }`} />
                         <button
                           type="button"
                           onClick={() => setShowSignInPassword(!showSignInPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer transition-colors"
+                          className={`absolute top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer transition-colors ${
+                            isRTL ? 'left-3' : 'right-3'
+                          }`}
                         >
                           {showSignInPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
@@ -1154,9 +1166,13 @@ export const AuthView: React.FC = () => {
                           value={signUpName}
                           onChange={(e) => setSignUpName(e.target.value)}
                           placeholder={language === 'ar' ? 'الاسم الكامل' : 'Full Name'}
-                          className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#040B08]/90 border border-[#16382B] group-hover:border-[#E5B869]/40 group-focus-within:border-[#E5B869] group-focus-within:ring-2 group-focus-within:ring-[#E5B869]/25 text-white placeholder-slate-500 text-xs transition-all outline-none shadow-inner"
+                          className={`w-full py-2.5 rounded-xl bg-[#040B08]/90 border border-[#16382B] group-hover:border-[#E5B869]/40 group-focus-within:border-[#E5B869] group-focus-within:ring-2 group-focus-within:ring-[#E5B869]/25 text-white placeholder-slate-500 text-xs transition-all outline-none shadow-inner ${
+                            isRTL ? 'pr-9 pl-3.5 text-right' : 'pl-9 pr-3.5 text-left'
+                          }`}
                         />
-                        <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#E5B869] transition-colors" />
+                        <User className={`w-4 h-4 text-slate-400 absolute top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#E5B869] transition-colors ${
+                          isRTL ? 'right-3' : 'left-3'
+                        }`} />
                       </div>
                     </div>
 
@@ -1173,11 +1189,17 @@ export const AuthView: React.FC = () => {
                           value={signUpEmail}
                           onChange={(e) => setSignUpEmail(e.target.value)}
                           placeholder="user@example.com"
-                          className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#040B08]/90 border border-[#16382B] group-hover:border-[#E5B869]/40 group-focus-within:border-[#E5B869] group-focus-within:ring-2 group-focus-within:ring-[#E5B869]/25 text-white placeholder-slate-500 text-xs transition-all outline-none shadow-inner"
+                          className={`w-full py-2.5 rounded-xl bg-[#040B08]/90 border border-[#16382B] group-hover:border-[#E5B869]/40 group-focus-within:border-[#E5B869] group-focus-within:ring-2 group-focus-within:ring-[#E5B869]/25 text-white placeholder-slate-500 text-xs transition-all outline-none shadow-inner ${
+                            isRTL ? 'pr-9 pl-9 text-right' : 'pl-9 pr-9 text-left'
+                          }`}
                         />
-                        <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#E5B869] transition-colors" />
+                        <Mail className={`w-4 h-4 text-slate-400 absolute top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#E5B869] transition-colors ${
+                          isRTL ? 'right-3' : 'left-3'
+                        }`} />
                         {isSignUpEmailValid && (
-                          <Check className="w-4 h-4 text-[#E5B869] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <Check className={`w-4 h-4 text-[#E5B869] absolute top-1/2 -translate-y-1/2 pointer-events-none ${
+                            isRTL ? 'left-3' : 'right-3'
+                          }`} />
                         )}
                       </div>
                     </div>
@@ -1193,7 +1215,9 @@ export const AuthView: React.FC = () => {
                             id="signup-city"
                             value={signUpCity}
                             onChange={(e) => setSignUpCity(e.target.value)}
-                            className="w-full py-2.5 pl-8 pr-2.5 rounded-xl bg-[#040B08]/90 border border-[#16382B] hover:border-[#E5B869]/40 focus:border-[#E5B869] focus:ring-2 focus:ring-[#E5B869]/25 text-white text-xs outline-none cursor-pointer shadow-inner"
+                            className={`w-full py-2.5 rounded-xl bg-[#040B08]/90 border border-[#16382B] hover:border-[#E5B869]/40 focus:border-[#E5B869] focus:ring-2 focus:ring-[#E5B869]/25 text-white text-xs outline-none cursor-pointer shadow-inner ${
+                              isRTL ? 'pr-8 pl-2.5 text-right' : 'pl-8 pr-2.5 text-left'
+                            }`}
                           >
                             {MOROCCAN_CITIES.map((city) => (
                               <option key={city} value={city} className="bg-[#08130E] text-white">
@@ -1201,7 +1225,9 @@ export const AuthView: React.FC = () => {
                               </option>
                             ))}
                           </select>
-                          <MapPin className="w-3.5 h-3.5 text-[#E5B869] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <MapPin className={`w-3.5 h-3.5 text-[#E5B869] absolute top-1/2 -translate-y-1/2 pointer-events-none ${
+                            isRTL ? 'right-2.5' : 'left-2.5'
+                          }`} />
                         </div>
                       </div>
 
@@ -1214,7 +1240,9 @@ export const AuthView: React.FC = () => {
                             id="signup-position"
                             value={signUpPosition}
                             onChange={(e) => setSignUpPosition(e.target.value)}
-                            className="w-full py-2.5 pl-8 pr-2.5 rounded-xl bg-[#040B08]/90 border border-[#16382B] hover:border-[#E5B869]/40 focus:border-[#E5B869] focus:ring-2 focus:ring-[#E5B869]/25 text-white text-xs outline-none cursor-pointer shadow-inner"
+                            className={`w-full py-2.5 rounded-xl bg-[#040B08]/90 border border-[#16382B] hover:border-[#E5B869]/40 focus:border-[#E5B869] focus:ring-2 focus:ring-[#E5B869]/25 text-white text-xs outline-none cursor-pointer shadow-inner ${
+                              isRTL ? 'pr-8 pl-2.5 text-right' : 'pl-8 pr-2.5 text-left'
+                            }`}
                           >
                             {POSITIONS.map((pos) => (
                               <option key={pos.code} value={pos.code} className="bg-[#08130E] text-white">
@@ -1222,7 +1250,9 @@ export const AuthView: React.FC = () => {
                               </option>
                             ))}
                           </select>
-                          <Activity className="w-3.5 h-3.5 text-[#E5B869] absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <Activity className={`w-3.5 h-3.5 text-[#E5B869] absolute top-1/2 -translate-y-1/2 pointer-events-none ${
+                            isRTL ? 'right-2.5' : 'left-2.5'
+                          }`} />
                         </div>
                       </div>
                     </div>
@@ -1240,13 +1270,19 @@ export const AuthView: React.FC = () => {
                           value={signUpPassword}
                           onChange={(e) => setSignUpPassword(e.target.value)}
                           placeholder="••••••••"
-                          className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#040B08]/90 border border-[#16382B] group-hover:border-[#E5B869]/40 group-focus-within:border-[#E5B869] group-focus-within:ring-2 group-focus-within:ring-[#E5B869]/25 text-white placeholder-slate-500 text-xs transition-all outline-none shadow-inner"
+                          className={`w-full py-2.5 rounded-xl bg-[#040B08]/90 border border-[#16382B] group-hover:border-[#E5B869]/40 group-focus-within:border-[#E5B869] group-focus-within:ring-2 group-focus-within:ring-[#E5B869]/25 text-white placeholder-slate-500 text-xs transition-all outline-none shadow-inner ${
+                            isRTL ? 'pr-9 pl-9 text-right' : 'pl-9 pr-9 text-left'
+                          }`}
                         />
-                        <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#E5B869] transition-colors" />
+                        <Lock className={`w-4 h-4 text-slate-400 absolute top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#E5B869] transition-colors ${
+                          isRTL ? 'right-3' : 'left-3'
+                        }`} />
                         <button
                           type="button"
                           onClick={() => setShowSignUpPassword(!showSignUpPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer transition-colors"
+                          className={`absolute top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer transition-colors ${
+                            isRTL ? 'left-3' : 'right-3'
+                          }`}
                         >
                           {showSignUpPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
@@ -1441,11 +1477,17 @@ export const AuthView: React.FC = () => {
                           value={forgotEmail}
                           onChange={(e) => setForgotEmail(e.target.value)}
                           placeholder="user@example.com"
-                          className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#05070A]/90 border border-slate-800 group-focus-within:border-[#E5B869] group-focus-within:ring-2 group-focus-within:ring-[#E5B869]/25 text-white placeholder-slate-500 text-xs transition-all outline-none"
+                          className={`w-full py-2.5 rounded-xl bg-[#05070A]/90 border border-slate-800 group-focus-within:border-[#E5B869] group-focus-within:ring-2 group-focus-within:ring-[#E5B869]/25 text-white placeholder-slate-500 text-xs transition-all outline-none ${
+                            isRTL ? 'pr-9 pl-9 text-right' : 'pl-9 pr-9 text-left'
+                          }`}
                         />
-                        <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#E5B869] transition-colors" />
+                        <Mail className={`w-4 h-4 text-slate-500 absolute top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#E5B869] transition-colors ${
+                          isRTL ? 'right-3' : 'left-3'
+                        }`} />
                         {isForgotEmailValid && (
-                          <Check className="w-4 h-4 text-[#E5B869] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <Check className={`w-4 h-4 text-[#E5B869] absolute top-1/2 -translate-y-1/2 pointer-events-none ${
+                            isRTL ? 'left-3' : 'right-3'
+                          }`} />
                         )}
                       </div>
                     </div>
@@ -1565,13 +1607,19 @@ export const AuthView: React.FC = () => {
                           value={forgotNewPassword}
                           onChange={(e) => setForgotNewPassword(e.target.value)}
                           placeholder="••••••••"
-                          className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#05070A]/90 border border-slate-800 group-focus-within:border-[#E5B869] group-focus-within:ring-2 group-focus-within:ring-[#E5B869]/25 text-white placeholder-slate-500 text-xs transition-all outline-none"
+                          className={`w-full py-2.5 rounded-xl bg-[#05070A]/90 border border-slate-800 group-focus-within:border-[#E5B869] group-focus-within:ring-2 group-focus-within:ring-[#E5B869]/25 text-white placeholder-slate-500 text-xs transition-all outline-none ${
+                            isRTL ? 'pr-9 pl-9 text-right' : 'pl-9 pr-9 text-left'
+                          }`}
                         />
-                        <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#E5B869] transition-colors" />
+                        <Lock className={`w-4 h-4 text-slate-500 absolute top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#E5B869] transition-colors ${
+                          isRTL ? 'right-3' : 'left-3'
+                        }`} />
                         <button
                           type="button"
                           onClick={() => setShowForgotNewPassword(!showForgotNewPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 cursor-pointer transition-colors"
+                          className={`absolute top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 cursor-pointer transition-colors ${
+                            isRTL ? 'left-3' : 'right-3'
+                          }`}
                         >
                           {showForgotNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
@@ -1693,13 +1741,19 @@ export const AuthView: React.FC = () => {
                           value={forgotNewPassword}
                           onChange={(e) => setForgotNewPassword(e.target.value)}
                           placeholder="••••••••"
-                          className="w-full pl-9 pr-9 py-2.5 rounded-xl bg-[#05070A]/90 border border-slate-800 group-focus-within:border-[#E5B869] group-focus-within:ring-2 group-focus-within:ring-[#E5B869]/25 text-white placeholder-slate-500 text-xs transition-all outline-none"
+                          className={`w-full py-2.5 rounded-xl bg-[#05070A]/90 border border-slate-800 group-focus-within:border-[#E5B869] group-focus-within:ring-2 group-focus-within:ring-[#E5B869]/25 text-white placeholder-slate-500 text-xs transition-all outline-none ${
+                            isRTL ? 'pr-9 pl-9 text-right' : 'pl-9 pr-9 text-left'
+                          }`}
                         />
-                        <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#E5B869] transition-colors" />
+                        <Lock className={`w-4 h-4 text-slate-500 absolute top-1/2 -translate-y-1/2 pointer-events-none group-focus-within:text-[#E5B869] transition-colors ${
+                          isRTL ? 'right-3' : 'left-3'
+                        }`} />
                         <button
                           type="button"
                           onClick={() => setShowForgotNewPassword(!showForgotNewPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 cursor-pointer transition-colors"
+                          className={`absolute top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 cursor-pointer transition-colors ${
+                            isRTL ? 'left-3' : 'right-3'
+                          }`}
                         >
                           {showForgotNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>

@@ -11,6 +11,7 @@ import { MatchList } from './components/MatchList';
 import { ProfileView } from './components/ProfileView';
 import { LeaderboardView } from './components/LeaderboardView';
 import { AdminPanel } from './components/AdminPanel';
+import { VenuesView } from './components/VenuesView';
 import { CreateMatchModal } from './components/CreateMatchModal';
 import { MatchDetailModal } from './components/MatchDetailModal';
 import { ChangeAvatarModal } from './components/ChangeAvatarModal';
@@ -21,6 +22,8 @@ import { MobileBottomNav } from './components/MobileBottomNav';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { SoccerMatch, isSuperAdminEmail } from './types';
 import { Shield, Sparkles, MapPin, Database, Heart } from 'lucide-react';
+import { pushNotificationService } from './lib/pushNotificationService';
+import { PushNotificationToast } from './components/PushNotificationToast';
 
 function PitchMateApp() {
   const {
@@ -33,21 +36,30 @@ function PitchMateApp() {
 
   const { t, isRTL } = useLanguage();
 
-  const [activeTab, setActiveTab] = useState<'matches' | 'leaderboard' | 'profile' | 'admin'>('matches');
+  const [activeTab, setActiveTab] = useState<'matches' | 'venues' | 'leaderboard' | 'profile' | 'admin'>('matches');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<SoccerMatch | null>(null);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [slotPrefillData, setSlotPrefillData] = useState<{
+    venueName: string;
+    city: string;
+    address: string;
+    date: string;
+    time: string;
+    format: string;
+    totalCost: number;
+  } | null>(null);
 
   // Direct Messaging State
   const [isDirectMessagesOpen, setIsDirectMessagesOpen] = useState(false);
   const [directMessageRecipientId, setDirectMessageRecipientId] = useState<string | null>(null);
 
-  // Deep-link support: auto-open match if URL contains ?match=match_id
+  // Deep-link support: auto-open match if URL contains ?match=match_id or ?matchId=match_id
   React.useEffect(() => {
     if (typeof window !== 'undefined' && matches.length > 0 && !selectedMatch) {
       const params = new URLSearchParams(window.location.search);
-      const matchIdParam = params.get('match');
+      const matchIdParam = params.get('match') || params.get('matchId');
       if (matchIdParam) {
         const found = matches.find((m) => m.id === matchIdParam);
         if (found) {
@@ -56,6 +68,17 @@ function PitchMateApp() {
       }
     }
   }, [matches, selectedMatch]);
+
+  // System Push Notification click handler (from service worker / desktop / mobile)
+  React.useEffect(() => {
+    const unsub = pushNotificationService.onMatchClick((matchId) => {
+      const found = matches.find((m) => m.id === matchId);
+      if (found) {
+        setSelectedMatch(found);
+      }
+    });
+    return unsub;
+  }, [matches]);
 
   // Mandatory Authentication Gate: if user is not authenticated, render the dedicated Auth landing view
   if (!isAuthenticated) {
@@ -92,8 +115,20 @@ function PitchMateApp() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-24 md:pb-8">
         {activeTab === 'matches' && (
           <MatchList
-            onOpenCreate={() => setIsCreateModalOpen(true)}
+            onOpenCreate={() => {
+              setSlotPrefillData(null);
+              setIsCreateModalOpen(true);
+            }}
             onOpenDetails={handleOpenMatchDetails}
+          />
+        )}
+
+        {activeTab === 'venues' && (
+          <VenuesView
+            onOrganizeMatchFromSlot={(slotData) => {
+              setSlotPrefillData(slotData);
+              setIsCreateModalOpen(true);
+            }}
           />
         )}
 
@@ -113,7 +148,10 @@ function PitchMateApp() {
         {activeTab === 'admin' && isSuperAdminEmail(currentUser?.email) && (
           <AdminPanel
             onOpenMatchDetails={handleOpenMatchDetails}
-            onOpenCreateMatch={() => setIsCreateModalOpen(true)}
+            onOpenCreateMatch={() => {
+              setSlotPrefillData(null);
+              setIsCreateModalOpen(true);
+            }}
           />
         )}
       </main>
@@ -121,7 +159,11 @@ function PitchMateApp() {
       {/* Persistent Modals */}
       <CreateMatchModal
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        initialVenueData={slotPrefillData}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          setSlotPrefillData(null);
+        }}
         onSuccess={(newMatchId) => {
           const created = matches.find((m) => m.id === newMatchId);
           if (created) setSelectedMatch(created);
@@ -158,6 +200,14 @@ function PitchMateApp() {
         onClose={() => setIsAvatarModalOpen(false)}
       />
 
+      {/* Floating System Push Notification Toast */}
+      <PushNotificationToast
+        onSelectMatch={(matchId) => {
+          const m = matches.find((x) => x.id === matchId);
+          if (m) handleOpenMatchDetails(m);
+        }}
+      />
+
       {/* Footer */}
       <footer className="mt-auto border-t border-[#E5B869]/25 bg-[#081813]/95 py-6 text-xs text-emerald-300/70">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -173,6 +223,15 @@ function PitchMateApp() {
               className="text-emerald-300/70 hover:text-[#F5D794] cursor-pointer transition-colors"
             >
               {t('nav.matches')}
+            </button>
+
+            <span className="text-[#E5B869]/40">•</span>
+
+            <button
+              onClick={() => setActiveTab('venues')}
+              className="text-emerald-300/70 hover:text-[#F5D794] cursor-pointer transition-colors"
+            >
+              {t('nav.venues')}
             </button>
 
             <span className="text-[#E5B869]/40">•</span>

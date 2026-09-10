@@ -17,8 +17,11 @@ import {
   getDefaultFormationForMatch,
   MatchGoal,
   MESSI_AVATAR_URL,
+  PartnerVenue,
+  VenueBookingSlot,
 } from '../types';
 import { INITIAL_MATCHES, INITIAL_USERS, INITIAL_DIRECT_MESSAGES, INITIAL_NOTIFICATIONS, INITIAL_ANNOUNCEMENTS } from './mockData';
+import { INITIAL_PARTNER_VENUES } from './mockVenues';
 import { SoundEffects } from './audioService';
 import { hashPassword, verifyPassword, generateSalt, sanitizeInput } from './security';
 import { balanceTeams } from './teamBalancer';
@@ -44,8 +47,14 @@ import {
   deleteNotificationFromFirestore,
   storePasswordResetOTPInFirestore,
   verifyPasswordResetOTPInFirestore,
-  clearPasswordResetOTPInFirestore
+  clearPasswordResetOTPInFirestore,
+  subscribeToVenues,
+  saveVenueToFirestore,
+  deleteVenueFromFirestore,
 } from './firestoreService';
+import { pushNotificationService } from './pushNotificationService';
+import { MOROCCAN_CITIES_LOCALIZED } from './translations';
+import { dispatchInAppPushToast } from '../components/PushNotificationToast';
 
 const STORAGE_KEYS = {
   MATCHES: 'pitchmate_matches_v2',
@@ -56,6 +65,7 @@ const STORAGE_KEYS = {
   ANNOUNCEMENTS: 'pitchmate_announcements_v2',
   DIRECT_MESSAGES: 'pitchmate_direct_messages_v2',
   NOTIFICATIONS: 'pitchmate_notifications_v2',
+  VENUES: 'pitchmate_venues_v2',
 };
 
 // Non-blocking asynchronous localStorage writer to keep 60/120fps UI completely fluid
@@ -250,10 +260,42 @@ interface PitchStoreContextType {
   markConversationAsRead: (otherUserId: string) => void;
   deleteDirectMessage: (messageId: string) => void;
 
-  // In-App Notifications
+  // In-App & Phone Push Notifications
   markNotificationAsRead: (notificationId: string) => void;
   clearAllNotifications: () => void;
   sendNotification: (notif: Omit<InAppNotification, 'id' | 'createdAt' | 'read'>) => void;
+  isPushNotificationSupported: boolean;
+  pushNotificationPermission: NotificationPermission;
+  requestPushPermission: () => Promise<boolean>;
+  sendTestPushNotification: () => Promise<boolean>;
+
+  // Partner Venues & Pitch Schedules
+  venues: PartnerVenue[];
+  addPartnerVenue: (
+    venueData: Omit<PartnerVenue, 'id' | 'createdAt' | 'updatedAt' | 'slots'>
+  ) => Promise<PartnerVenue>;
+  updatePartnerVenue: (venueId: string, updates: Partial<PartnerVenue>) => Promise<boolean>;
+  deletePartnerVenue: (venueId: string) => Promise<boolean>;
+  addVenueBookingSlot: (
+    venueId: string,
+    slotData: Omit<VenueBookingSlot, 'id' | 'venueId' | 'createdAt'>
+  ) => Promise<VenueBookingSlot>;
+  updateVenueBookingSlot: (
+    venueId: string,
+    slotId: string,
+    updates: Partial<VenueBookingSlot>
+  ) => Promise<boolean>;
+  deleteVenueBookingSlot: (venueId: string, slotId: string) => Promise<boolean>;
+  batchGenerateVenueSlots: (
+    venueId: string,
+    date: string,
+    startHour: number,
+    endHour: number,
+    slotDurationMinutes: number,
+    price: number,
+    format: string,
+    pitchNumber: string
+  ) => Promise<number>;
 
   resetToDefaultData: () => void;
 }
@@ -356,9 +398,25 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   });
 
+  const [venues, setVenues] = useState<PartnerVenue[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.VENUES);
+      return saved ? JSON.parse(saved) : INITIAL_PARTNER_VENUES;
+    } catch {
+      return INITIAL_PARTNER_VENUES;
+    }
+  });
+
   const [isLoading] = useState(false);
   const knownMsgIdsRef = useRef<Set<string>>(new Set());
+  const knownMatchIdsRef = useRef<Set<string>>(new Set());
+  const knownCompletedMatchIdsRef = useRef<Set<string>>(new Set());
   const currentUserIdRef = useRef(currentUserId);
+  const currentUserRef = useRef<UserProfile | null>(null);
+
+  const [pushPermission, setPushPermission] = useState<NotificationPermission>(() => {
+    return pushNotificationService.getPermission();
+  });
 
   useEffect(() => {
     currentUserIdRef.current = currentUserId;
@@ -393,6 +451,10 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     scheduleStorageSave(STORAGE_KEYS.NOTIFICATIONS, notifications);
   }, [notifications]);
 
+  useEffect(() => {
+    scheduleStorageSave(STORAGE_KEYS.VENUES, venues);
+  }, [venues]);
+
   // Current User Object
   const currentUser: UserProfile = useMemo(() => {
     const found = users.find((u) => u.id === currentUserId);
@@ -410,6 +472,10 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       createdAt: new Date().toISOString(),
     };
   }, [users, currentUserId]);
+
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
 
   const unreadMessagesCount = useMemo(() => {
     return directMessages.filter((m) => m.receiverId === currentUser.id && !m.read).length;
@@ -492,6 +558,97 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     // 2. Subscribe in Realtime to Firestore collections
     const unsubMatches = subscribeToMatches((cloudMatches) => {
       if (cloudMatches && cloudMatches.length > 0) {
+        // Detect newly arrived matches or match completion / voting start
+        if (knownMatchIdsRef.current.size > 0) {
+          const user = currentUserRef.current;
+          const userCity = user?.city;
+
+          cloudMatches.forEach((m) => {
+            // 1. Alert: New match in player's city
+            if (!knownMatchIdsRef.current.has(m.id)) {
+              const isMatchInUserCity =
+                userCity &&
+                m.location?.city &&
+                m.location.city.toLowerCase() === userCity.toLowerCase();
+              const isNotOrganizer = m.creatorId !== user?.id;
+
+              if (isMatchInUserCity && isNotOrganizer) {
+                const localizedCity =
+                  (m.location.city && MOROCCAN_CITIES_LOCALIZED[m.location.city]?.ar) || m.location.city || 'مدينتك';
+                const formattedTime = new Date(m.dateTime).toLocaleTimeString('fr-FR', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                });
+
+                pushNotificationService.sendPushNotification({
+                  title: `⚽ مباراة جديدة في ${localizedCity}!`,
+                  body: `تم تنظيم مباراة جديدة في ملعب ${m.location.venueName} (${m.format || '7v7'}). انضم الآن!`,
+                  linkId: m.id,
+                  tag: `new-match-${m.id}`,
+                });
+
+                dispatchInAppPushToast({
+                  id: `toast-match-${m.id}`,
+                  type: 'new_match',
+                  title: `⚽ مباراة جديدة في ${localizedCity}!`,
+                  message: `تم تنظيم مباراة جديدة في ${m.location.venueName} (${formattedTime}). الأماكن محدودة!`,
+                  linkId: m.id,
+                });
+
+                sendNotification({
+                  userId: user.id,
+                  title: `⚽ مباراة جديدة في مدينتك (${localizedCity})`,
+                  message: `تم تنظيم مباراة جديدة في ${m.location.venueName} بتوقيت ${formattedTime}. الأماكن محدودة!`,
+                  type: 'new_match',
+                  linkId: m.id,
+                });
+              }
+            }
+
+            // 2. Alert: Match completed & MOTM Voting started
+            if (
+              m.status === 'completed' &&
+              !knownCompletedMatchIdsRef.current.has(m.id)
+            ) {
+              const isPlayerInRoster =
+                m.roster && m.roster.some((r) => r.userId === user?.id);
+              if (isPlayerInRoster || m.creatorId === user?.id) {
+                pushNotificationService.sendPushNotification({
+                  title: '🏆 بدأ تصويت رجل المباراة (MOTM)!',
+                  body: `انتهت مباراة ${m.location?.venueName || m.title}! صوّت الآن لنجم المباراة والأفضل أداءً.`,
+                  linkId: m.id,
+                  tag: `motm-voting-${m.id}`,
+                });
+
+                dispatchInAppPushToast({
+                  id: `toast-voting-${m.id}`,
+                  type: 'voting_started',
+                  title: '🏆 بدأ تصويت رجل المباراة (MOTM)!',
+                  message: `صوّت الآن لأفضل لاعب في مباراة ${m.location?.venueName || m.title}. شارك في اختيار النجم!`,
+                  linkId: m.id,
+                });
+
+                sendNotification({
+                  userId: user.id,
+                  title: '🏆 بدأ تصويت رجل المباراة (MOTM)',
+                  message: `صوّت الآن لأفضل لاعب في مباراة ${m.location?.venueName || m.title}. شارك في اختيار النجم!`,
+                  type: 'voting_started',
+                  linkId: m.id,
+                });
+              }
+              knownCompletedMatchIdsRef.current.add(m.id);
+            }
+          });
+        }
+
+        // Keep track of known match IDs
+        cloudMatches.forEach((m) => {
+          knownMatchIdsRef.current.add(m.id);
+          if (m.status === 'completed') {
+            knownCompletedMatchIdsRef.current.add(m.id);
+          }
+        });
+
         setMatches((prev) => mergeMatchesWithTimestamps(prev, cloudMatches));
       }
     });
@@ -536,6 +693,12 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
     });
 
+    const unsubVenues = subscribeToVenues((cloudVenues) => {
+      if (cloudVenues && cloudVenues.length > 0) {
+        setVenues(cloudVenues);
+      }
+    });
+
     return () => {
       unsubMatches();
       unsubUsers();
@@ -543,6 +706,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       unsubComments();
       unsubMessages();
       unsubNotifications();
+      unsubVenues();
     };
   }, [mergeMatchesWithTimestamps]);
 
@@ -636,12 +800,48 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     setNotifications((prev) => [newNotif, ...prev.slice(0, 49)]);
 
+    saveNotificationToFirestore(newNotif).catch(() => {});
+
     fetch('/api/notifications', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newNotif),
     }).catch(() => {});
   }, []);
+
+  const isPushNotificationSupported = useMemo(() => {
+    return pushNotificationService.isSupported();
+  }, []);
+
+  const requestPushPermission = useCallback(async (): Promise<boolean> => {
+    const granted = await pushNotificationService.requestPermission();
+    setPushPermission(pushNotificationService.getPermission());
+    return granted;
+  }, []);
+
+  const sendTestPushNotification = useCallback(async (): Promise<boolean> => {
+    const success = await pushNotificationService.sendPushNotification({
+      title: '🔔 إشعار فوري من GoMatch FC',
+      body: 'الإشعارات الفورية تعمل بنجاح! ستصلك تنبيهات المباريات والتصويت فور حدوثها.',
+      tag: 'test-push-notification',
+    });
+
+    dispatchInAppPushToast({
+      id: `toast-test-${Date.now()}`,
+      type: 'general',
+      title: '🔔 تم تفعيل إشعارات الهاتف بنجاح',
+      message: 'إشعارات الهاتف الفورية تعمل بكفاءة! ستصلك تنبيهات فورية عند تنظيم مباراة في مدينتك أو انطلاق تصويت MOTM.',
+    });
+
+    sendNotification({
+      userId: currentUser.id,
+      title: '🔔 تم تفعيل إشعارات الهاتف بنجاح',
+      message: 'إشعارات هاتفك الفورية مفعلة الآن! ستصلك تنبيهات فورية عند تنظيم مباراة جديدة في مدينتك أو بدء تصويت رجل المباراة.',
+      type: 'system',
+    });
+
+    return success;
+  }, [currentUser.id, sendNotification]);
 
   const markNotificationAsRead = useCallback((notificationId: string) => {
     setNotifications((prev) =>
@@ -1603,6 +1803,23 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     // Realtime Firestore direct sync
     saveMatchToFirestore(newMatch);
 
+    // Broadcast in-app notification to all players in the same city
+    const matchCity = matchData.location?.city;
+    if (matchCity) {
+      const localizedCity = MOROCCAN_CITIES_LOCALIZED[matchCity]?.ar || matchCity;
+      users.forEach((u) => {
+        if (u.id !== currentUser.id && u.city && u.city.toLowerCase() === matchCity.toLowerCase()) {
+          sendNotification({
+            userId: u.id,
+            title: `⚽ مباراة جديدة في ${localizedCity}`,
+            message: `تم تنظيم مباراة جديدة في ملعب ${matchData.location.venueName} (${matchData.format}). احجز مقعدك الآن!`,
+            type: 'new_match',
+            linkId: newId,
+          });
+        }
+      });
+    }
+
     // Background server sync
     fetch('/api/matches', {
       method: 'POST',
@@ -2052,19 +2269,53 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     attendedPlayerIds: string[],
     noShowPlayerIds: string[]
   ): Promise<boolean> => {
+    let targetMatch: SoccerMatch | undefined;
+
     setMatches((prev) =>
-      prev.map((m) =>
-        m.id === matchId
-          ? {
-              ...m,
-              attendedPlayerIds,
-              noShowPlayerIds,
-              status: 'completed',
-              updatedAt: new Date().toISOString(),
-            }
-          : m
-      )
+      prev.map((m) => {
+        if (m.id === matchId) {
+          targetMatch = {
+            ...m,
+            attendedPlayerIds,
+            noShowPlayerIds,
+            status: 'completed',
+            updatedAt: new Date().toISOString(),
+          };
+          saveMatchToFirestore(targetMatch);
+          return targetMatch;
+        }
+        return m;
+      })
     );
+
+    // Alert participants: MOTM Voting is now open!
+    if (targetMatch) {
+      const matchVenue = (targetMatch as SoccerMatch).location?.venueName || (targetMatch as SoccerMatch).title || 'المباراة';
+      (targetMatch as SoccerMatch).roster.forEach((p) => {
+        sendNotification({
+          userId: p.userId,
+          title: '🏆 بدأ تصويت رجل المباراة (MOTM)',
+          message: `انتهت مباراتكم في ملعب ${matchVenue}. ادخل الآن وصوّت لنجم المباراة!`,
+          type: 'voting_started',
+          linkId: matchId,
+        });
+      });
+
+      pushNotificationService.sendPushNotification({
+        title: '🏆 بدأ تصويت رجل المباراة (MOTM)!',
+        body: `انتهت مباراة ${matchVenue}! صوّت الآن لنجم المباراة والأفضل أداءً.`,
+        linkId: matchId,
+        tag: `motm-voting-${matchId}`,
+      });
+
+      dispatchInAppPushToast({
+        id: `toast-voting-${matchId}`,
+        type: 'voting_started',
+        title: '🏆 بدأ تصويت رجل المباراة (MOTM)!',
+        message: `انتهت مباراة ${matchVenue}! صوّت الآن لنجم المباراة والأفضل أداءً.`,
+        linkId: matchId,
+      });
+    }
 
     fetch(`/api/matches/${matchId}/attendance`, {
       method: 'POST',
@@ -2073,7 +2324,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }).catch(() => {});
 
     return true;
-  }, [getAuthHeaders]);
+  }, [getAuthHeaders, sendNotification]);
 
   // Live Scoreboard & Goals
   const updateMatchScore = useCallback(async (matchId: string, green: number, blue: number): Promise<boolean> => {
@@ -2726,6 +2977,172 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return true;
   }, [getAuthHeaders]);
 
+  // Partner Venues & Pitch Schedules Handlers
+  const addPartnerVenue = useCallback(async (
+    venueData: Omit<PartnerVenue, 'id' | 'createdAt' | 'updatedAt' | 'slots'>
+  ): Promise<PartnerVenue> => {
+    const newVenue: PartnerVenue = {
+      ...venueData,
+      id: `venue-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      slots: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    setVenues((prev) => [newVenue, ...prev]);
+    saveVenueToFirestore(newVenue).catch(console.warn);
+    return newVenue;
+  }, []);
+
+  const updatePartnerVenue = useCallback(async (venueId: string, updates: Partial<PartnerVenue>): Promise<boolean> => {
+    let updatedVenue: PartnerVenue | null = null;
+    setVenues((prev) =>
+      prev.map((v) => {
+        if (v.id === venueId) {
+          updatedVenue = { ...v, ...updates, updatedAt: new Date().toISOString() };
+          return updatedVenue;
+        }
+        return v;
+      })
+    );
+
+    if (updatedVenue) {
+      saveVenueToFirestore(updatedVenue).catch(console.warn);
+    }
+    return true;
+  }, []);
+
+  const deletePartnerVenue = useCallback(async (venueId: string): Promise<boolean> => {
+    setVenues((prev) => prev.filter((v) => v.id !== venueId));
+    deleteVenueFromFirestore(venueId).catch(console.warn);
+    return true;
+  }, []);
+
+  const addVenueBookingSlot = useCallback(async (
+    venueId: string,
+    slotData: Omit<VenueBookingSlot, 'id' | 'venueId' | 'createdAt'>
+  ): Promise<VenueBookingSlot> => {
+    const newSlot: VenueBookingSlot = {
+      ...slotData,
+      id: `slot-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      venueId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    setVenues((prev) =>
+      prev.map((v) => {
+        if (v.id === venueId) {
+          const updated = {
+            ...v,
+            slots: [...(v.slots || []), newSlot],
+            updatedAt: new Date().toISOString(),
+          };
+          saveVenueToFirestore(updated).catch(console.warn);
+          return updated;
+        }
+        return v;
+      })
+    );
+
+    return newSlot;
+  }, []);
+
+  const updateVenueBookingSlot = useCallback(async (
+    venueId: string,
+    slotId: string,
+    updates: Partial<VenueBookingSlot>
+  ): Promise<boolean> => {
+    setVenues((prev) =>
+      prev.map((v) => {
+        if (v.id === venueId) {
+          const updatedSlots = (v.slots || []).map((s) =>
+            s.id === slotId ? { ...s, ...updates, updatedAt: new Date().toISOString() } : s
+          );
+          const updated = { ...v, slots: updatedSlots, updatedAt: new Date().toISOString() };
+          saveVenueToFirestore(updated).catch(console.warn);
+          return updated;
+        }
+        return v;
+      })
+    );
+    return true;
+  }, []);
+
+  const deleteVenueBookingSlot = useCallback(async (venueId: string, slotId: string): Promise<boolean> => {
+    setVenues((prev) =>
+      prev.map((v) => {
+        if (v.id === venueId) {
+          const updatedSlots = (v.slots || []).filter((s) => s.id !== slotId);
+          const updated = { ...v, slots: updatedSlots, updatedAt: new Date().toISOString() };
+          saveVenueToFirestore(updated).catch(console.warn);
+          return updated;
+        }
+        return v;
+      })
+    );
+    return true;
+  }, []);
+
+  const batchGenerateVenueSlots = useCallback(async (
+    venueId: string,
+    date: string,
+    startHour: number,
+    endHour: number,
+    slotDurationMinutes: number,
+    price: number,
+    format: string,
+    pitchNumber: string
+  ): Promise<number> => {
+    const generated: VenueBookingSlot[] = [];
+    let currentTotalMinutes = startHour * 60;
+    const endTotalMinutes = endHour * 60;
+
+    while (currentTotalMinutes + slotDurationMinutes <= endTotalMinutes) {
+      const sh = Math.floor(currentTotalMinutes / 60);
+      const sm = currentTotalMinutes % 60;
+      const eh = Math.floor((currentTotalMinutes + slotDurationMinutes) / 60);
+      const em = (currentTotalMinutes + slotDurationMinutes) % 60;
+
+      const startTime = `${String(sh).padStart(2, '0')}:${String(sm).padStart(2, '0')}`;
+      const endTime = `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+
+      generated.push({
+        id: `slot-${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${startTime.replace(':', '')}`,
+        venueId,
+        date,
+        startTime,
+        endTime,
+        format: format || '7v7',
+        pitchNumber: pitchNumber || 'الملعب الرئيسي',
+        priceTotal: price,
+        status: 'available',
+        createdAt: new Date().toISOString(),
+      });
+
+      currentTotalMinutes += slotDurationMinutes;
+    }
+
+    if (generated.length === 0) return 0;
+
+    setVenues((prev) =>
+      prev.map((v) => {
+        if (v.id === venueId) {
+          const updated = {
+            ...v,
+            slots: [...(v.slots || []), ...generated],
+            updatedAt: new Date().toISOString(),
+          };
+          saveVenueToFirestore(updated).catch(console.warn);
+          return updated;
+        }
+        return v;
+      })
+    );
+
+    return generated.length;
+  }, []);
+
   const resetToDefaultData = useCallback(() => {
     fetch('/api/reset-data', { method: 'POST', headers: getAuthHeaders() }).catch(() => {});
     setMatches(INITIAL_MATCHES);
@@ -2810,6 +3227,18 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     markNotificationAsRead,
     clearAllNotifications,
     sendNotification,
+    isPushNotificationSupported,
+    pushNotificationPermission: pushPermission,
+    requestPushPermission,
+    sendTestPushNotification,
+    venues,
+    addPartnerVenue,
+    updatePartnerVenue,
+    deletePartnerVenue,
+    addVenueBookingSlot,
+    updateVenueBookingSlot,
+    deleteVenueBookingSlot,
+    batchGenerateVenueSlots,
     resetToDefaultData,
   }), [
     matches,
@@ -2818,11 +3247,24 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     isAuthenticated,
     comments,
     announcements,
+    venues,
     directMessages,
     unreadMessagesCount,
     notifications,
     unreadNotificationsCount,
     isLoading,
+    isPushNotificationSupported,
+    pushPermission,
+    requestPushPermission,
+    sendTestPushNotification,
+    venues,
+    addPartnerVenue,
+    updatePartnerVenue,
+    deletePartnerVenue,
+    addVenueBookingSlot,
+    updateVenueBookingSlot,
+    deleteVenueBookingSlot,
+    batchGenerateVenueSlots,
     loginWithCredentials,
     sendVerificationOTP,
     verifyOTPCode,

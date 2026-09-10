@@ -17,13 +17,15 @@ import {
   MatchComment,
   AdminAnnouncement,
   DirectMessage,
-  InAppNotification
+  InAppNotification,
+  PartnerVenue
 } from '../types';
 import {
   INITIAL_MATCHES,
   INITIAL_USERS,
   INITIAL_ANNOUNCEMENTS
 } from './mockData';
+import { INITIAL_PARTNER_VENUES } from './mockVenues';
 
 // Collection references
 export const COLLECTIONS = {
@@ -34,6 +36,7 @@ export const COLLECTIONS = {
   DIRECT_MESSAGES: 'direct_messages',
   NOTIFICATIONS: 'notifications',
   PASSWORD_RESETS: 'password_resets',
+  VENUES: 'venues',
 };
 
 export enum OperationType {
@@ -667,3 +670,91 @@ export async function clearPasswordResetOTPInFirestore(email: string): Promise<v
     console.warn('[Firestore] Note clearing OTP from Firestore:', err);
   }
 }
+
+/**
+ * Real-time listener for partner venues and their booking schedules
+ */
+export function subscribeToVenues(onUpdate: (venues: PartnerVenue[]) => void): () => void {
+  try {
+    const venuesCol = collection(db, COLLECTIONS.VENUES);
+    const unsubscribe = onSnapshot(
+      venuesCol,
+      (snapshot) => {
+        if (snapshot.empty) {
+          // If Firestore venues collection is empty, populate with INITIAL_PARTNER_VENUES
+          seedInitialVenuesIfEmpty();
+          onUpdate(INITIAL_PARTNER_VENUES);
+          return;
+        }
+        const venues: PartnerVenue[] = [];
+        snapshot.forEach((d) => {
+          venues.push({ id: d.id, ...d.data() } as PartnerVenue);
+        });
+        onUpdate(venues);
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.LIST, COLLECTIONS.VENUES);
+        onUpdate(INITIAL_PARTNER_VENUES);
+      }
+    );
+    return unsubscribe;
+  } catch (err) {
+    console.warn('[Firestore] Note subscribing to venues:', err);
+    onUpdate(INITIAL_PARTNER_VENUES);
+    return () => {};
+  }
+}
+
+/**
+ * Seed initial venues if empty in Firestore
+ */
+export async function seedInitialVenuesIfEmpty(): Promise<void> {
+  try {
+    const ready = await checkFirestoreAvailable();
+    if (!ready) return;
+    const venuesCol = collection(db, COLLECTIONS.VENUES);
+    const snapshot = await getDocs(venuesCol);
+    if (snapshot.empty) {
+      const batch = writeBatch(db);
+      INITIAL_PARTNER_VENUES.forEach((v) => {
+        const ref = doc(db, COLLECTIONS.VENUES, v.id);
+        batch.set(ref, v);
+      });
+      await batch.commit();
+    }
+  } catch (err) {
+    console.warn('[Firestore] Note seeding initial venues:', err);
+  }
+}
+
+/**
+ * Save or update a partner venue (and its slots) in Firestore
+ */
+export async function saveVenueToFirestore(venue: PartnerVenue): Promise<void> {
+  try {
+    const ready = await checkFirestoreAvailable();
+    if (!ready) return;
+    const ref = doc(db, COLLECTIONS.VENUES, venue.id);
+    await setDoc(ref, {
+      ...venue,
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `${COLLECTIONS.VENUES}/${venue.id}`);
+  }
+}
+
+/**
+ * Delete a partner venue from Firestore
+ */
+export async function deleteVenueFromFirestore(venueId: string): Promise<void> {
+  try {
+    const ready = await checkFirestoreAvailable();
+    if (!ready) return;
+    const ref = doc(db, COLLECTIONS.VENUES, venueId);
+    await deleteDoc(ref);
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, `${COLLECTIONS.VENUES}/${venueId}`);
+  }
+}
+
