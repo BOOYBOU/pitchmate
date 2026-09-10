@@ -6,7 +6,6 @@ import {
   MessageSquare,
   User,
   Shield,
-  Building2,
 } from 'lucide-react';
 import { useLanguage } from '../lib/useLanguage';
 import { usePitchStore } from '../lib/usePitchStore';
@@ -62,30 +61,6 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           </div>
           <span className="text-[10px] font-bold mt-0.5 whitespace-nowrap">
             {language === 'ar' ? 'المباريات' : 'Matches'}
-          </span>
-        </button>
-
-        {/* Venues Tab */}
-        <button
-          type="button"
-          onClick={() => setActiveTab('venues')}
-          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer min-w-[56px] ${
-            activeTab === 'venues'
-              ? 'text-[#F5D794]'
-              : 'text-emerald-300/60 hover:text-emerald-100'
-          }`}
-        >
-          <div
-            className={`p-1 rounded-xl transition-all ${
-              activeTab === 'venues'
-                ? 'bg-[#0E4836] border border-[#E5B869]/40 text-[#F5D794] shadow-sm shadow-amber-950'
-                : ''
-            }`}
-          >
-            <Building2 className="w-5 h-5" />
-          </div>
-          <span className="text-[10px] font-bold mt-0.5 whitespace-nowrap">
-            {language === 'ar' ? 'الملاعب' : 'Pitches'}
           </span>
         </button>
 

@@ -17,7 +17,7 @@ export const TRANSLATIONS = {
     },
     nav: {
       matches: 'المباريات',
-      venues: 'شراكات الملاعب',
+      venues: 'الملاعب',
       leaderboard: 'لوحة الشرف و MOTM',
       profile: 'ملفي الشخصي',
       admin: 'لوحة التحكم الإدارية',
@@ -477,7 +477,7 @@ export const TRANSLATIONS = {
       remainingToCollect: 'المبلغ المتبقي لجمع كراء الملعب:',
     },
     venues: {
-      title: 'شراكات الملاعب والقاعات الرياضية',
+      title: 'الملاعب والقاعات الرياضية',
       subtitle: 'استكشف الملاعب الشريكة، احجز حصتك المفضلة، أو أضف جدول حجز ملعبك بكل سهولة',
       addVenueBtn: 'تسجيل مركب رياضي جديد',
       manageMyVenue: 'بوابة أصحاب الملاعب',
@@ -551,7 +551,7 @@ export const TRANSLATIONS = {
     },
     nav: {
       matches: 'Matches',
-      venues: 'Pitch Partners',
+      venues: 'Venues',
       leaderboard: 'Leaderboard & MOTM',
       profile: 'Profile',
       admin: 'Admin Center',
