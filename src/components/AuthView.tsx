@@ -1802,19 +1802,22 @@ export const AuthView: React.FC = () => {
         </div>
       </main>
 
-      {/* Clean Professional SaaS Footer */}
-      <footer className="relative z-20 w-full max-w-5xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400 border-t border-[#E5B869]/15">
+      {/* Clean Professional Brand & Copyright Footer */}
+      <footer className="relative z-20 w-full max-w-5xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs text-slate-400 border-t border-[#E5B869]/15">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse shadow-[0_0_8px_#10B981]" />
-          <ShieldCheck className="w-4 h-4 text-[#E5B869]" />
           <span className="font-medium text-slate-300">
-            {language === 'ar' ? 'منصة كرة القدم المغربية المعتمدة • تشفير سحابي 256-Bit آمن' : 'Official Moroccan Football Platform • 256-Bit Encrypted'}
+            {language === 'ar'
+              ? 'المنصة المغربية الأولى لمجتمع كرة القدم وتنظيم المباريات 🇲🇦'
+              : "Morocco's Premier Football & Pitch Booking Platform 🇲🇦"}
           </span>
         </div>
-        <div className="flex items-center gap-3 text-[11px] text-[#E5B869]/80 font-semibold">
-          <span>GoMatch PRO</span>
-          <span className="w-1 h-1 rounded-full bg-[#E5B869]/40" />
-          <span>v2.5 SaaS</span>
+        <div className="flex items-center gap-2 text-[11px] text-[#E5B869]/90 font-medium">
+          <span>
+            {language === 'ar'
+              ? `© ${new Date().getFullYear()} GoMatch FC • جميع الحقوق محفوظة`
+              : `© ${new Date().getFullYear()} GoMatch FC • All Rights Reserved`}
+          </span>
         </div>
       </footer>
     </div>
