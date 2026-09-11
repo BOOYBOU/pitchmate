@@ -18,6 +18,7 @@ export const MatchList: React.FC<MatchListProps> = ({ onOpenCreate, onOpenDetail
   const [onlyMyMatches, setOnlyMyMatches] = useState(false);
   const [dateFilter, setDateFilter] = useState<'all' | 'today'>('all');
   const [formatFilter, setFormatFilter] = useState<'all' | '5v5' | '7v7' | '11v11'>('all');
+  const [matchTimelineTab, setMatchTimelineTab] = useState<'upcoming' | 'past'>('upcoming');
 
   const now = new Date();
 
@@ -47,6 +48,17 @@ export const MatchList: React.FC<MatchListProps> = ({ onOpenCreate, onOpenDetail
       if (!inRoster && !inWaitlist) return false;
     }
 
+    // Timeline filter (Upcoming vs Past)
+    const matchTime = new Date(match.dateTime).getTime();
+    const isPast = matchTime < now.getTime() - 2 * 60 * 60 * 1000; // past if 2 hours after start
+
+    if (matchTimelineTab === 'upcoming' && isPast) {
+      return false;
+    }
+    if (matchTimelineTab === 'past' && !isPast) {
+      return false;
+    }
+
     // Date filter
     if (dateFilter === 'today') {
       const isToday = new Date(match.dateTime).toDateString() === now.toDateString();
@@ -55,6 +67,9 @@ export const MatchList: React.FC<MatchListProps> = ({ onOpenCreate, onOpenDetail
 
     return true;
   });
+
+  const pastMatchesCount = matches.filter((m) => new Date(m.dateTime).getTime() < now.getTime() - 2 * 60 * 60 * 1000).length;
+  const upcomingMatchesCount = matches.length - pastMatchesCount;
 
   const myJoinedCount = matches.filter(
     (m) => m.roster.some((p) => p.userId === currentUser.id) || m.waitlist.some((p) => p.userId === currentUser.id)
@@ -137,6 +152,45 @@ export const MatchList: React.FC<MatchListProps> = ({ onOpenCreate, onOpenDetail
             <div className="text-lg sm:text-2xl font-black font-display text-white">{myJoinedCount}</div>
             <div className="text-[10px] sm:text-xs text-slate-300 font-semibold mt-0.5">{t('matches.myMatches')}</div>
           </div>
+        </div>
+      </div>
+
+      {/* Timeline Tabs (Upcoming vs Expired / Past) */}
+      <div className="flex items-center justify-between border-b border-[#E5B869]/20 pb-1">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setMatchTimelineTab('upcoming')}
+            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center gap-2 cursor-pointer ${
+              matchTimelineTab === 'upcoming'
+                ? 'bg-[#0E4836] text-[#F5D794] border border-[#E5B869] shadow-md'
+                : 'text-slate-400 hover:text-white hover:bg-[#081813]'
+            }`}
+          >
+            <Activity className="w-4 h-4 text-[#E5B869]" />
+            <span>{language === 'ar' ? 'المباريات القادمة والمتاحة' : 'Upcoming Matches'}</span>
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-[#081813] text-[#F5D794] border border-[#E5B869]/40 font-bold">
+              {upcomingMatchesCount}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMatchTimelineTab('past')}
+            className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              matchTimelineTab === 'past'
+                ? 'bg-[#0E4836] text-[#F5D794] border border-[#E5B869] shadow-md'
+                : 'text-slate-400 hover:text-white hover:bg-[#081813]'
+            }`}
+          >
+            <Calendar className="w-4 h-4 text-slate-400" />
+            <span>{language === 'ar' ? 'أرشيف المباريات السابقة' : 'Past Matches Archive'}</span>
+            {pastMatchesCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-[#081813] text-slate-400 border border-slate-700 font-medium">
+                {pastMatchesCount}
+              </span>
+            )}
+          </button>
         </div>
       </div>
 

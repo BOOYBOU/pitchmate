@@ -24,6 +24,7 @@ import { SoccerMatch, isSuperAdminEmail } from './types';
 import { Shield, Sparkles, MapPin, Database, Heart } from 'lucide-react';
 import { pushNotificationService } from './lib/pushNotificationService';
 import { PushNotificationToast } from './components/PushNotificationToast';
+import { OfflineBanner } from './components/OfflineBanner';
 
 function PitchMateApp() {
   const {
@@ -55,6 +56,43 @@ function PitchMateApp() {
   const [isDirectMessagesOpen, setIsDirectMessagesOpen] = useState(false);
   const [directMessageRecipientId, setDirectMessageRecipientId] = useState<string | null>(null);
 
+  // Close conflicting modals when opening a new one to prevent stacking
+  const closeAllModals = () => {
+    setIsCreateModalOpen(false);
+    setIsAvatarModalOpen(false);
+    setSelectedMatch(null);
+    setIsNotificationsOpen(false);
+    setIsDirectMessagesOpen(false);
+  };
+
+  const handleOpenCreateMatch = (prefillData: typeof slotPrefillData = null) => {
+    closeAllModals();
+    setSlotPrefillData(prefillData);
+    setIsCreateModalOpen(true);
+  };
+
+  const handleOpenMatchDetails = (match: SoccerMatch) => {
+    closeAllModals();
+    const current = matches.find((m) => m.id === match.id) || match;
+    setSelectedMatch(current);
+  };
+
+  const handleOpenDirectMessageWithUser = (userId: string | null = null) => {
+    closeAllModals();
+    setDirectMessageRecipientId(userId);
+    setIsDirectMessagesOpen(true);
+  };
+
+  const handleOpenNotifications = () => {
+    closeAllModals();
+    setIsNotificationsOpen(true);
+  };
+
+  const handleOpenAvatarModal = () => {
+    closeAllModals();
+    setIsAvatarModalOpen(true);
+  };
+
   // Deep-link support: auto-open match if URL contains ?match=match_id or ?matchId=match_id
   React.useEffect(() => {
     if (typeof window !== 'undefined' && matches.length > 0 && !selectedMatch) {
@@ -85,50 +123,33 @@ function PitchMateApp() {
     return <AuthView />;
   }
 
-  const handleOpenMatchDetails = (match: SoccerMatch) => {
-    // Look up freshest match from store state
-    const current = matches.find((m) => m.id === match.id) || match;
-    setSelectedMatch(current);
-  };
-
-  const handleOpenDirectMessageWithUser = (userId: string) => {
-    setDirectMessageRecipientId(userId);
-    setIsDirectMessagesOpen(true);
-  };
-
   return (
     <div className="min-h-screen stadium-ambient-bg text-slate-100 flex flex-col selection:bg-[#E5B869]/30 selection:text-[#F5D794]">
+      {/* Real-time Network Connectivity Banner */}
+      <OfflineBanner />
+
       {/* App Header & Navigation */}
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        onOpenCreateMatch={() => setIsCreateModalOpen(true)}
-        onOpenChangeAvatar={() => setIsAvatarModalOpen(true)}
-        onOpenNotifications={() => setIsNotificationsOpen(true)}
-        onOpenDirectMessages={() => {
-          setDirectMessageRecipientId(null);
-          setIsDirectMessagesOpen(true);
-        }}
+        onOpenCreateMatch={() => handleOpenCreateMatch(null)}
+        onOpenChangeAvatar={handleOpenAvatarModal}
+        onOpenNotifications={handleOpenNotifications}
+        onOpenDirectMessages={() => handleOpenDirectMessageWithUser(null)}
       />
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-24 md:pb-8">
         {activeTab === 'matches' && (
           <MatchList
-            onOpenCreate={() => {
-              setSlotPrefillData(null);
-              setIsCreateModalOpen(true);
-            }}
+            onOpenCreate={() => handleOpenCreateMatch(null)}
             onOpenDetails={handleOpenMatchDetails}
           />
         )}
 
         {activeTab === 'venues' && (
           <VenuesView
-            onOrganizeMatchFromSlot={(slotData) => {
-              setSlotPrefillData(slotData);
-              setIsCreateModalOpen(true);
-            }}
+            onOrganizeMatchFromSlot={(slotData) => handleOpenCreateMatch(slotData)}
           />
         )}
 
@@ -148,15 +169,12 @@ function PitchMateApp() {
         {activeTab === 'admin' && isSuperAdminEmail(currentUser?.email) && (
           <AdminPanel
             onOpenMatchDetails={handleOpenMatchDetails}
-            onOpenCreateMatch={() => {
-              setSlotPrefillData(null);
-              setIsCreateModalOpen(true);
-            }}
+            onOpenCreateMatch={() => handleOpenCreateMatch(null)}
           />
         )}
       </main>
 
-      {/* Persistent Modals */}
+      {/* Coordinated Modals (Only one rendered/active at a time to prevent mobile stacking) */}
       <CreateMatchModal
         isOpen={isCreateModalOpen}
         initialVenueData={slotPrefillData}
@@ -166,7 +184,7 @@ function PitchMateApp() {
         }}
         onSuccess={(newMatchId) => {
           const created = matches.find((m) => m.id === newMatchId);
-          if (created) setSelectedMatch(created);
+          if (created) handleOpenMatchDetails(created);
         }}
       />
 
@@ -191,7 +209,7 @@ function PitchMateApp() {
         onClose={() => setIsNotificationsOpen(false)}
         onSelectMatch={(matchId) => {
           const match = matches.find((m) => m.id === matchId);
-          if (match) setSelectedMatch(match);
+          if (match) handleOpenMatchDetails(match);
         }}
       />
 
@@ -269,11 +287,8 @@ function PitchMateApp() {
       <MobileBottomNav
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        onOpenCreateMatch={() => setIsCreateModalOpen(true)}
-        onOpenDirectMessages={() => {
-          setDirectMessageRecipientId(null);
-          setIsDirectMessagesOpen(true);
-        }}
+        onOpenCreateMatch={() => handleOpenCreateMatch(null)}
+        onOpenDirectMessages={() => handleOpenDirectMessageWithUser(null)}
       />
     </div>
   );

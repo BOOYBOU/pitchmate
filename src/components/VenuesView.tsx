@@ -26,12 +26,16 @@ import {
   Trophy,
   SlidersHorizontal,
   Info,
+  Upload,
+  Image as ImageIcon,
+  Loader2,
 } from 'lucide-react';
 import { usePitchStore } from '../lib/usePitchStore';
 import { useLanguage } from '../lib/useLanguage';
 import { PartnerVenue, VenueBookingSlot } from '../types';
 import { MOROCCAN_CITIES_LOCALIZED } from '../lib/translations';
 import { getTodayDateString } from '../lib/mockVenues';
+import { compressImage } from '../lib/mediaStorage';
 
 interface VenuesViewProps {
   onOrganizeMatchFromSlot?: (venueData: {
@@ -99,6 +103,10 @@ export const VenuesView: React.FC<VenuesViewProps> = ({ onOrganizeMatchFromSlot 
     'night_lighting',
     'bibs_balls',
   ]);
+  const [newVenueImageUrl, setNewVenueImageUrl] = useState<string>('');
+  const [isUploadingVenueImage, setIsUploadingVenueImage] = useState(false);
+  const [venueImageError, setVenueImageError] = useState('');
+  const venueFileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Form State: Add/Edit Slot
   const [slotDate, setSlotDate] = useState(todayStr);
@@ -136,6 +144,40 @@ export const VenuesView: React.FC<VenuesViewProps> = ({ onOrganizeMatchFromSlot 
     });
   }, [venues, selectedCity, selectedTurf, selectedFormat, searchQuery]);
 
+  // Handle Venue Image Upload
+  const handleVenueImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setVenueImageError('يرجى اختيار ملف صورة صالح (JPG, PNG, WebP)');
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      setVenueImageError('حجم الصورة يجب أن لا يتعدى 8 ميغابايت');
+      return;
+    }
+
+    setVenueImageError('');
+    setIsUploadingVenueImage(true);
+
+    try {
+      const compressed = await compressImage(file, 1200, 800, 0.82);
+      setNewVenueImageUrl(compressed.dataUrl);
+    } catch {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          setNewVenueImageUrl(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsUploadingVenueImage(false);
+    }
+  };
+
   // Handle Add Venue Submit
   const handleCreateVenue = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -155,7 +197,7 @@ export const VenuesView: React.FC<VenuesViewProps> = ({ onOrganizeMatchFromSlot 
       turfType: newVenueTurf,
       hourlyRateMAD: Number(newVenueRate) || 500,
       pitchCount: 2,
-      imageUrl: '/images/stadiums/floodlit_night_arena.jpg',
+      imageUrl: newVenueImageUrl || '/images/stadiums/floodlit_night_arena.jpg',
       amenities: newVenueAmenities,
       openingTime: '09:00',
       closingTime: '01:00',
@@ -167,6 +209,8 @@ export const VenuesView: React.FC<VenuesViewProps> = ({ onOrganizeMatchFromSlot 
     setNewVenueName('');
     setNewVenueAddress('');
     setNewVenueMapsUrl('');
+    setNewVenueImageUrl('');
+    setVenueImageError('');
   };
 
   // Handle Save Slot Submit
@@ -926,6 +970,78 @@ export const VenuesView: React.FC<VenuesViewProps> = ({ onOrganizeMatchFromSlot 
                     className="w-full px-3.5 py-2.5 bg-[#061e16] border border-[#E5B869]/30 rounded-xl text-white focus:outline-none focus:border-[#E5B869]"
                   />
                 </div>
+              </div>
+
+              {/* Venue Image Upload */}
+              <div className="p-3 bg-[#061e16] border border-[#E5B869]/25 rounded-2xl space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-emerald-200 flex items-center gap-1.5">
+                    <ImageIcon className="w-4 h-4 text-[#E5B869]" />
+                    {language === 'ar' ? 'صورة الملعب / المركب الرياضي:' : 'Venue Photo:'}
+                  </label>
+                  <span className="text-[10px] text-emerald-400/60">
+                    {language === 'ar' ? 'اختياري (JPG, PNG, WebP)' : 'Optional'}
+                  </span>
+                </div>
+
+                <input
+                  type="file"
+                  ref={venueFileInputRef}
+                  onChange={handleVenueImageChange}
+                  accept="image/png,image/jpeg,image/webp,image/jpg"
+                  className="hidden"
+                />
+
+                {newVenueImageUrl ? (
+                  <div className="relative rounded-xl overflow-hidden border border-[#E5B869]/40 group h-36 w-full">
+                    <img
+                      src={newVenueImageUrl}
+                      alt="Venue Preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => venueFileInputRef.current?.click()}
+                        className="px-3 py-1.5 bg-[#0E4836] hover:bg-[#135d46] text-white rounded-lg text-xs font-bold border border-[#E5B869]/50 flex items-center gap-1 cursor-pointer"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        {language === 'ar' ? 'تغيير الصورة' : 'Change'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setNewVenueImageUrl('')}
+                        className="px-3 py-1.5 bg-red-900/80 hover:bg-red-800 text-white rounded-lg text-xs font-bold border border-red-500/50 flex items-center gap-1 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        {language === 'ar' ? 'حذف' : 'Remove'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => venueFileInputRef.current?.click()}
+                    disabled={isUploadingVenueImage}
+                    className="w-full py-3 px-4 border border-dashed border-[#E5B869]/40 hover:border-[#E5B869] bg-[#081813]/60 hover:bg-[#0E4836]/40 rounded-xl flex items-center justify-center gap-2 text-xs text-emerald-200 transition-colors cursor-pointer"
+                  >
+                    {isUploadingVenueImage ? (
+                      <>
+                        <Loader2 className="w-4 h-4 text-[#E5B869] animate-spin" />
+                        <span>{language === 'ar' ? 'جاري ضغط ومعالجة الصورة...' : 'Processing photo...'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 text-[#E5B869]" />
+                        <span>{language === 'ar' ? 'رفع صورة للملعب من جهازك' : 'Upload photo from your device'}</span>
+                      </>
+                    )}
+                  </button>
+                )}
+
+                {venueImageError && (
+                  <p className="text-[11px] text-red-400 font-medium">{venueImageError}</p>
+                )}
               </div>
 
               {/* Action Buttons */}

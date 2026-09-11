@@ -7,12 +7,9 @@ import {
   Phone,
   Mail,
   Sparkles,
-  RefreshCw,
-  Plus,
   ChevronRight,
   Camera,
   X,
-  Lock,
   Star,
   MapPin,
   Coins,
@@ -33,12 +30,8 @@ interface ProfileViewProps {
 export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) => {
   const {
     currentUser,
-    users,
     matches,
-    setCurrentUserById,
-    authenticateSuperAdmin,
     updateUserProfile,
-    createNewUserAccount,
     pushNotificationPermission,
     requestPushPermission,
     sendTestPushNotification,
@@ -58,17 +51,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
 
   // Avatar Modal State
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
-
-  // Super Admin Password Modal state
-  const [showAdminPassModal, setShowAdminPassModal] = useState(false);
-  const [adminPassInput, setAdminPassInput] = useState('');
-  const [adminPassError, setAdminPassError] = useState('');
-
-  // New account form
-  const [isAddingUser, setIsAddingUser] = useState(false);
-  const [newUserName, setNewUserName] = useState('');
-  const [newUserEmail, setNewUserEmail] = useState('');
-  const [newUserError, setNewUserError] = useState('');
 
   const isMustapha = isSuperAdminEmail(currentUser.email);
   const myMatches = matches.filter((m) => m.roster.some((p) => p.userId === currentUser.id));
@@ -90,233 +72,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
     setIsEditing(false);
   };
 
-  const handleCreateNewUser = (e: React.FormEvent) => {
-    e.preventDefault();
-    setNewUserError('');
-    if (!newUserName.trim() || !newUserEmail.trim()) return;
-
-    const emailClean = newUserEmail.trim().toLowerCase();
-    if (isSuperAdminEmail(emailClean)) {
-      setNewUserError(language === 'ar' ? 'حساب المشرف العام مسجل مسبقاً.' : 'The Super Admin account already exists.');
-      return;
-    }
-
-    createNewUserAccount(newUserName.trim(), emailClean);
-    setNewUserName('');
-    setNewUserEmail('');
-    setIsAddingUser(false);
-  };
-
-  const handleAdminAuthSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAdminPassError('');
-    const success = await authenticateSuperAdmin(adminPassInput);
-    if (success) {
-      const mustapha = users.find((u) => isSuperAdminEmail(u.email));
-      if (mustapha) {
-        setEditName(mustapha.name);
-        setEditPhone(mustapha.phone || '');
-        setEditAvatar(mustapha.avatarUrl);
-        setIsEditing(false);
-      }
-      setShowAdminPassModal(false);
-      setAdminPassInput('');
-    } else {
-      setAdminPassError(language === 'ar' ? 'كلمة المرور الرئيسية غير صحيحة.' : 'Incorrect Master Password.');
-    }
-  };
-
   return (
     <div id="profile-view-container" className="space-y-6 max-w-4xl mx-auto">
-      {/* Account Switcher Bar */}
-      <div className="bg-[#0A3A2A]/90 border border-[#E5B869]/25 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
-        <div className="flex items-center gap-2">
-          <RefreshCw className="w-4 h-4 text-[#E5B869]" />
-          <div>
-            <span className="text-xs font-bold text-white block">
-              {language === 'ar' ? 'تبديل الحساب النشط للتجربة' : 'Switch Active User Account'}
-            </span>
-            <span className="text-[11px] text-emerald-300/70">
-              {language === 'ar' ? 'تجربة أدوار اللاعبين المختلفة أو الدخول بحساب المشرف العام' : 'Test different player roles or login as Mustapha (Super Admin)'}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
-          {users.map((u) => {
-            const isSelected = u.id === currentUser.id;
-            const isUserAdmin = isSuperAdminEmail(u.email);
-            return (
-              <button
-                key={u.id}
-                type="button"
-                onClick={() => {
-                  if (isUserAdmin && !isSelected) {
-                    setShowAdminPassModal(true);
-                    setAdminPassError('');
-                    setAdminPassInput('');
-                    return;
-                  }
-                  setCurrentUserById(u.id);
-                  setEditName(u.name);
-                  setEditPhone(u.phone || '');
-                  setEditAvatar(u.avatarUrl);
-                  setEditCity(u.preferredCity || (language === 'ar' ? 'الدار البيضاء' : 'Casablanca'));
-                  setEditPosition(u.preferredPosition || 'MID');
-                  setIsEditing(false);
-                }}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border cursor-pointer ${
-                  isSelected
-                    ? 'bg-[#0E4836] border-[#E5B869] text-[#F5D794] shadow-sm'
-                    : 'bg-[#081813] border-[#E5B869]/20 text-emerald-200/80 hover:text-white hover:border-[#E5B869]/40'
-                }`}
-              >
-                <img
-                  src={u.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
-                  alt={u.name}
-                  className="w-4 h-4 rounded-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
-                <span>{u.name.split(' ')[0]}</span>
-                {isUserAdmin && (
-                  <span className="px-1 py-0.2 rounded text-[9px] bg-[#0E4836] text-[#F5D794] font-bold border border-[#E5B869]/40">
-                    {language === 'ar' ? 'مشرف' : 'Admin'}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-
-          <button
-            type="button"
-            onClick={() => setIsAddingUser(true)}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-[#0E4836] text-[#F5D794] border border-[#E5B869]/40 hover:bg-[#125842] transition-colors cursor-pointer"
-            title={language === 'ar' ? 'إنشاء حساب لاعب جديد' : 'Create new player account'}
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>{language === 'ar' ? 'جديد' : 'New'}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Super Admin Password Modal */}
-      {showAdminPassModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-sm bg-[#0A3A2A] border border-[#E5B869]/30 rounded-2xl p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Shield className="w-4 h-4 text-[#E5B869]" />
-                <h3 className="text-sm font-bold text-white">
-                  {language === 'ar' ? 'التحقق من هوية المشرف العام' : 'Super Admin Verification'}
-                </h3>
-              </div>
-              <button
-                onClick={() => setShowAdminPassModal(false)}
-                className="text-emerald-300/70 hover:text-white text-xs cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <p className="text-xs text-emerald-200">
-              {language === 'ar' ? (
-                <>
-                  يتطلب الوصول لحساب <span className="text-[#F5D794] font-mono font-semibold">{SUPER_ADMIN_EMAIL}</span> إدخال كلمة المرور الرئيسية.
-                </>
-              ) : (
-                <>
-                  Access to <span className="text-[#F5D794] font-mono font-semibold">{SUPER_ADMIN_EMAIL}</span> requires the Master Password.
-                </>
-              )}
-            </p>
-
-            <form onSubmit={handleAdminAuthSubmit} className="space-y-3 text-xs">
-              {adminPassError && (
-                <div className="p-2 rounded-lg bg-rose-950/80 border border-rose-500/50 text-rose-200 text-[11px] font-medium text-center">
-                  {adminPassError}
-                </div>
-              )}
-
-              <div className="relative">
-                <Lock className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-400/60" />
-                <input
-                  type="password"
-                  required
-                  autoFocus
-                  value={adminPassInput}
-                  onChange={(e) => setAdminPassInput(e.target.value)}
-                  placeholder={language === 'ar' ? 'كلمة المرور الرئيسية...' : 'Master Password...'}
-                  className="w-full pl-9 rtl:pl-3 rtl:pr-9 pr-3 py-2 bg-[#081813] border border-[#E5B869]/25 rounded-xl text-white placeholder-emerald-400/40 focus:outline-none focus:border-[#E5B869] focus:ring-1 focus:ring-[#E5B869]/40"
-                />
-              </div>
-
-              <div className="flex gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowAdminPassModal(false)}
-                  className="flex-1 py-2 bg-[#081813] hover:bg-[#0E4836] text-emerald-200 rounded-xl font-medium cursor-pointer border border-[#E5B869]/25"
-                >
-                  {t('common.cancel')}
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:opacity-90 text-slate-950 rounded-xl font-bold cursor-pointer shadow-md shadow-amber-950/40"
-                >
-                  {language === 'ar' ? 'تحقق ودخول' : 'Authenticate'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* New User Modal */}
-      {isAddingUser && (
-        <div className="p-4 bg-[#0A3A2A] border border-[#E5B869]/30 rounded-2xl space-y-3 animate-in fade-in shadow-lg">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#F5D794] uppercase tracking-wider">
-              {language === 'ar' ? 'تسجيل حساب لاعب جديد' : 'Register New Player Account'}
-            </span>
-            <button onClick={() => setIsAddingUser(false)} className="text-emerald-300/70 hover:text-white text-xs cursor-pointer">
-              {t('common.cancel')}
-            </button>
-          </div>
-
-          {newUserError && (
-            <div className="p-2 rounded-lg bg-rose-950/80 border border-rose-500/50 text-rose-200 text-xs font-medium">
-              {newUserError}
-            </div>
-          )}
-
-          <form onSubmit={handleCreateNewUser} className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-            <input
-              type="text"
-              required
-              placeholder={language === 'ar' ? 'الاسم الكامل (مثال: حكيم زياش)' : 'Full Name (e.g. Hakim Ziyech)'}
-              value={newUserName}
-              onChange={(e) => setNewUserName(e.target.value)}
-              className="px-3 py-2 bg-[#081813] border border-[#E5B869]/25 rounded-lg text-white placeholder-emerald-400/40 focus:outline-none focus:border-[#E5B869]"
-            />
-            <div className="flex gap-2">
-              <input
-                type="email"
-                required
-                placeholder={t('auth.email')}
-                value={newUserEmail}
-                onChange={(e) => setNewUserEmail(e.target.value)}
-                className="flex-1 px-3 py-2 bg-[#081813] border border-[#E5B869]/25 rounded-lg text-white placeholder-emerald-400/40 focus:outline-none focus:border-[#E5B869]"
-              />
-              <button
-                type="submit"
-                className="px-4 py-2 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:opacity-90 text-slate-950 rounded-lg font-bold cursor-pointer shadow-sm"
-              >
-                {language === 'ar' ? 'إنشاء الحساب' : 'Create'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
       {/* Main Profile Card */}
       <div className="bg-[#0A3A2A]/95 border border-[#E5B869]/30 rounded-3xl p-6 sm:p-8 space-y-6 shadow-xl relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
@@ -468,13 +225,22 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
               </div>
 
               <div>
-                <label className="block text-emerald-200 mb-1">{t('auth.avatarUpload')}</label>
-                <input
-                  type="text"
-                  value={editAvatar}
-                  onChange={(e) => setEditAvatar(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#0A3A2A] border border-[#E5B869]/25 rounded-lg text-white focus:outline-none focus:border-[#E5B869] text-xs"
-                />
+                <label className="block text-emerald-200 mb-1">{t('auth.avatarUpload', 'الصورة الشخصية')}</label>
+                <button
+                  type="button"
+                  onClick={() => setIsAvatarModalOpen(true)}
+                  className="w-full py-2 px-3 bg-[#0A3A2A] border border-[#E5B869]/25 hover:border-[#E5B869] rounded-lg text-emerald-200 hover:text-white flex items-center justify-between text-xs transition-colors cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    <img
+                      src={currentUser.avatarUrl || '/images/avatars/zidane.jpg'}
+                      alt="Avatar"
+                      className="w-5 h-5 rounded-md object-cover border border-[#E5B869]"
+                    />
+                    <span>{language === 'ar' ? 'تغيير الصورة الشخصية' : 'Change Profile Picture'}</span>
+                  </span>
+                  <Camera className="w-3.5 h-3.5 text-[#E5B869]" />
+                </button>
               </div>
             </div>
 

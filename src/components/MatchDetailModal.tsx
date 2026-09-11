@@ -36,13 +36,11 @@ import {
 import { SoccerMatch, TeamSide, isSuperAdminEmail, SUPER_ADMIN_EMAIL } from '../types';
 import { usePitchStore } from '../lib/usePitchStore';
 import { useLanguage } from '../lib/useLanguage';
-import { VoiceNoteRecorder, VoiceNotePlayer } from './VoiceNotes';
 import { getMatchMapUrl } from '../lib/mapUtils';
 import { TacticalPitchFormation } from './TacticalPitchFormation';
 import { ErrorBoundary } from './ErrorBoundary';
 import { MatchShareModal } from './MatchShareModal';
 import { LiveMatchClockManager } from './LiveMatchClockManager';
-import { CihPaymentTracker } from './CihPaymentTracker';
 import { MotmPostMatchVoting } from './MotmPostMatchVoting';
 import { getReputationTier } from '../lib/reliabilityEngine';
 import {
@@ -89,14 +87,13 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
     duplicateAsRecurringMatch,
     comments,
     addComment,
-    addVoiceComment,
     banUser,
     sendNotification,
   } = usePitchStore();
 
   const { t, formatMAD, formatMoroccoDate, isRTL, language } = useLanguage();
 
-  const [activeModalTab, setActiveModalTab] = useState<'overview' | 'live' | 'payments' | 'motm' | 'tactical' | 'attendance'>('overview');
+  const [activeModalTab, setActiveModalTab] = useState<'overview' | 'live' | 'motm' | 'tactical' | 'attendance'>('overview');
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [isActionLoading, setIsActionLoading] = useState(false);
@@ -198,10 +195,6 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
     if (!commentText.trim()) return;
     await addComment(match.id, commentText);
     setCommentText('');
-  };
-
-  const handleSendVoiceNote = async (audioUrl: string, durationSeconds: number) => {
-    await addVoiceComment(match.id, audioUrl, durationSeconds);
   };
 
   const handleDeleteMatch = async () => {
@@ -422,19 +415,6 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
             </button>
 
             <button
-              onClick={() => setActiveModalTab('payments')}
-              className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                activeModalTab === 'payments'
-                  ? 'bg-gradient-to-r from-[#F5D794] to-[#E5B869] text-slate-950 font-black shadow-md'
-                  : 'text-slate-300 hover:text-white hover:bg-[#0A2B20]'
-              }`}
-            >
-              <Coins className="w-3.5 h-3.5 text-[#E5B869]" />
-              <span className="sm:hidden">{language === 'ar' ? 'الدفع' : 'Payments'}</span>
-              <span className="hidden sm:inline">{language === 'ar' ? 'تتبع مدفوعات CIH' : 'CIH Payments (MAD)'}</span>
-            </button>
-
-            <button
               id="match-detail-motm-tab-btn"
               onClick={() => setActiveModalTab('motm')}
               className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
@@ -547,7 +527,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                           {language === 'ar' ? 'تقسيم تكلفة إيجار الملعب (درهم)' : 'Moroccan Pitch Cost Split (MAD)'}
                         </h3>
                         <p className="text-xs text-slate-300">
-                          {language === 'ar' ? 'تتبع الدفع نقداً بالملعب أو عبر CIH Bank أو التجاري وفا بنك أو كاش بلس' : 'Track cash on pitch, CIH Bank, Attijariwafa, or Wafacash payments'}
+                          {language === 'ar' ? 'دفع كاش في الملعب أو تحويل بنكي مباشر لحساب المنظم' : 'Cash on pitch or direct bank transfer to organizer'}
                         </p>
                       </div>
                     </div>
@@ -958,15 +938,6 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                           </div>
 
                           {comment.text && <p className="text-xs text-slate-200 pl-8 rtl:pr-8 rtl:pl-0 leading-relaxed">{comment.text}</p>}
-
-                          {comment.audioUrl && (
-                            <div className="pl-8 rtl:pr-8 rtl:pl-0 pt-1">
-                              <VoiceNotePlayer
-                                audioUrl={comment.audioUrl}
-                                durationSeconds={comment.audioDuration}
-                              />
-                            </div>
-                          )}
                         </div>
                       ))
                     )}
@@ -977,7 +948,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                       <input
                         id="match-comment-input"
                         type="text"
-                        placeholder={language === 'ar' ? 'اكتب رسالة للاعبين في التشكيلة...' : 'Post an update for the squad...'}
+                        placeholder={language === 'ar' ? 'اكتب رسالة سريعة للاعبين في التشكيلة...' : 'Post a quick update for the squad...'}
                         value={commentText}
                         onChange={(e) => setCommentText(e.target.value)}
                         className="flex-1 bg-[#06140F] border border-[#E5B869]/30 focus:border-[#E5B869] rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-400 focus:outline-none transition-colors"
@@ -986,14 +957,25 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                         type="submit"
                         disabled={!commentText.trim()}
                         className="p-2 rounded-xl bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:brightness-110 text-slate-950 font-black disabled:opacity-40 transition-colors cursor-pointer shadow-md"
+                        title={language === 'ar' ? 'إرسال رسالة' : 'Send message'}
                       >
                         <Send className="w-4 h-4" />
                       </button>
                     </form>
 
                     <div className="flex items-center justify-between text-xs text-slate-300 pt-1">
-                      <span className="text-[11px]">{language === 'ar' ? 'أو سجل رسالة صوتية للمباراة:' : 'Or record a voice message:'}</span>
-                      <VoiceNoteRecorder onSendAudio={handleSendVoiceNote} />
+                      <span className="text-[11px] text-emerald-300/80">
+                        {language === 'ar' ? 'تنسيق الحضور والتشكيلة مع اللاعبين:' : 'Coordinate match with players:'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsShareModalOpen(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-950/80 hover:bg-[#0E4836] border border-emerald-500/40 text-emerald-300 hover:text-white text-xs font-bold transition-colors cursor-pointer"
+                        title={language === 'ar' ? 'مشاركة في مجموعة واتساب' : 'Share to WhatsApp Group'}
+                      >
+                        <Share2 className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>{language === 'ar' ? 'مجموعة الواتساب' : 'WhatsApp Group'}</span>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1003,11 +985,6 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
             {/* TAB: LIVE MATCH CLOCK & SUBS */}
             {activeModalTab === 'live' && (
               <LiveMatchClockManager match={match} />
-            )}
-
-            {/* TAB: CIH BANK & PAYMENTS */}
-            {activeModalTab === 'payments' && (
-              <CihPaymentTracker match={match} />
             )}
 
             {/* TAB: MOTM VOTING */}

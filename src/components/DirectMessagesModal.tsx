@@ -24,7 +24,6 @@ import {
 } from 'lucide-react';
 import { UserProfile, DirectMessage, SUPER_ADMIN_EMAIL } from '../types';
 import { usePitchStore } from '../lib/usePitchStore';
-import { VoiceNoteRecorder, VoiceNotePlayer } from './VoiceNotes';
 import { mediaStorage } from '../lib/mediaStorage';
 
 interface DirectMessagesModalProps {
@@ -43,7 +42,6 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
     users,
     directMessages,
     sendDirectMessage,
-    sendDirectVoiceMessage,
     markConversationAsRead,
     deleteDirectMessage,
   } = usePitchStore();
@@ -138,11 +136,6 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
     setUrlInputText('');
 
     await sendDirectMessage(selectedUserId, textToSend, imageToSend);
-  };
-
-  const handleSendVoiceNote = async (audioUrl: string, durationSeconds: number) => {
-    if (!selectedUserId) return;
-    await sendDirectVoiceMessage(selectedUserId, audioUrl, durationSeconds);
   };
 
   const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -471,7 +464,7 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                         Start a direct conversation with {selectedUser.name}!
                       </p>
                       <p className="text-[11px] text-emerald-300/60 max-w-xs">
-                        Coordinate match timings, team bib colors, send voice notes, or launch a live voice call.
+                        Coordinate match timings, pitch locations, bib colors, or send fast updates.
                       </p>
                     </div>
                   ) : (
@@ -505,15 +498,6 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                                 : 'bg-[#0E4836] text-white border border-[#E5B869]/25 rounded-bl-none'
                             }`}
                           >
-                            {/* Voice Note Player */}
-                            {msg.audioUrl && (
-                              <VoiceNotePlayer
-                                audioUrl={msg.audioUrl}
-                                durationSeconds={msg.audioDuration}
-                                isSender={isMine}
-                              />
-                            )}
-
                             {/* Attached Image Thumbnail */}
                             {msg.imageUrl && (
                               <div className="relative rounded-xl overflow-hidden border border-black/20 bg-black/40 group/img">
@@ -717,12 +701,6 @@ export const DirectMessagesModal: React.FC<DirectMessagesModalProps> = ({
                     >
                       <ImageIcon className="w-4 h-4" />
                     </button>
-
-                    {/* Voice Note Recorder Button */}
-                    <VoiceNoteRecorder
-                      compact
-                      onSendVoiceNote={handleSendVoiceNote}
-                    />
 
                     {/* Text Input */}
                     <input
