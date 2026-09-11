@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Camera, Upload, X, Check, Sparkles, Loader2 } from 'lucide-react';
+import { Camera, Upload, X, Check, Sparkles, Loader2, Flame, Trophy } from 'lucide-react';
 import { usePitchStore } from '../lib/usePitchStore';
 import { useLanguage } from '../lib/useLanguage';
 import { mediaStorage } from '../lib/mediaStorage';
@@ -9,79 +9,101 @@ export interface FootballLegendAvatar {
   nameAr: string;
   nameEn: string;
   nickname: string;
+  celebrationAr: string;
+  celebrationEn: string;
   url: string;
 }
 
 export const FOOTBALL_LEGEND_AVATARS: FootballLegendAvatar[] = [
   {
-    id: 'zidane',
-    nameAr: 'زين الدين زيدان',
-    nameEn: 'Zinedine Zidane',
-    nickname: 'Zizou 🇫🇷',
-    url: '/images/avatars/zidane.jpg',
-  },
-  {
     id: 'messi',
     nameAr: 'ليونيل ميسي',
     nameEn: 'Lionel Messi',
     nickname: 'La Pulga 🇦🇷',
+    celebrationAr: 'رفع اليدين للسماء وصرخة المجد بعد التتويج التاريخي',
+    celebrationEn: 'Pointing to the heavens & glory victory celebration',
     url: '/images/avatars/messi.jpg',
   },
   {
     id: 'ronaldo',
     nameAr: 'كريستيانو رونالدو',
     nameEn: 'Cristiano Ronaldo',
-    nickname: 'CR7 🇵🇹',
+    nickname: 'CR7 ⚪ Real Madrid',
+    celebrationAr: 'صرخة الفوز الملكي واحتفال الـ Siuuu الأسطوري بقميص ريال مدريد',
+    celebrationEn: 'Iconic Real Madrid Siuuu victory roar celebration',
     url: '/images/avatars/ronaldo.jpg',
   },
   {
-    id: 'maradona',
-    nameAr: 'دييغو مارادونا',
-    nameEn: 'Diego Maradona',
-    nickname: 'El Pibe de Oro 🇦🇷',
-    url: '/images/avatars/maradona.jpg',
+    id: 'cruyff',
+    nameAr: 'يوهان كرويف',
+    nameEn: 'Johan Cruyff',
+    nickname: 'El Salvador 🇳🇱 #14',
+    celebrationAr: 'فرحة الكرة الشاملة ورفع الذراعين بالقميص الهولندي الأسطوري رقم 14',
+    celebrationEn: 'Total Football victory celebration in iconic #14 orange jersey',
+    url: '/images/avatars/cruyff.jpg',
+  },
+  {
+    id: 'zidane',
+    nameAr: 'زين الدين زيدان',
+    nameEn: 'Zinedine Zidane',
+    nickname: 'Zizou 🇫🇷',
+    celebrationAr: 'صرخة الفوز بالهدف الصاروخي في نهائي دوري الأبطال',
+    celebrationEn: 'Legendary Champions League volley goal celebration',
+    url: '/images/avatars/zidane.jpg',
   },
   {
     id: 'ronaldinho',
     nameAr: 'رونالدينيو',
     nameEn: 'Ronaldinho',
     nickname: 'O Bruxo 🇧🇷',
+    celebrationAr: 'ابتسامة السامبا وحركة الشاكا الشهيرة بعد سحر الهدف',
+    celebrationEn: 'Joyful samba shaka smile goal celebration',
     url: '/images/avatars/ronaldinho.jpg',
-  },
-  {
-    id: 'hakimi',
-    nameAr: 'أشرف حكيمي',
-    nameEn: 'Achraf Hakimi',
-    nickname: 'The Moroccan Flash 🇲🇦',
-    url: '/images/avatars/hakimi.jpg',
   },
   {
     id: 'mbappe',
     nameAr: 'كيليان مبابي',
     nameEn: 'Kylian Mbappé',
     nickname: 'Kyks 🇫🇷',
+    celebrationAr: 'احتفال الأذرع المتقاطعة الشهير والانزلاق على العشب',
+    celebrationEn: 'Iconic crossed-arms slide goal celebration',
     url: '/images/avatars/mbappe.jpg',
-  },
-  {
-    id: 'modric',
-    nameAr: 'لوكا مودريتش',
-    nameEn: 'Luka Modrić',
-    nickname: 'Maestro 🇭🇷',
-    url: '/images/avatars/modric.jpg',
   },
   {
     id: 'iniesta',
     nameAr: 'أندريس إنييستا',
     nameEn: 'Andrés Iniesta',
-    nickname: 'Don Andrés 🇪🇸',
+    nickname: 'Don Andrés 🔵🔴',
+    celebrationAr: 'فرحة هدف المجد لبرشلونة وفتح الذراعين في الكامب نو',
+    celebrationEn: 'Legendary FC Barcelona midfield goal celebration',
     url: '/images/avatars/iniesta.jpg',
+  },
+  {
+    id: 'maradona',
+    nameAr: 'دييغو مارادونا',
+    nameEn: 'Diego Maradona',
+    nickname: 'El Pibe de Oro 🇦🇷',
+    celebrationAr: 'صرخة الجنون والفرحة الكروية الأسطورية مونديال 1986',
+    celebrationEn: 'Legendary 1986 World Cup ecstatic goal celebration',
+    url: '/images/avatars/maradona.jpg',
   },
   {
     id: 'neymar',
     nameAr: 'نيمار جونيور',
     nameEn: 'Neymar Jr',
     nickname: 'Ney 🇧🇷',
+    celebrationAr: 'حركة الوجه المرحة واحتفال الهدف البرازيلي الاستعراضي',
+    celebrationEn: 'Playful face gesture & Brazil goal celebration',
     url: '/images/avatars/neymar.jpg',
+  },
+  {
+    id: 'modric',
+    nameAr: 'لوكا مودريتش',
+    nameEn: 'Luka Modrić',
+    nickname: 'Maestro 🇭🇷',
+    celebrationAr: 'صرخة الفرحة وانزلاق الركبة الملحمي مع كرواتيا',
+    celebrationEn: 'Emotional knee-slide victory roar',
+    url: '/images/avatars/modric.jpg',
   },
 ];
 
@@ -176,8 +198,8 @@ export const ChangeAvatarModal: React.FC<ChangeAvatarModalProps> = ({ isOpen, on
               </h3>
               <p className="text-xs text-emerald-300/70">
                 {language === 'ar'
-                  ? 'اختر أسطورة كروية جاهزة أو ارفع صورتك من جهازك'
-                  : 'Choose a football legend avatar or upload from your device'}
+                  ? 'اختر لقطة احتفال أسطورية بالهدف (بدقة 8K) أو ارفع صورتك الخاصة'
+                  : 'Choose an iconic goal celebration avatar (8K) or upload your own photo'}
               </p>
             </div>
           </div>
@@ -193,15 +215,15 @@ export const ChangeAvatarModal: React.FC<ChangeAvatarModalProps> = ({ isOpen, on
         {/* Live Preview */}
         <div className="flex items-center gap-4 p-3.5 bg-[#081813] border border-[#E5B869]/25 rounded-2xl">
           <img
-            src={avatarPreview || '/images/avatars/zidane.jpg'}
+            src={avatarPreview || '/images/avatars/messi.jpg'}
             alt="Preview"
             className="w-16 h-16 rounded-2xl object-cover border-2 border-[#E5B869] shadow-md shrink-0"
             onError={(e) => {
-              (e.target as HTMLImageElement).src = '/images/avatars/zidane.jpg';
+              (e.target as HTMLImageElement).src = '/images/avatars/messi.jpg';
             }}
             referrerPolicy="no-referrer"
           />
-          <div className="space-y-1 min-w-0">
+          <div className="space-y-1.5 min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-bold text-white block truncate">{currentUser.name}</span>
               {selectedLegend && (
@@ -211,26 +233,26 @@ export const ChangeAvatarModal: React.FC<ChangeAvatarModalProps> = ({ isOpen, on
                 </span>
               )}
             </div>
-            <span className="text-[11px] text-emerald-300/70 block">
-              {language === 'ar'
-                ? 'تظهر في بطاقة اللاعب، تشكيلات المباريات، والتعليقات الحية.'
-                : 'Visible in player card, match formations, and live chat.'}
-            </span>
+
+            {selectedLegend ? (
+              <div className="flex items-center gap-1.5 text-[11px] font-medium text-amber-300/90 bg-[#0E4836]/60 px-2.5 py-1 rounded-xl border border-[#E5B869]/20">
+                <Flame className="w-3.5 h-3.5 text-[#E5B869] shrink-0" />
+                <span className="truncate">
+                  {language === 'ar' ? selectedLegend.celebrationAr : selectedLegend.celebrationEn}
+                </span>
+              </div>
+            ) : (
+              <span className="text-[11px] text-emerald-300/70 block">
+                {language === 'ar'
+                  ? 'تظهر في بطاقة اللاعب، تشكيلات المباريات، والتعليقات الحية.'
+                  : 'Visible in player card, match formations, and live chat.'}
+              </span>
+            )}
           </div>
         </div>
 
         {/* 10 Football Legends Selection */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="block text-xs font-bold uppercase tracking-wider text-emerald-200 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#E5B869]" />
-              {language === 'ar' ? 'اختر شخصية جاهزة (10 أساطير كرة القدم):' : 'Choose Ready-Made Legend (10 Football Icons):'}
-            </label>
-            <span className="text-[10px] text-emerald-300/60">
-              {language === 'ar' ? 'صور احترافية جاهزة' : 'Pro Quality'}
-            </span>
-          </div>
-
+        <div className="space-y-2.5">
           <div className="grid grid-cols-5 gap-2 sm:gap-2.5">
             {FOOTBALL_LEGEND_AVATARS.map((legend) => {
               const isSelected = avatarPreview === legend.url || avatarPreview.includes(legend.id);
@@ -244,22 +266,30 @@ export const ChangeAvatarModal: React.FC<ChangeAvatarModalProps> = ({ isOpen, on
                   }}
                   className={`group relative flex flex-col items-center rounded-2xl p-1.5 border transition-all cursor-pointer text-center ${
                     isSelected
-                      ? 'bg-[#0E4836] border-[#E5B869] ring-2 ring-[#E5B869]/50 shadow-lg scale-102'
+                      ? 'bg-[#0E4836] border-[#E5B869] ring-2 ring-[#E5B869]/60 shadow-xl shadow-amber-950/40 scale-[1.03]'
                       : 'bg-[#081813]/80 border-[#E5B869]/15 hover:border-[#E5B869]/60 hover:bg-[#0E4836]/40'
                   }`}
-                  title={`${legend.nameAr} - ${legend.nickname}`}
+                  title={`${language === 'ar' ? legend.nameAr : legend.nameEn} - ${
+                    language === 'ar' ? legend.celebrationAr : legend.celebrationEn
+                  }`}
                 >
-                  <div className="relative w-full aspect-square rounded-xl overflow-hidden mb-1">
+                  <div className="relative w-full aspect-square rounded-xl overflow-hidden mb-1 shadow-sm">
                     <img
                       src={legend.url}
                       alt={legend.nameEn}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                      className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-300"
                       referrerPolicy="no-referrer"
                     />
-                    {isSelected && (
-                      <div className="absolute inset-0 bg-[#E5B869]/20 flex items-center justify-center">
-                        <div className="w-5 h-5 rounded-full bg-[#E5B869] text-slate-950 flex items-center justify-center shadow-md">
+                    {isSelected ? (
+                      <div className="absolute inset-0 bg-[#E5B869]/25 flex items-center justify-center">
+                        <div className="w-5 h-5 rounded-full bg-[#E5B869] text-slate-950 flex items-center justify-center shadow-lg">
                           <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="p-0.5 rounded-md bg-black/60 text-[#E5B869]">
+                          <Flame className="w-2.5 h-2.5" />
                         </div>
                       </div>
                     )}

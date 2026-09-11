@@ -80,7 +80,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-start">
             <div className="relative group">
               <img
-                src={currentUser.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'}
+                src={currentUser.avatarUrl || '/images/avatars/messi.jpg'}
                 alt={currentUser.name}
                 className="w-24 h-24 rounded-2xl object-cover border-2 border-[#E5B869] shadow-xl shadow-black/40 transition-transform group-hover:scale-[1.02]"
                 referrerPolicy="no-referrer"
@@ -233,7 +233,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ onOpenMatchDetails }) 
                 >
                   <span className="flex items-center gap-2">
                     <img
-                      src={currentUser.avatarUrl || '/images/avatars/zidane.jpg'}
+                      src={currentUser.avatarUrl || '/images/avatars/messi.jpg'}
                       alt="Avatar"
                       className="w-5 h-5 rounded-md object-cover border border-[#E5B869]"
                     />
