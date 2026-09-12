@@ -1367,7 +1367,7 @@ async function startServer() {
   });
 
   // Google Sign-In & Authentication Route
-  app.post('/api/users/google-auth', (req, res) => {
+  app.post('/api/users/google-auth', async (req, res) => {
     const { uid, name, email, avatarUrl, city, action } = req.body;
     const cleanEmail = (email || '').trim().toLowerCase();
     const cleanName = (name || '').trim() || 'Google Player';
@@ -1379,8 +1379,23 @@ async function startServer() {
     const isMustapha = isSuperAdminEmail(cleanEmail);
     let existingUser = db.users.find((u) => u.email.toLowerCase() === cleanEmail);
 
+    // If not found in local db, check Firestore
+    if (!existingUser && serverFirestoreDb) {
+      try {
+        const existCheck = await checkUserExistsByEmail(cleanEmail);
+        if (existCheck.exists && existCheck.user) {
+          existingUser = existCheck.user;
+          if (!db.users.some((u) => u.id === existingUser.id)) {
+            db.users.push(existingUser);
+          }
+        }
+      } catch (err) {
+        console.warn('[Server Google Auth] Firestore existence check warning:', err);
+      }
+    }
+
     // If attempting to SIGN UP with an already existing account
-    if (action === 'signup' && existingUser) {
+    if (action === 'signup' && (existingUser || isMustapha)) {
       return res.status(409).json({
         success: false,
         code: 'USER_EXISTS',

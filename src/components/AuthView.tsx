@@ -18,6 +18,7 @@ import {
   RefreshCw,
   Check,
   LogIn,
+  UserPlus,
   MapPin,
   Activity
 } from 'lucide-react';
@@ -919,27 +920,43 @@ export const AuthView: React.FC = () => {
                     <motion.div
                       initial={{ opacity: 0, y: -6 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className={`p-3 rounded-xl flex items-start gap-2.5 text-xs ${
+                      className={`p-3 rounded-xl flex flex-col gap-2 text-xs ${
                         isPendingError
                           ? 'bg-amber-500/10 border border-amber-500/20 text-amber-200'
                           : 'bg-rose-500/10 border border-rose-500/20 text-rose-200'
                       }`}
                     >
-                      {isPendingError ? (
-                        <Clock className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
-                      ) : (
-                        <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
-                      )}
-                      <div className="space-y-1 text-start">
-                        <span className="font-semibold block leading-snug">{signInError}</span>
-                        {isPendingError && (
-                          <span className="text-[11px] text-amber-300 block">
-                            {language === 'ar'
-                              ? 'حسابك مسجل وينتظر موافقة المشرف. سيتم التفعيل قريباً.'
-                              : 'Your account is under review by administrator.'}
-                          </span>
+                      <div className="flex items-start gap-2.5">
+                        {isPendingError ? (
+                          <Clock className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
+                        ) : (
+                          <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
                         )}
+                        <div className="space-y-1 text-start">
+                          <span className="font-semibold block leading-snug">{signInError}</span>
+                          {isPendingError && (
+                            <span className="text-[11px] text-amber-300 block">
+                              {language === 'ar'
+                                ? 'حسابك مسجل وينتظر موافقة المشرف. سيتم التفعيل قريباً.'
+                                : 'Your account is under review by administrator.'}
+                            </span>
+                          )}
+                        </div>
                       </div>
+                      {(signInError.includes('غير مسجل') || signInError.includes('not registered') || signInError.includes('إنشاء حساب')) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSignUpEmail(signInEmail);
+                            setMode('signup');
+                            setSignInError('');
+                          }}
+                          className="self-start px-2.5 py-1 rounded-lg bg-[#241A0B] hover:bg-[#332510] border border-[#E5B869]/40 text-[#F5D794] text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer mt-1"
+                        >
+                          <UserPlus className="w-3.5 h-3.5 text-[#E5B869]" />
+                          <span>{language === 'ar' ? 'التوجه إلى إنشاء حساب جديد' : 'Go to Create Account'}</span>
+                        </button>
+                      )}
                     </motion.div>
                   )}
 

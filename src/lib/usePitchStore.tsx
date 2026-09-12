@@ -1505,9 +1505,49 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
 
       const isMustapha = isSuperAdminEmail(gEmail);
-      const existingUser = users.find((u) => u.email.toLowerCase() === gEmail);
+      let existingUser = users.find((u) => u.email.toLowerCase() === gEmail);
 
-      // If user already exists:
+      // Verify with backend/cloud state if user is not in current client memory
+      if (!existingUser) {
+        try {
+          const syncRes = await fetch('/api/sync/all');
+          if (syncRes.ok) {
+            const syncData = await syncRes.json();
+            if (Array.isArray(syncData.users)) {
+              const matchedCloudUser = syncData.users.find((u: any) => u.email.toLowerCase() === gEmail);
+              if (matchedCloudUser) {
+                existingUser = matchedCloudUser;
+                setUsers((prev) => {
+                  const exists = prev.some((u) => u.id === matchedCloudUser.id);
+                  return exists ? prev : [matchedCloudUser, ...prev];
+                });
+              }
+            }
+          }
+        } catch {
+          // fallback to current local state
+        }
+      }
+
+      // CASE 1: User is on SIGN UP tab, but the Google account already exists in the app
+      if (action === 'signup' && (existingUser || isMustapha)) {
+        return {
+          success: false,
+          code: 'USER_EXISTS',
+          error: 'هذا الحساب مسجل بالفعل مسبقاً في التطبيق. يرجى التوجه إلى خانة تسجيل الدخول والمتابعة بحسابك.',
+        };
+      }
+
+      // CASE 2: User is on SIGN IN tab, but the Google account does NOT exist in the app
+      if (action === 'signin' && !existingUser && !isMustapha) {
+        return {
+          success: false,
+          code: 'USER_NOT_FOUND',
+          error: 'هذا الحساب غير مسجل في التطبيق بعد. يرجى التوجه إلى خانة إنشاء الحساب أولاً.',
+        };
+      }
+
+      // CASE 3: User is on SIGN IN tab and the account exists
       if (existingUser) {
         if (existingUser.isBanned) {
           return {
@@ -1544,10 +1584,23 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const token = `pitchmate_token_${updatedUser.id}_${Date.now()}`;
         localStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
         localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, updatedUser.id);
+
+        fetch('/api/users/google-auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            uid: gUid,
+            name: gName,
+            email: gEmail,
+            avatarUrl: updatedUser.avatarUrl,
+            action: 'signin',
+          }),
+        }).catch(() => {});
+
         return { success: true, pendingApproval: false, user: updatedUser };
       }
 
-      // If user is brand new:
+      // CASE 4: User is on SIGN UP tab and the account is brand new -> create account
       const newGoogleUser: UserProfile = {
         id: isMustapha ? 'user_mustapha' : `user_g_${gUid}`,
         name: gName,
@@ -1586,7 +1639,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           name: gName,
           email: gEmail,
           avatarUrl: newGoogleUser.avatarUrl,
-          action: action,
+          action: 'signup',
         }),
       }).catch(() => {});
 
