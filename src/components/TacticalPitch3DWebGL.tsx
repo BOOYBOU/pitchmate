@@ -10,6 +10,9 @@ import {
   generateDynamicTacticalSlots,
 } from '../lib/tacticalFormations';
 import { usePitchStore } from '../lib/usePitchStore';
+import { useLanguage } from '../lib/useLanguage';
+import { TacticalDrawingCanvas } from './TacticalDrawingCanvas';
+import { create3DPlayerFigure, create3DSoccerBall } from './realisticPlayerModel';
 import {
   Rotate3d,
   Layers,
@@ -25,6 +28,8 @@ import {
   AlertCircle,
   Users,
   Check,
+  PenTool,
+  ChevronDown,
 } from 'lucide-react';
 
 export interface TacticalPitch3DWebGLProps {
@@ -37,6 +42,192 @@ export interface TacticalPitch3DWebGLProps {
   onSelfClaimSlot?: (slot: SlotDefinition) => void;
   selectedPlayerId?: string | null;
   onSelectPlayer?: (player: any) => void;
+  initialDrawingMode?: boolean;
+}
+
+export type TurfMowingPattern = 'checkerboard' | 'stripes' | 'concentric';
+
+// Ultra-realistic Procedural Grass & Pitch Markings Generator
+function generateRealisticPitchCanvas(pattern: TurfMowingPattern = 'checkerboard'): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = 2048;
+  canvas.height = 3072;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return canvas;
+
+  const cw = canvas.width;
+  const ch = canvas.height;
+
+  // 1. Lush natural grass base gradient
+  const baseGrad = ctx.createRadialGradient(cw / 2, ch / 2, 180, cw / 2, ch / 2, ch * 0.9);
+  baseGrad.addColorStop(0, '#166534');
+  baseGrad.addColorStop(0.45, '#15803d');
+  baseGrad.addColorStop(0.8, '#14532d');
+  baseGrad.addColorStop(1, '#0f3a1e');
+  ctx.fillStyle = baseGrad;
+  ctx.fillRect(0, 0, cw, ch);
+
+  // 2. Realistic Mowing Patterns (Premier League Style Turf Cuts)
+  if (pattern === 'stripes') {
+    const stripeCount = 24;
+    const stripeH = ch / stripeCount;
+    for (let i = 0; i < stripeCount; i++) {
+      const isLight = i % 2 === 0;
+      ctx.fillStyle = isLight ? 'rgba(34, 197, 94, 0.16)' : 'rgba(5, 46, 22, 0.18)';
+      ctx.fillRect(0, i * stripeH, cw, stripeH);
+
+      // Micro grass mowing direction edge
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+      ctx.fillRect(0, i * stripeH + stripeH - 3, cw, 3);
+    }
+  } else if (pattern === 'checkerboard') {
+    const cols = 12;
+    const rows = 20;
+    const cellW = cw / cols;
+    const cellH = ch / rows;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const isLight = (r + c) % 2 === 0;
+        ctx.fillStyle = isLight ? 'rgba(34, 197, 94, 0.15)' : 'rgba(5, 46, 22, 0.16)';
+        ctx.fillRect(c * cellW, r * cellH, cellW, cellH);
+
+        // Directional turf sheen
+        if (isLight) {
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.02)';
+          ctx.fillRect(c * cellW, r * cellH, cellW, 3);
+        }
+      }
+    }
+  } else if (pattern === 'concentric') {
+    const maxR = ch * 0.72;
+    const ringW = 96;
+    for (let radius = maxR; radius > 0; radius -= ringW) {
+      const isLight = Math.floor(radius / ringW) % 2 === 0;
+      ctx.beginPath();
+      ctx.arc(cw / 2, ch / 2, radius, 0, Math.PI * 2);
+      ctx.fillStyle = isLight ? 'rgba(34, 197, 94, 0.14)' : 'rgba(5, 46, 22, 0.15)';
+      ctx.fill();
+    }
+  }
+
+  // 3. High-density Grass Blade Noise (Realistic grass fibers texture)
+  for (let n = 0; n < 36000; n++) {
+    const nx = Math.random() * cw;
+    const ny = Math.random() * ch;
+    const rand = Math.random();
+    if (rand > 0.7) {
+      ctx.fillStyle = 'rgba(74, 222, 128, 0.05)'; // Bright grass tip
+    } else if (rand > 0.35) {
+      ctx.fillStyle = 'rgba(22, 101, 52, 0.06)'; // Deep blade body
+    } else {
+      ctx.fillStyle = 'rgba(0, 20, 10, 0.05)'; // Soil root shadow
+    }
+    ctx.fillRect(nx, ny, 2 + Math.random() * 2, 4 + Math.random() * 5);
+  }
+
+  // 4. Authentic Pitch Markings & Wear Patches
+  const padX = 140;
+  const padY = 160;
+  const fieldW = cw - padX * 2;
+  const fieldH = ch - padY * 2;
+  const penBoxW = fieldW * 0.56;
+  const penBoxH = fieldH * 0.2;
+
+  // Goalmouth & penalty spot natural grass wear
+  const drawWearPatch = (cx: number, cy: number, rx: number, ry: number, alpha: number) => {
+    const wearGrad = ctx.createRadialGradient(cx, cy, 4, cx, cy, Math.max(rx, ry));
+    wearGrad.addColorStop(0, `rgba(146, 100, 52, ${alpha * 0.28})`);
+    wearGrad.addColorStop(0.5, `rgba(110, 78, 41, ${alpha * 0.14})`);
+    wearGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = wearGrad;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+  };
+
+  // North penalty box wear
+  drawWearPatch(cw / 2, padY + 32, 170, 52, 0.75);
+  drawWearPatch(cw / 2, padY + penBoxH * 0.65, 48, 32, 0.6);
+
+  // South penalty box wear
+  drawWearPatch(cw / 2, padY + fieldH - 32, 170, 52, 0.75);
+  drawWearPatch(cw / 2, padY + fieldH - penBoxH * 0.65, 48, 32, 0.6);
+
+  // Kickoff circle wear
+  drawWearPatch(cw / 2, ch / 2, 65, 45, 0.45);
+
+  // 5. White Chalk Markings with Soft Edge Glow
+  ctx.save();
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.lineWidth = 14;
+  ctx.shadowColor = 'rgba(255, 255, 255, 0.35)';
+  ctx.shadowBlur = 5;
+
+  // Boundary touchlines & goal lines
+  ctx.strokeRect(padX, padY, fieldW, fieldH);
+
+  // Halfway line
+  const midY = ch / 2;
+  ctx.beginPath();
+  ctx.moveTo(padX, midY);
+  ctx.lineTo(padX + fieldW, midY);
+  ctx.stroke();
+
+  // Center circle
+  const centerRadius = fieldW * 0.158;
+  ctx.beginPath();
+  ctx.arc(cw / 2, midY, centerRadius, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Center kickoff spot
+  ctx.beginPath();
+  ctx.arc(cw / 2, midY, 16, 0, Math.PI * 2);
+  ctx.fill();
+
+  // North Penalty Box & 6-Yard Box
+  const sixBoxW = fieldW * 0.28;
+  const sixBoxH = fieldH * 0.075;
+  ctx.strokeRect((cw - penBoxW) / 2, padY, penBoxW, penBoxH);
+  ctx.strokeRect((cw - sixBoxW) / 2, padY, sixBoxW, sixBoxH);
+
+  // North Penalty Spot & Arc
+  ctx.beginPath();
+  ctx.arc(cw / 2, padY + penBoxH * 0.65, 14, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cw / 2, padY + penBoxH * 0.65, centerRadius * 0.72, 0.28 * Math.PI, 0.72 * Math.PI, false);
+  ctx.stroke();
+
+  // South Penalty Box & 6-Yard Box
+  ctx.strokeRect((cw - penBoxW) / 2, padY + fieldH - penBoxH, penBoxW, penBoxH);
+  ctx.strokeRect((cw - sixBoxW) / 2, padY + fieldH - sixBoxH, sixBoxW, sixBoxH);
+
+  // South Penalty Spot & Arc
+  ctx.beginPath();
+  ctx.arc(cw / 2, padY + fieldH - penBoxH * 0.65, 14, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cw / 2, padY + fieldH - penBoxH * 0.65, centerRadius * 0.72, 1.28 * Math.PI, 1.72 * Math.PI, false);
+  ctx.stroke();
+
+  // Corner Arcs (4 corners)
+  const cornerR = 52;
+  ctx.beginPath();
+  ctx.arc(padX, padY, cornerR, 0, 0.5 * Math.PI);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(padX + fieldW, padY, cornerR, 0.5 * Math.PI, Math.PI);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(padX, padY + fieldH, cornerR, 1.5 * Math.PI, 2 * Math.PI);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(padX + fieldW, padY + fieldH, cornerR, Math.PI, 1.5 * Math.PI);
+  ctx.stroke();
+
+  ctx.restore();
+  return canvas;
 }
 
 // Convert 0-100 percentage coordinates to 3D Pitch coordinates
@@ -83,10 +274,18 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
   onSelfClaimSlot,
   selectedPlayerId,
   onSelectPlayer,
+  initialDrawingMode = false,
 }) => {
   const { currentUser } = usePitchStore();
+  const { language } = useLanguage();
   const mountRef = useRef<HTMLDivElement>(null);
   const [webGlError, setWebGlError] = useState(false);
+
+  // Tactical Drawing & Realism States
+  const [isDrawingMode, setIsDrawingMode] = useState(initialDrawingMode);
+  const [turfPattern, setTurfPattern] = useState<TurfMowingPattern>('checkerboard');
+  const [viewportSize, setViewportSize] = useState({ width: 800, height: 500 });
+  const pitchMatRef = useRef<THREE.MeshStandardMaterial | null>(null);
 
   // Safely resolve the active formation and assignments
   const normalizedKey = getNormalizedFormationKey(match?.formationGreen, match?.format, match?.maxPlayers);
@@ -133,6 +332,19 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
   const isDragging = useRef(false);
   const prevMousePos = useRef({ x: 0, y: 0 });
   const orbitAngles = useRef({ theta: 0, phi: Math.PI / 3.4, radius: 64 });
+
+  // Dynamically update pitch texture when mowing pattern changes
+  useEffect(() => {
+    if (!pitchMatRef.current) return;
+    const newCanvas = generateRealisticPitchCanvas(turfPattern);
+    const newTex = new THREE.CanvasTexture(newCanvas);
+    newTex.anisotropy = 8;
+    if (pitchMatRef.current.map) {
+      pitchMatRef.current.map.dispose();
+    }
+    pitchMatRef.current.map = newTex;
+    pitchMatRef.current.needsUpdate = true;
+  }, [turfPattern]);
 
   // Update target camera based on mode
   useEffect(() => {
@@ -254,115 +466,19 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
       scene.add(spot.target);
     });
 
-    // 5. Generate Procedural Canvas Texture for 3D Turf & Lines
-    const canvas = document.createElement('canvas');
-    canvas.width = 2048;
-    canvas.height = 3072;
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      const cw = canvas.width;
-      const ch = canvas.height;
-
-      // Fill base grass
-      ctx.fillStyle = '#14532d';
-      ctx.fillRect(0, 0, cw, ch);
-
-      // Alternating mown stripes
-      const stripeCount = 20;
-      const stripeH = ch / stripeCount;
-      for (let i = 0; i < stripeCount; i++) {
-        ctx.fillStyle = i % 2 === 0 ? '#15803d' : '#166534';
-        ctx.fillRect(0, i * stripeH, cw, stripeH);
-      }
-
-      // Grass texture noise
-      for (let n = 0; n < 25000; n++) {
-        const nx = Math.random() * cw;
-        const ny = Math.random() * ch;
-        ctx.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)';
-        ctx.fillRect(nx, ny, 2, 3);
-      }
-
-      // Pitch White Markings
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 14;
-      ctx.shadowColor = 'rgba(0,0,0,0.2)';
-      ctx.shadowBlur = 4;
-
-      const padX = 140;
-      const padY = 160;
-      const fieldW = cw - padX * 2;
-      const fieldH = ch - padY * 2;
-
-      ctx.strokeRect(padX, padY, fieldW, fieldH);
-
-      const midY = ch / 2;
-      ctx.beginPath();
-      ctx.moveTo(padX, midY);
-      ctx.lineTo(padX + fieldW, midY);
-      ctx.stroke();
-
-      const centerRadius = fieldW * 0.16;
-      ctx.beginPath();
-      ctx.arc(cw / 2, midY, centerRadius, 0, Math.PI * 2);
-      ctx.stroke();
-
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(cw / 2, midY, 18, 0, Math.PI * 2);
-      ctx.fill();
-
-      // North Penalty Box (Blue End)
-      const penBoxW = fieldW * 0.56;
-      const penBoxH = fieldH * 0.2;
-      const sixBoxW = fieldW * 0.28;
-      const sixBoxH = fieldH * 0.08;
-      ctx.strokeRect((cw - penBoxW) / 2, padY, penBoxW, penBoxH);
-      ctx.strokeRect((cw - sixBoxW) / 2, padY, sixBoxW, sixBoxH);
-
-      ctx.beginPath();
-      ctx.arc(cw / 2, padY + penBoxH * 0.65, 14, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(cw / 2, padY + penBoxH * 0.65, centerRadius * 0.7, 0.25 * Math.PI, 0.75 * Math.PI, false);
-      ctx.stroke();
-
-      // South Penalty Box (Green End)
-      ctx.strokeRect((cw - penBoxW) / 2, padY + fieldH - penBoxH, penBoxW, penBoxH);
-      ctx.strokeRect((cw - sixBoxW) / 2, padY + fieldH - sixBoxH, sixBoxW, sixBoxH);
-
-      ctx.beginPath();
-      ctx.arc(cw / 2, padY + fieldH - penBoxH * 0.65, 14, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(cw / 2, padY + fieldH - penBoxH * 0.65, centerRadius * 0.7, 1.25 * Math.PI, 1.75 * Math.PI, false);
-      ctx.stroke();
-
-      // Corner Arcs
-      const cornerR = 50;
-      ctx.beginPath();
-      ctx.arc(padX, padY, cornerR, 0, 0.5 * Math.PI);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(padX + fieldW, padY, cornerR, 0.5 * Math.PI, Math.PI);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(padX, padY + fieldH, cornerR, 1.5 * Math.PI, 2 * Math.PI);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(padX + fieldW, padY + fieldH, cornerR, Math.PI, 1.5 * Math.PI);
-      ctx.stroke();
-    }
-
+    // 5. Generate Ultra-Realistic Canvas Texture for 3D Turf & Lines
+    const canvas = generateRealisticPitchCanvas(turfPattern);
     const pitchTexture = new THREE.CanvasTexture(canvas);
-    pitchTexture.anisotropy = 4;
+    pitchTexture.anisotropy = 8;
 
     // 6. Pitch Mesh Plane
     const pitchMat = new THREE.MeshStandardMaterial({
       map: pitchTexture,
-      roughness: 0.75,
-      metalness: 0.1,
+      roughness: 0.72,
+      metalness: 0.08,
     });
+    pitchMatRef.current = pitchMat;
+
     const pitchGeo = new THREE.BoxGeometry(PITCH_WIDTH, 1.2, PITCH_LENGTH);
     const pitchMesh = new THREE.Mesh(pitchGeo, pitchMat);
     pitchMesh.position.set(0, -0.6, 0);
@@ -480,34 +596,49 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
     scene.add(create3DGoal(true));
     scene.add(create3DGoal(false));
 
-    // 8. 3D Stadium Advertising LED Boards
-    const createAdBanner = (text: string, w: number, x: number, z: number, rotY: number) => {
-      const adCanvas = document.createElement('canvas');
-      adCanvas.width = 512;
-      adCanvas.height = 64;
-      const adCtx = adCanvas.getContext('2d');
-      if (adCtx) {
-        adCtx.fillStyle = '#0f172a';
-        adCtx.fillRect(0, 0, 512, 64);
-        adCtx.fillStyle = '#10b981';
-        adCtx.font = 'bold 24px sans-serif';
-        adCtx.textAlign = 'center';
-        adCtx.textBaseline = 'middle';
-        adCtx.fillText(text, 256, 32);
-      }
-      const adTex = new THREE.CanvasTexture(adCanvas);
-      const adMat = new THREE.MeshStandardMaterial({ map: adTex, emissive: 0x10b981, emissiveIntensity: 0.25 });
-      const adGeo = new THREE.BoxGeometry(w, 1.2, 0.4);
-      const adMesh = new THREE.Mesh(adGeo, adMat);
-      adMesh.position.set(x, 0.6, z);
-      adMesh.rotation.y = rotY;
-      scene.add(adMesh);
-    };
+    // 8. Realistic 3D Corner Flags (4 Corners)
+    const cornerFlagPositions = [
+      [-PITCH_WIDTH * 0.44, -PITCH_LENGTH * 0.44],
+      [PITCH_WIDTH * 0.44, -PITCH_LENGTH * 0.44],
+      [-PITCH_WIDTH * 0.44, PITCH_LENGTH * 0.44],
+      [PITCH_WIDTH * 0.44, PITCH_LENGTH * 0.44],
+    ];
+    cornerFlagPositions.forEach(([fx, fz]) => {
+      const flagGroup = new THREE.Group();
+      flagGroup.position.set(fx, 0, fz);
 
-    createAdBanner('⚽ PITCHMATE MAROC • CASABLANCA PICKUP LEAGUE', PITCH_LENGTH * 0.95, -PITCH_WIDTH / 2 - 2, 0, Math.PI / 2);
-    createAdBanner('⚽ MOROCCO 2030 • BOTOLA PICKUP SOCCER', PITCH_LENGTH * 0.95, PITCH_WIDTH / 2 + 2, 0, -Math.PI / 2);
+      const poleGeo = new THREE.CylinderGeometry(0.06, 0.08, 1.8, 8);
+      const poleMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 });
+      const pole = new THREE.Mesh(poleGeo, poleMat);
+      pole.position.y = 0.9;
+      flagGroup.add(pole);
 
-    // Group for 3D Player Tokens
+      const baseGeo = new THREE.CylinderGeometry(0.14, 0.18, 0.15, 8);
+      const baseMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 });
+      const base = new THREE.Mesh(baseGeo, baseMat);
+      base.position.y = 0.08;
+      flagGroup.add(base);
+
+      const flagClothGeo = new THREE.PlaneGeometry(0.65, 0.42);
+      const flagClothMat = new THREE.MeshStandardMaterial({
+        color: 0xef4444,
+        roughness: 0.5,
+        side: THREE.DoubleSide,
+      });
+      const flagCloth = new THREE.Mesh(flagClothGeo, flagClothMat);
+      flagCloth.position.set(0.32, 1.55, 0);
+      flagCloth.rotation.y = Math.PI / 4;
+      flagGroup.add(flagCloth);
+
+      scene.add(flagGroup);
+    });
+
+    // 9. Realistic 3D Match Soccer Ball at Kickoff
+    const soccerBall = create3DSoccerBall();
+    soccerBall.position.set(0, 0, 0);
+    scene.add(soccerBall);
+
+    // Group for 3D Player Figures & Tactical Formations
     const tokenGroup = new THREE.Group();
     scene.add(tokenGroup);
     tokenGroupRef.current = tokenGroup;
@@ -524,7 +655,10 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
       cameraRef.current.aspect = w / h;
       cameraRef.current.updateProjectionMatrix();
       rendererRef.current.setSize(w, h);
+      setViewportSize({ width: w, height: h });
     };
+
+    handleResize();
 
     let resizeObserver: ResizeObserver | null = null;
     if (typeof ResizeObserver !== 'undefined') {
@@ -635,192 +769,21 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
       const isSelected = selectedSlotKey === slot.key || selectedPlayerId === assignedUserId;
       const isCurrentUser = assignedPlayer?.userId === currentUser.id;
 
-      const tokenRoot = new THREE.Group();
-      tokenRoot.position.copy(pos3D);
-      tokenRoot.name = slot.key;
-      (tokenRoot as any).slotData = slot;
-
-      // 1. Soft Grass Drop Shadow Circle
-      const shadowGeo = new THREE.PlaneGeometry(3.6, 3.6);
-      const shadowMat = new THREE.MeshBasicMaterial({
-        color: isGreen ? 0x064e3b : 0x1e3a8a,
-        transparent: true,
-        opacity: isSelected ? 0.8 : 0.45,
-      });
-      const shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
-      shadowMesh.rotation.x = -Math.PI / 2;
-      shadowMesh.position.y = -0.38;
-      tokenRoot.add(shadowMesh);
-
-      // 2. Tactile 3D Cylinder Pedestal Token
-      const tokenRadius = 1.35;
-      const tokenHeight = 0.7;
-      const tokenGeo = new THREE.CylinderGeometry(tokenRadius, tokenRadius * 1.1, tokenHeight, 32);
-
-      const tokenBaseColor = assignedPlayer
-        ? isGreen
-          ? 0x059669
-          : 0x2563eb
-        : isGreen
-        ? 0x064e3b
-        : 0x1e3a8a;
-
-      const tokenMat = new THREE.MeshStandardMaterial({
-        color: isSelected ? 0xf59e0b : tokenBaseColor,
-        metalness: isSelected ? 0.7 : 0.4,
-        roughness: 0.3,
-        emissive: isSelected ? 0xd97706 : isCurrentUser ? 0xf59e0b : 0x000000,
-        emissiveIntensity: isSelected ? 0.6 : isCurrentUser ? 0.3 : 0,
+      const { playerRoot, hitMesh } = create3DPlayerFigure({
+        slot,
+        assignedPlayer: assignedPlayer || null,
+        isGreen,
+        isSelected,
+        isCurrentUser,
+        isHovered: hoveredSlotKey === slot.key,
+        language,
       });
 
-      const tokenMesh = new THREE.Mesh(tokenGeo, tokenMat);
-      tokenMesh.position.y = isSelected ? 0.4 : 0;
-      tokenMesh.castShadow = true;
-      tokenMesh.receiveShadow = true;
-      tokenRoot.add(tokenMesh);
-
-      // 3. Metallic Rim Ring
-      const rimGeo = new THREE.TorusGeometry(tokenRadius, 0.12, 16, 32);
-      const rimMat = new THREE.MeshStandardMaterial({
-        color: isSelected ? 0xfef08a : isCurrentUser ? 0xfbbf24 : 0xffffff,
-        metalness: 0.9,
-        roughness: 0.1,
-      });
-      const rimMesh = new THREE.Mesh(rimGeo, rimMat);
-      rimMesh.rotation.x = Math.PI / 2;
-      rimMesh.position.y = (isSelected ? 0.4 : 0) + tokenHeight / 2;
-      tokenRoot.add(rimMesh);
-
-      // 4. Token Cap Canvas (Avatar Monogram + Role Badge)
-      const capCanvas = document.createElement('canvas');
-      capCanvas.width = 256;
-      capCanvas.height = 256;
-      const capCtx = capCanvas.getContext('2d');
-      if (capCtx) {
-        capCtx.fillStyle = assignedPlayer
-          ? isGreen
-            ? '#10b981'
-            : '#3b82f6'
-          : isGreen
-          ? '#047857'
-          : '#1d4ed8';
-        capCtx.beginPath();
-        capCtx.arc(128, 128, 124, 0, Math.PI * 2);
-        capCtx.fill();
-
-        // Border ring
-        capCtx.lineWidth = 10;
-        capCtx.strokeStyle = isSelected ? '#fbbf24' : '#ffffff';
-        capCtx.stroke();
-
-        if (assignedPlayer) {
-          // Player Monogram & Name Initials
-          capCtx.fillStyle = '#ffffff';
-          capCtx.font = 'bold 80px sans-serif';
-          capCtx.textAlign = 'center';
-          capCtx.textBaseline = 'middle';
-          const initials = (assignedPlayer.name || 'P')
-            .split(' ')
-            .map((n) => n[0])
-            .join('')
-            .substring(0, 2)
-            .toUpperCase();
-          capCtx.fillText(initials, 128, 100);
-
-          // Sub role text
-          capCtx.font = 'bold 36px monospace';
-          capCtx.fillStyle = '#fef08a';
-          capCtx.fillText(slot.label, 128, 175);
-        } else {
-          // Open Role label
-          capCtx.fillStyle = '#ffffff';
-          capCtx.font = 'bold 70px sans-serif';
-          capCtx.textAlign = 'center';
-          capCtx.textBaseline = 'middle';
-          capCtx.fillText(slot.label, 128, 105);
-
-          capCtx.font = 'bold 34px sans-serif';
-          capCtx.fillStyle = isGreen ? '#a7f3d0' : '#bfdbfe';
-          capCtx.fillText(slot.position, 128, 170);
-        }
-      }
-
-      const capTex = new THREE.CanvasTexture(capCanvas);
-      const capGeo = new THREE.CircleGeometry(tokenRadius * 0.95, 32);
-      const capMat = new THREE.MeshBasicMaterial({ map: capTex, side: THREE.DoubleSide });
-      const capMesh = new THREE.Mesh(capGeo, capMat);
-      capMesh.rotation.x = -Math.PI / 2;
-      capMesh.position.y = (isSelected ? 0.4 : 0) + tokenHeight / 2 + 0.02;
-      tokenRoot.add(capMesh);
-
-      // 5. 3D Floating Nameplate Billboard
-      const nameCanvas = document.createElement('canvas');
-      nameCanvas.width = 380;
-      nameCanvas.height = 96;
-      const nameCtx = nameCanvas.getContext('2d');
-      if (nameCtx) {
-        nameCtx.fillStyle = assignedPlayer
-          ? isCurrentUser
-            ? 'rgba(245, 158, 11, 0.95)'
-            : 'rgba(15, 23, 42, 0.92)'
-          : isGreen
-          ? 'rgba(6, 78, 59, 0.85)'
-          : 'rgba(30, 58, 138, 0.85)';
-
-        const rx = 10,
-          ry = 10,
-          rw = 360,
-          rh = 76,
-          r = 24;
-        nameCtx.beginPath();
-        nameCtx.moveTo(rx + r, ry);
-        nameCtx.lineTo(rx + rw - r, ry);
-        nameCtx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + r);
-        nameCtx.lineTo(rx + rw, ry + rh - r);
-        nameCtx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - r, ry + rh);
-        nameCtx.lineTo(rx + r, ry + rh);
-        nameCtx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - r);
-        nameCtx.lineTo(rx, ry + r);
-        nameCtx.quadraticCurveTo(rx, ry, rx + r, ry);
-        nameCtx.closePath();
-        nameCtx.fill();
-
-        nameCtx.lineWidth = 4;
-        nameCtx.strokeStyle = isSelected
-          ? '#f59e0b'
-          : assignedPlayer
-          ? isCurrentUser
-            ? '#fef08a'
-            : '#475569'
-          : isGreen
-          ? '#10b981'
-          : '#3b82f6';
-        nameCtx.stroke();
-
-        nameCtx.fillStyle = assignedPlayer && isCurrentUser ? '#0f172a' : '#ffffff';
-        nameCtx.font = 'bold 32px sans-serif';
-        nameCtx.textAlign = 'center';
-        nameCtx.textBaseline = 'middle';
-        const displayName = assignedPlayer ? assignedPlayer.name : `${slot.label} (Open)`;
-        nameCtx.fillText(displayName, 190, 48);
-      }
-
-      const nameTex = new THREE.CanvasTexture(nameCanvas);
-      const nameMat = new THREE.MeshBasicMaterial({
-        map: nameTex,
-        transparent: true,
-        depthTest: false,
-      });
-      const nameGeo = new THREE.PlaneGeometry(4.2, 1.1);
-      const nameplateMesh = new THREE.Mesh(nameGeo, nameMat);
-      nameplateMesh.name = 'nameplate';
-      nameplateMesh.position.y = (isSelected ? 0.4 : 0) + tokenHeight + 1.2;
-      tokenRoot.add(nameplateMesh);
-
-      tokenGroup.add(tokenRoot);
-      interactablesRef.current.push(tokenMesh);
+      playerRoot.position.copy(pos3D);
+      tokenGroup.add(playerRoot);
+      interactablesRef.current.push(hitMesh);
     });
-  }, [match?.roster, activeAssignments, activeFormation, selectedSlotKey, selectedPlayerId, activeViewMode, currentUser?.id]);
+  }, [match?.roster, activeAssignments, activeFormation, selectedSlotKey, selectedPlayerId, activeViewMode, currentUser?.id, hoveredSlotKey, language]);
 
   const handleSelectSlotSafe = (key: string) => {
     if (onSelectSlot) {
@@ -842,6 +805,7 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
 
   // Pointer & Raycasting Interactions
   const handlePointerDown = (e: React.PointerEvent) => {
+    if (isDrawingMode) return;
     if (isTouchOrbitLocked && e.pointerType === 'touch') {
       return;
     }
@@ -850,6 +814,7 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
+    if (isDrawingMode) return;
     if (isDragging.current) {
       if (isTouchOrbitLocked && e.pointerType === 'touch') return;
       setIsOrbiting(true);
@@ -872,9 +837,10 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
       const intersects = raycaster.intersectObjects(interactablesRef.current, false);
 
       if (intersects.length > 0) {
-        const parentToken = intersects[0].object.parent;
-        if (parentToken) {
-          setHoveredSlotKey(parentToken.name);
+        const hitObj = intersects[0].object;
+        const slotKey = hitObj.parent?.name || hitObj.name.replace('hit_', '');
+        if (slotKey) {
+          setHoveredSlotKey(slotKey);
           mountRef.current.style.cursor = 'pointer';
         }
       } else {
@@ -885,6 +851,7 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
+    if (isDrawingMode) return;
     const wasDragging = isOrbiting;
     isDragging.current = false;
     setIsOrbiting(false);
@@ -901,9 +868,10 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
       const intersects = raycaster.intersectObjects(interactablesRef.current, false);
 
       if (intersects.length > 0) {
-        const parentToken = intersects[0].object.parent;
-        if (parentToken) {
-          handleSelectSlotSafe(parentToken.name);
+        const hitObj = intersects[0].object;
+        const slotKey = hitObj.parent?.name || hitObj.name.replace('hit_', '');
+        if (slotKey) {
+          handleSelectSlotSafe(slotKey);
         }
       }
     }
@@ -1005,17 +973,78 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
         }`}
       />
 
+      {/* Tactical Drawing Overlay Canvas */}
+      <TacticalDrawingCanvas
+        width={viewportSize.width}
+        height={viewportSize.height}
+        isActive={isDrawingMode}
+        onToggleActive={setIsDrawingMode}
+        className="absolute inset-0 z-30"
+      />
+
       {/* Floating 3D Stadium HUD Overlay */}
-      <div className="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-between pointer-events-none gap-2 flex-wrap">
-        {/* Moroccan League 3D Badge */}
-        <div className="flex items-center gap-2 bg-[#080B10]/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-[#E5B869]/30 text-white shadow-xl pointer-events-auto">
-          <div className="w-2.5 h-2.5 rounded-full bg-[#E5B869] animate-pulse" />
-          <span className="text-xs font-black tracking-wider uppercase bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] bg-clip-text text-transparent">
-            Moroccan 3D Stadium
-          </span>
-          <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">
-            • 360° Tactical Orbit
-          </span>
+      <div className="absolute top-3.5 left-3.5 right-3.5 flex items-center justify-between pointer-events-none gap-2 flex-wrap z-40">
+        <div className="flex items-center gap-2 flex-wrap pointer-events-auto">
+          {/* Moroccan League 3D Badge */}
+          <div className="flex items-center gap-2 bg-[#080B10]/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-[#E5B869]/30 text-white shadow-xl">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#E5B869] animate-pulse" />
+            <span className="text-xs font-black tracking-wider uppercase bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] bg-clip-text text-transparent">
+              Moroccan 3D Stadium
+            </span>
+            <span className="text-[10px] text-slate-400 font-mono hidden md:inline">
+              • 360° Tactical Orbit
+            </span>
+          </div>
+
+          {/* Tactical Drawing Board Button */}
+          <button
+            type="button"
+            onClick={() => {
+              const nextMode = !isDrawingMode;
+              setIsDrawingMode(nextMode);
+              if (nextMode) {
+                setCameraMode('top');
+              }
+            }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xl border ${
+              isDrawingMode
+                ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 border-[#F5D794] ring-2 ring-[#E5B869]/50 shadow-[0_0_15px_rgba(229,184,105,0.4)]'
+                : 'bg-[#080B10]/90 text-[#F5D794] border-[#E5B869]/30 hover:border-[#E5B869] hover:bg-[#141A26]'
+            }`}
+            title={language === 'ar' ? 'تشغيل لوحة الرسم والتخطيط التكتيكي' : 'Toggle Tactical Drawing Board'}
+          >
+            <PenTool className="w-3.5 h-3.5" />
+            <span>
+              {language === 'ar'
+                ? isDrawingMode
+                  ? 'إغلاق الرسم'
+                  : 'الرسم التكتيكي'
+                : isDrawingMode
+                ? 'Exit Drawing'
+                : 'Tactical Board'}
+            </span>
+          </button>
+
+          {/* Turf Mowing Pattern Selector */}
+          <div className="relative">
+            <select
+              value={turfPattern}
+              onChange={(e) => setTurfPattern(e.target.value as TurfMowingPattern)}
+              className="appearance-none pl-2.5 pr-7 py-1.5 bg-[#080B10]/90 backdrop-blur-md text-[#F5D794] border border-[#E5B869]/30 rounded-xl text-xs font-bold focus:outline-none focus:border-[#E5B869] cursor-pointer shadow-xl transition-all"
+              title={language === 'ar' ? 'نمط قص العشب الطبيعي للملعب' : 'Turf Mowing Pattern'}
+            >
+              <option value="checkerboard" className="bg-[#080B10] text-white">
+                {language === 'ar' ? '🏁 عشب مربعات' : '🏁 Premier Plaid'}
+              </option>
+              <option value="stripes" className="bg-[#080B10] text-white">
+                {language === 'ar' ? '💈 أشرطة كلاسيكية' : '💈 Classic Stripes'}
+              </option>
+              <option value="concentric" className="bg-[#080B10] text-white">
+                {language === 'ar' ? '🎯 حلقات دائرية' : '🎯 Circular Rings'}
+              </option>
+            </select>
+            <ChevronDown className="w-3 h-3 text-[#E5B869] absolute right-2 rtl:right-auto rtl:left-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
         </div>
 
         {/* 3D Viewport Angle Presets & Controls */}
@@ -1129,7 +1158,12 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
           <div className="bg-[#080B10]/90 backdrop-blur-md px-3.5 py-2 rounded-xl border border-[#E5B869]/30 text-[11px] text-slate-300 flex items-center gap-2 shadow-xl pointer-events-auto">
             <Info className="w-4 h-4 text-[#E5B869] shrink-0" />
             <span>
-              <strong className="text-[#F5D794]">3D Pitch:</strong> Click any player token to select & lock your exact playing position
+              <strong className="text-[#F5D794]">
+                {language === 'ar' ? 'الملعب الواقعي 3D:' : '3D Realistic Pitch:'}
+              </strong>{' '}
+              {language === 'ar'
+                ? 'انقر فوق أي مجسم لاعب 3D لاختيار وتثبيت مركزك في التشكيلة'
+                : 'Click any 3D player figure to select & lock your exact playing position'}
             </span>
           </div>
         ) : (
@@ -1140,6 +1174,10 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
             const occupant = occupantId ? match.roster.find((p) => p.userId === occupantId) : null;
 
             if (!activeSlot) return null;
+
+            const teamLabel = activeSlot.team === 'green'
+              ? (language === 'ar' ? 'الفريق الأخضر' : 'Team Green')
+              : (language === 'ar' ? 'الفريق الأزرق' : 'Team Blue');
 
             return (
               <div className="bg-[#141A26]/95 backdrop-blur-md px-4 py-2.5 rounded-2xl border-2 border-[#E5B869] shadow-2xl flex items-center justify-between gap-3 text-white pointer-events-auto animate-in slide-in-from-bottom-2 duration-200">
@@ -1153,23 +1191,26 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
                   </div>
                   <div>
                     <div className="text-xs font-black text-[#F5D794] flex items-center gap-1.5">
-                      <span>{activeSlot.team === 'green' ? 'Team Green' : 'Team Blue'}</span>
+                      <span>{teamLabel}</span>
                       <span>• {activeSlot.label} ({activeSlot.roleDescription})</span>
                     </div>
                     <div className="text-[11px] text-slate-300 flex items-center gap-1.5 mt-0.5">
                       {occupant ? (
                         occupant.userId === currentUser.id ? (
                           <span className="text-emerald-400 font-bold flex items-center gap-1">
-                            <Check className="w-3 h-3" /> Locked by You
+                            <Check className="w-3 h-3" />{' '}
+                            {language === 'ar' ? 'محجوز ومثبت لك' : 'Locked by You'}
                           </span>
                         ) : (
                           <span className="text-amber-300 font-medium flex items-center gap-1">
-                            <Lock className="w-3 h-3 text-amber-400" /> Locked & Reserved by {occupant.name}
+                            <Lock className="w-3 h-3 text-amber-400" />{' '}
+                            {language === 'ar' ? `محجوز للاعب ${occupant.name}` : `Locked & Reserved by ${occupant.name}`}
                           </span>
                         )
                       ) : (
                         <span className="text-emerald-300 font-semibold flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" /> Open Position (Available to lock)
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />{' '}
+                          {language === 'ar' ? 'مركز متاح للتثبيت المباشر' : 'Open Position (Available to lock)'}
                         </span>
                       )}
                     </div>
@@ -1180,12 +1221,12 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
                   occupant && occupant.userId !== currentUser.id ? (
                     <div className="px-3 py-1.5 bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs font-bold rounded-xl flex items-center gap-1.5">
                       <Lock className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Position Reserved</span>
+                      <span>{language === 'ar' ? 'المركز محجوز' : 'Position Reserved'}</span>
                     </div>
                   ) : occupant && occupant.userId === currentUser.id ? (
                     <div className="px-3.5 py-1.5 bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 text-xs font-black rounded-xl shadow-lg flex items-center gap-1.5">
                       <Check className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Your Locked Spot</span>
+                      <span>{language === 'ar' ? 'مركزك المثبت' : 'Your Locked Spot'}</span>
                     </div>
                   ) : (
                     <button
@@ -1194,7 +1235,7 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
                       className="px-3.5 py-1.5 bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] hover:opacity-90 text-slate-950 text-xs font-black rounded-xl shadow-lg border border-[#F5D794] flex items-center gap-1.5 cursor-pointer active:scale-95 transition-all"
                     >
                       <Lock className="w-3.5 h-3.5 text-slate-950" />
-                      <span>Lock & Reserve Position</span>
+                      <span>{language === 'ar' ? 'تثبيت وقفل المركز' : 'Lock & Reserve Position'}</span>
                     </button>
                   )
                 )}
@@ -1205,7 +1246,7 @@ export const TacticalPitch3DWebGL: React.FC<TacticalPitch3DWebGLProps> = ({
 
         {hoveredSlotKey && !selectedSlotKey && (
           <div className="bg-gradient-to-r from-[#F5D794] to-[#E5B869] text-slate-950 px-3.5 py-1.5 rounded-xl font-black text-xs shadow-xl animate-pulse pointer-events-auto self-end">
-            Click to select position ⚽
+            {language === 'ar' ? 'اضغط لاختيار المركز ⚽' : 'Click to select position ⚽'}
           </div>
         )}
       </div>

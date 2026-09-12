@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   ArrowRight,
   Flame,
+  PenTool,
 } from 'lucide-react';
 import { usePitchStore } from '../lib/usePitchStore';
 import { useLanguage } from '../lib/useLanguage';
@@ -67,6 +68,7 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
   const [isConfirmingPosition, setIsConfirmingPosition] = useState(false);
   const [confirmationSuccessMsg, setConfirmationSuccessMsg] = useState<string | null>(null);
   const [slotErrorMsg, setSlotErrorMsg] = useState<string | null>(null);
+  const [isDrawingMode, setIsDrawingMode] = useState(false);
 
   // Sync state if match format, match ID, or formation changes
   React.useEffect(() => {
@@ -359,6 +361,26 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
             </button>
           )}
 
+          {/* Drawing Mode Toggle Button */}
+          <button
+            id="tactical-drawing-mode-toggle"
+            type="button"
+            onClick={() => {
+              setIsDrawingMode((prev) => !prev);
+              const el = document.getElementById('tactical-3d-webgl-wrapper');
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm ${
+              isDrawingMode
+                ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 font-black ring-2 ring-[#E5B869]/60'
+                : 'bg-[#080B10] text-[#F5D794] border border-[#E5B869]/30 hover:border-[#E5B869] hover:bg-[#141A26]'
+            }`}
+            title={language === 'ar' ? 'تشغيل لوحة وأدوات الرسم التكتيكي الاحترافي' : 'Toggle Tactical Drawing Board'}
+          >
+            <PenTool className="w-3.5 h-3.5" />
+            <span>{language === 'ar' ? (isDrawingMode ? 'إغلاق الرسم' : 'الرسم التكتيكي') : (isDrawingMode ? 'Exit Drawing' : 'Draw Tactics')}</span>
+          </button>
+
           {/* Team Filter */}
           <div className="flex items-center bg-[#080B10] p-1 rounded-xl border border-[#E5B869]/20">
             <button
@@ -635,6 +657,7 @@ export const TacticalPitchFormation: React.FC<TacticalPitchFormationProps> = ({
         viewMode={viewMode}
         onSelectSlot={(key) => handleSlotClick(key)}
         onSelfClaimSlot={(slot) => handleSelfClaimPosition(slot)}
+        initialDrawingMode={isDrawingMode}
       />
 
       {/* Roster Bench Breakdown & Position Status */}
