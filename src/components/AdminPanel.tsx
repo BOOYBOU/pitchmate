@@ -9,6 +9,7 @@ import {
   RefreshCw,
   Sparkles,
   Lock,
+  Building2,
 } from 'lucide-react';
 import { SoccerMatch, UserProfile, SUPER_ADMIN_EMAIL, isSuperAdminEmail } from '../types';
 import { usePitchStore } from '../lib/usePitchStore';
@@ -17,6 +18,7 @@ import { AdminOverview } from './admin/AdminOverview';
 import { AdminUsersTable } from './admin/AdminUsersTable';
 import { AdminMatchesTable } from './admin/AdminMatchesTable';
 import { AdminAnnouncements } from './admin/AdminAnnouncements';
+import { AdminVenuesTable } from './admin/AdminVenuesTable';
 
 interface AdminPanelProps {
   onOpenMatchDetails: (match: SoccerMatch) => void;
@@ -29,6 +31,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onOpenMatchDetails, onOp
     users,
     matches,
     announcements,
+    venues,
     deleteMatch,
     toggleMatchLock,
     removePlayerFromMatch,
@@ -42,10 +45,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onOpenMatchDetails, onOp
     unbanUser,
     deleteUserAccount,
     autoBalanceTeams,
+    deletePartnerVenue,
+    updatePartnerVenue,
+    addPartnerVenue,
   } = usePitchStore();
 
   const { t, language } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'matches' | 'announcements'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'matches' | 'announcements' | 'venues'>('overview');
   const [isResetting, setIsResetting] = useState(false);
 
   const isMustapha = isSuperAdminEmail(currentUser.email) || currentUser.isAdmin;
@@ -165,6 +171,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onOpenMatchDetails, onOp
             <Megaphone className="w-4 h-4" />
             <span>{t('admin.tabAnnouncements', 'الإعلانات والتعميمات')} ({announcements.length})</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('venues')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors flex items-center gap-2 cursor-pointer shrink-0 ${
+              activeTab === 'venues'
+                ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 font-bold shadow-md'
+                : 'text-emerald-300/70 hover:text-white hover:bg-[#081813]/60'
+            }`}
+          >
+            <Building2 className="w-4 h-4" />
+            <span>{language === 'ar' ? 'المركبات والملاعب الشريكة' : 'Pitches & Venues'} ({venues.length})</span>
+          </button>
         </div>
       </div>
 
@@ -208,6 +226,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onOpenMatchDetails, onOp
           onAddAnnouncement={handleAddAnnouncement}
           onDeleteAnnouncement={deleteAnnouncement}
           adminName={currentUser.name}
+        />
+      )}
+
+      {activeTab === 'venues' && (
+        <AdminVenuesTable
+          venues={venues}
+          onDeleteVenue={deletePartnerVenue}
+          onUpdateVenue={updatePartnerVenue}
         />
       )}
     </div>

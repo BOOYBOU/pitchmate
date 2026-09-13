@@ -29,10 +29,11 @@ import {
   Upload,
   Image as ImageIcon,
   Loader2,
+  Save,
 } from 'lucide-react';
 import { usePitchStore } from '../lib/usePitchStore';
 import { useLanguage } from '../lib/useLanguage';
-import { PartnerVenue, VenueBookingSlot } from '../types';
+import { PartnerVenue, VenueBookingSlot, SUPER_ADMIN_EMAILS, isSuperAdminEmail } from '../types';
 import { MOROCCAN_CITIES_LOCALIZED } from '../lib/translations';
 import { getTodayDateString } from '../lib/mockVenues';
 import { compressImage } from '../lib/mediaStorage';
@@ -69,6 +70,7 @@ export const VenuesView: React.FC<VenuesViewProps> = ({ onOrganizeMatchFromSlot 
   const [selectedTurf, setSelectedTurf] = useState<string>('all');
   const [selectedFormat, setSelectedFormat] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showOnlyMyVenues, setShowOnlyMyVenues] = useState(false);
 
   // Selected date for slot viewing
   const todayStr = useMemo(() => getTodayDateString(0), []);
@@ -86,9 +88,59 @@ export const VenuesView: React.FC<VenuesViewProps> = ({ onOrganizeMatchFromSlot 
   const [activeVenueForSlot, setActiveVenueForSlot] = useState<PartnerVenue | null>(null);
   const [editingSlot, setEditingSlot] = useState<VenueBookingSlot | null>(null);
 
+  // Venue Deletion and Editing State
+  const [venueToDelete, setVenueToDelete] = useState<PartnerVenue | null>(null);
+  const [isDeletingVenue, setIsDeletingVenue] = useState(false);
+  const [isEditVenueModalOpen, setIsEditVenueModalOpen] = useState(false);
+  const [editingVenue, setEditingVenue] = useState<PartnerVenue | null>(null);
+
+  // Edit Venue Form State
+  const [editVenueName, setEditVenueName] = useState('');
+  const [editVenueCity, setEditVenueCity] = useState('');
+  const [editVenueAddress, setEditVenueAddress] = useState('');
+  const [editVenueMapsUrl, setEditVenueMapsUrl] = useState('');
+  const [editVenuePhone, setEditVenuePhone] = useState('');
+  const [editVenueWhatsapp, setEditVenueWhatsapp] = useState('');
+  const [editVenueManager, setEditVenueManager] = useState('');
+  const [editVenueRate, setEditVenueRate] = useState('500');
+  const [editVenueTurf, setEditVenueTurf] = useState<'synthetic_fifa' | 'indoor_hall' | 'natural_grass'>('synthetic_fifa');
+  const [editVenueFormats, setEditVenueFormats] = useState<string[]>(['7v7', '5v5']);
+  const [editVenueAmenities, setEditVenueAmenities] = useState<string[]>([]);
+  const [editVenueImageUrl, setEditVenueImageUrl] = useState<string>('');
+  const [isUploadingEditImage, setIsUploadingEditImage] = useState(false);
+  const [editVenueImageError, setEditVenueImageError] = useState('');
+  const editVenueFileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Status Notification Toast
+  const [statusNotification, setStatusNotification] = useState<string | null>(null);
+
+  // Permissions Helpers: Super Admin or Registered Creator
+  const isSuperAdmin = useMemo(() => {
+    return Boolean(
+      currentUser.isAdmin ||
+      isSuperAdminEmail(currentUser.email) ||
+      (currentUser.email && SUPER_ADMIN_EMAILS.some((e) => e.toLowerCase() === currentUser.email?.toLowerCase()))
+    );
+  }, [currentUser]);
+
+  const isUserVenueCreator = React.useCallback((venue: PartnerVenue) => {
+    if (venue.managerUserId && venue.managerUserId === currentUser.id) return true;
+    if (venue.managerEmail && currentUser.email && venue.managerEmail.toLowerCase() === currentUser.email.toLowerCase()) return true;
+    if (venue.managerName && currentUser.name && venue.managerName.trim().toLowerCase() === currentUser.name.trim().toLowerCase()) return true;
+    return false;
+  }, [currentUser]);
+
+  const canManageVenue = React.useCallback((venue: PartnerVenue) => {
+    return isSuperAdmin || isUserVenueCreator(venue);
+  }, [isSuperAdmin, isUserVenueCreator]);
+
+  const myVenuesCount = useMemo(() => {
+    return venues.filter((v) => isUserVenueCreator(v)).length;
+  }, [venues, isUserVenueCreator]);
+
   // Form State: Add Venue
   const [newVenueName, setNewVenueName] = useState('');
-  const [newVenueCity, setNewVenueCity] = useState(currentUser.city || 'Casablanca');
+  const [newVenueCity, setNewVenueCity] = useState('');
   const [newVenueAddress, setNewVenueAddress] = useState('');
   const [newVenueMapsUrl, setNewVenueMapsUrl] = useState('');
   const [newVenuePhone, setNewVenuePhone] = useState(currentUser.phone || '');
@@ -131,6 +183,7 @@ export const VenuesView: React.FC<VenuesViewProps> = ({ onOrganizeMatchFromSlot 
   // Filtered Venues
   const filteredVenues = useMemo(() => {
     return venues.filter((v) => {
+      if (showOnlyMyVenues && !isUserVenueCreator(v)) return false;
       const matchCity = selectedCity === 'all' || v.city.toLowerCase() === selectedCity.toLowerCase();
       const matchTurf = selectedTurf === 'all' || v.turfType === selectedTurf;
       const matchFormat = selectedFormat === 'all' || (v.formats && v.formats.includes(selectedFormat));
@@ -138,11 +191,12 @@ export const VenuesView: React.FC<VenuesViewProps> = ({ onOrganizeMatchFromSlot 
         !searchQuery.trim() ||
         v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         v.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        v.city.toLowerCase().includes(searchQuery.toLowerCase());
+        v.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (v.managerName && v.managerName.toLowerCase().includes(searchQuery.toLowerCase()));
 
       return matchCity && matchTurf && matchFormat && matchQuery;
     });
-  }, [venues, selectedCity, selectedTurf, selectedFormat, searchQuery]);
+  }, [venues, selectedCity, selectedTurf, selectedFormat, searchQuery, showOnlyMyVenues, isUserVenueCreator]);
 
   // Handle Venue Image Upload
   const handleVenueImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -181,11 +235,11 @@ export const VenuesView: React.FC<VenuesViewProps> = ({ onOrganizeMatchFromSlot 
   // Handle Add Venue Submit
   const handleCreateVenue = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newVenueName.trim() || !newVenueAddress.trim()) return;
+    if (!newVenueName.trim() || !newVenueAddress.trim() || !newVenueCity.trim()) return;
 
     await addPartnerVenue({
       name: newVenueName.trim(),
-      city: newVenueCity,
+      city: newVenueCity.trim(),
       address: newVenueAddress.trim(),
       googleMapsUrl: newVenueMapsUrl.trim() || undefined,
       phone: newVenuePhone.trim() || '+212 6 00 00 00 00',
@@ -207,6 +261,7 @@ export const VenuesView: React.FC<VenuesViewProps> = ({ onOrganizeMatchFromSlot 
     setIsAddVenueModalOpen(false);
     // Reset
     setNewVenueName('');
+    setNewVenueCity('');
     setNewVenueAddress('');
     setNewVenueMapsUrl('');
     setNewVenueImageUrl('');
@@ -309,6 +364,109 @@ export const VenuesView: React.FC<VenuesViewProps> = ({ onOrganizeMatchFromSlot 
     setBatchPrice(String(venue.hourlyRateMAD || 500));
     setBatchPitchNumber('الملعب 1');
     setIsBatchModalOpen(true);
+  };
+
+  // Open Edit Venue Modal
+  const handleOpenEditVenue = (venue: PartnerVenue) => {
+    setEditingVenue(venue);
+    setEditVenueName(venue.name);
+    setEditVenueCity(venue.city);
+    setEditVenueAddress(venue.address);
+    setEditVenueMapsUrl(venue.googleMapsUrl || '');
+    setEditVenuePhone(venue.phone || '');
+    setEditVenueWhatsapp(venue.whatsapp || '');
+    setEditVenueManager(venue.managerName || '');
+    setEditVenueRate(String(venue.hourlyRateMAD || 500));
+    setEditVenueTurf(venue.turfType || 'synthetic_fifa');
+    setEditVenueFormats(venue.formats || ['7v7', '5v5']);
+    setEditVenueAmenities(venue.amenities || ['parking', 'showers', 'night_lighting', 'bibs_balls']);
+    setEditVenueImageUrl(venue.imageUrl || '');
+    setEditVenueImageError('');
+    setIsEditVenueModalOpen(true);
+  };
+
+  // Handle Edit Venue Image Upload
+  const handleEditVenueImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setEditVenueImageError(language === 'ar' ? 'يرجى اختيار ملف صورة صالح (JPG, PNG, WebP)' : 'Please choose a valid image file');
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      setEditVenueImageError(language === 'ar' ? 'حجم الصورة يجب أن لا يتعدى 8 ميغابايت' : 'Image size must be under 8MB');
+      return;
+    }
+
+    setEditVenueImageError('');
+    setIsUploadingEditImage(true);
+
+    try {
+      const compressed = await compressImage(file, 1200, 800, 0.82);
+      setEditVenueImageUrl(compressed.dataUrl);
+    } catch {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === 'string') {
+          setEditVenueImageUrl(reader.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsUploadingEditImage(false);
+    }
+  };
+
+  // Handle Update Venue Submit
+  const handleUpdateVenueSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingVenue) return;
+    if (!editVenueName.trim() || !editVenueCity.trim() || !editVenueAddress.trim()) return;
+
+    await updatePartnerVenue(editingVenue.id, {
+      name: editVenueName.trim(),
+      city: editVenueCity.trim(),
+      address: editVenueAddress.trim(),
+      googleMapsUrl: editVenueMapsUrl.trim() || undefined,
+      phone: editVenuePhone.trim(),
+      whatsapp: editVenueWhatsapp.trim() || undefined,
+      managerName: editVenueManager.trim() || editingVenue.managerName,
+      hourlyRateMAD: Number(editVenueRate) || 500,
+      turfType: editVenueTurf,
+      formats: editVenueFormats,
+      amenities: editVenueAmenities,
+      imageUrl: editVenueImageUrl || editingVenue.imageUrl,
+    });
+
+    setIsEditVenueModalOpen(false);
+    setEditingVenue(null);
+    setStatusNotification(
+      language === 'ar'
+        ? `تم تحديث بيانات مركب "${editVenueName.trim()}" بنجاح`
+        : `Venue "${editVenueName.trim()}" updated successfully`
+    );
+    setTimeout(() => setStatusNotification(null), 4000);
+  };
+
+  // Handle Confirm Delete Venue
+  const handleConfirmDeleteVenue = async () => {
+    if (!venueToDelete) return;
+    setIsDeletingVenue(true);
+    try {
+      const deletedName = venueToDelete.name;
+      await deletePartnerVenue(venueToDelete.id);
+      setVenueToDelete(null);
+      setStatusNotification(
+        language === 'ar'
+          ? `تم حذف مركب "${deletedName}" نهائياً من المنصة`
+          : `Venue "${deletedName}" has been permanently deleted`
+      );
+      setTimeout(() => setStatusNotification(null), 4000);
+    } finally {
+      setIsDeletingVenue(false);
+    }
   };
 
   return (
@@ -491,9 +649,26 @@ export const VenuesView: React.FC<VenuesViewProps> = ({ onOrganizeMatchFromSlot 
         </div>
       </div>
 
+      {/* Status Notification Toast */}
+      {statusNotification && (
+        <div className="p-4 rounded-2xl bg-[#0E4836] border border-[#E5B869]/40 text-[#F5D794] text-xs font-bold flex items-center justify-between gap-3 shadow-xl animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[#E5B869] shrink-0" />
+            <span>{statusNotification}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setStatusNotification(null)}
+            className="text-emerald-300/80 hover:text-white cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Venues Grid */}
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h2 className="text-lg font-bold font-display text-white flex items-center gap-2">
             <Building2 className="w-5 h-5 text-[#E5B869]" />
             <span>{t('venues.viewAllVenues')}</span>
@@ -501,6 +676,41 @@ export const VenuesView: React.FC<VenuesViewProps> = ({ onOrganizeMatchFromSlot 
               {filteredVenues.length}
             </span>
           </h2>
+
+          {/* All / My Registered Venues Filter */}
+          <div className="flex items-center gap-2 bg-[#061e16] p-1.5 rounded-2xl border border-[#E5B869]/20 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setShowOnlyMyVenues(false)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                !showOnlyMyVenues
+                  ? 'bg-[#E5B869] text-slate-950 font-black shadow-md'
+                  : 'text-emerald-300/80 hover:text-white'
+              }`}
+            >
+              {language === 'ar' ? 'كافة الملاعب' : 'All Venues'} ({venues.length})
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowOnlyMyVenues(true)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                showOnlyMyVenues
+                  ? 'bg-[#E5B869] text-slate-950 font-black shadow-md'
+                  : 'text-emerald-300/80 hover:text-white'
+              }`}
+            >
+              <Building2 className="w-3.5 h-3.5" />
+              <span>{language === 'ar' ? 'ملاعبي المسجلة' : 'My Registered Venues'}</span>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                showOnlyMyVenues
+                  ? 'bg-slate-950 text-[#F5D794]'
+                  : 'bg-emerald-950 text-[#F5D794] border border-[#E5B869]/30'
+              }`}>
+                {myVenuesCount}
+              </span>
+            </button>
+          </div>
         </div>
 
         {filteredVenues.length === 0 ? (
@@ -510,10 +720,24 @@ export const VenuesView: React.FC<VenuesViewProps> = ({ onOrganizeMatchFromSlot 
               {language === 'ar' ? 'لا توجد ملاعب مطابقة للبحث' : 'No partner venues match your search'}
             </h3>
             <p className="text-xs text-emerald-300/70 max-w-md mx-auto">
-              {language === 'ar'
-                ? 'جرّب تغيير المدينة أو خيارات الفلترة لعرض الملاعب الشريكة المتوفرة.'
-                : 'Try adjusting your city filter or search query.'}
+              {showOnlyMyVenues
+                ? (language === 'ar'
+                    ? 'لم تقم بتسجيل أي مركب رياضي حتى الآن، يمكنك الضغط على "تسجيل مركب رياضي جديد" للبدء.'
+                    : 'You have not registered any sports complexes yet. Click "Register Partner Pitch" to add one.')
+                : (language === 'ar'
+                    ? 'جرّب تغيير المدينة أو خيارات الفلترة لعرض الملاعب الشريكة المتوفرة.'
+                    : 'Try adjusting your city filter or search query.')}
             </p>
+            {showOnlyMyVenues && (
+              <button
+                type="button"
+                onClick={() => setIsAddVenueModalOpen(true)}
+                className="mt-3 px-4 py-2 rounded-xl bg-[#E5B869] text-slate-950 text-xs font-black hover:opacity-90 cursor-pointer inline-flex items-center gap-1.5 shadow-md"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>{t('venues.addVenueBtn')}</span>
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -561,6 +785,48 @@ export const VenuesView: React.FC<VenuesViewProps> = ({ onOrganizeMatchFromSlot 
 
                   {/* Details Body */}
                   <div className="p-5 space-y-4 flex-1 flex flex-col justify-between">
+                    {/* Management & Deletion Bar for Owners & Admins */}
+                    {canManageVenue(venue) && (
+                      <div className="p-3 rounded-2xl bg-[#061811] border border-[#E5B869]/30 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 text-xs shadow-inner">
+                        <div className="flex items-center gap-1.5 text-xs">
+                          {isUserVenueCreator(venue) ? (
+                            <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30 flex items-center gap-1">
+                              <Building2 className="w-3.5 h-3.5 text-emerald-400" />
+                              <span>{t('venues.ownerBadge', 'مركبك المسجل')}</span>
+                            </span>
+                          ) : isSuperAdmin ? (
+                            <span className="px-2.5 py-1 rounded-lg bg-[#E5B869]/20 text-[#F5D794] font-black border border-[#E5B869]/40 flex items-center gap-1">
+                              <Shield className="w-3.5 h-3.5 text-[#E5B869]" />
+                              <span>{t('venues.adminBadge', 'صلاحية المشرف العام')}</span>
+                            </span>
+                          ) : null}
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          {/* Edit Venue Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditVenue(venue)}
+                            className="px-3 py-1.5 rounded-xl bg-[#081813] hover:bg-[#0E4836] text-[#F5D794] border border-[#E5B869]/30 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm hover:scale-[1.02]"
+                            title={t('venues.editVenueBtn', 'تعديل بيانات المركب')}
+                          >
+                            <Edit2 className="w-3.5 h-3.5 text-[#E5B869]" />
+                            <span>{t('venues.editVenueBtn', 'تعديل')}</span>
+                          </button>
+
+                          {/* Delete Venue Button */}
+                          <button
+                            type="button"
+                            onClick={() => setVenueToDelete(venue)}
+                            className="px-3 py-1.5 rounded-xl bg-rose-500/15 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm hover:scale-[1.02]"
+                            title={isSuperAdmin ? t('venues.deleteVenueAdminBtn', 'حذف المركب بصفتك المشرف العام') : t('venues.deleteVenueBtn', 'حذف المركب نهائياً')}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>{t('venues.deleteVenueBtn', 'حذف المركب')}</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     {/* Specs / Tags */}
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="px-2.5 py-1 rounded-lg bg-[#061e16] border border-[#E5B869]/20 text-[#F5D794] text-xs font-medium">
@@ -860,17 +1126,15 @@ export const VenuesView: React.FC<VenuesViewProps> = ({ onOrganizeMatchFromSlot 
                   <label className="block text-emerald-200 font-bold mb-1">
                     {t('venues.cityLabel')} *
                   </label>
-                  <select
+                  <input
+                    type="text"
+                    required
+                    autoComplete="off"
+                    placeholder={language === 'ar' ? 'اكتب اسم المدينة' : 'Type city name'}
                     value={newVenueCity}
                     onChange={(e) => setNewVenueCity(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-[#061e16] border border-[#E5B869]/30 rounded-xl text-[#F5D794] focus:outline-none focus:border-[#E5B869]"
-                  >
-                    {Object.entries(MOROCCAN_CITIES_LOCALIZED).map(([k, v]) => (
-                      <option key={k} value={k}>
-                        {language === 'ar' ? v.ar : v.en}
-                      </option>
-                    ))}
-                  </select>
+                    className="w-full px-3.5 py-2.5 bg-[#061e16] border border-[#E5B869]/30 rounded-xl text-white placeholder-emerald-200/40 focus:outline-none focus:border-[#E5B869]"
+                  />
                 </div>
 
                 <div>
@@ -1384,6 +1648,340 @@ export const VenuesView: React.FC<VenuesViewProps> = ({ onOrganizeMatchFromSlot 
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 4: CONFIRM PERMANENT VENUE DELETION                                 */}
+      {/* ========================================================================= */}
+      {venueToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-[#0A261D] border border-rose-500/50 rounded-3xl w-full max-w-md p-6 sm:p-7 shadow-2xl space-y-5 text-white">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-rose-500/20 border border-rose-500/40 rounded-2xl shrink-0">
+                <Trash2 className="w-6 h-6 text-rose-400" />
+              </div>
+              <div>
+                <h3 className="text-base sm:text-lg font-bold font-display text-white">
+                  {t('venues.confirmDeleteVenueTitle', 'تأكيد حذف المركب الرياضي')}
+                </h3>
+                <span className="text-xs text-rose-300/80">
+                  {isSuperAdmin
+                    ? (language === 'ar' ? 'صلاحية المشرف العام (Super Admin)' : 'Super Admin Authority')
+                    : (language === 'ar' ? 'بصفتك صاحب المركب الرياضي' : 'As Venue Owner')}
+                </span>
+              </div>
+            </div>
+
+            {/* Venue Info Card */}
+            <div className="p-4 rounded-2xl bg-[#061811] border border-[#E5B869]/20 space-y-2 text-xs">
+              <div className="font-bold text-[#F5D794] text-sm flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-[#E5B869]" />
+                <span>{venueToDelete.name}</span>
+              </div>
+              <div className="text-emerald-200/80 flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-[#E5B869] shrink-0" />
+                <span>{venueToDelete.city} — {venueToDelete.address}</span>
+              </div>
+              {venueToDelete.managerName && (
+                <div className="text-emerald-300/70 pt-1 border-t border-white/5">
+                  {language === 'ar' ? 'المسؤول:' : 'Manager:'}{' '}
+                  <strong className="text-white">{venueToDelete.managerName}</strong>
+                </div>
+              )}
+            </div>
+
+            <p className="text-xs text-rose-200/90 leading-relaxed bg-rose-950/20 p-3 rounded-xl border border-rose-500/20">
+              {t(
+                'venues.confirmDeleteVenueDesc',
+                'هل أنت متأكد من رغبتك في حذف هذا المركب الرياضي نهائياً من التطبيق؟ سيتم مسح كافة الحصص والجداول المرتبطة به.'
+              )}
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                disabled={isDeletingVenue}
+                onClick={() => setVenueToDelete(null)}
+                className="px-4 py-2 rounded-xl text-xs text-slate-300 hover:text-white cursor-pointer"
+              >
+                {t('venues.cancelDeleteBtn', 'إلغاء والتراجع')}
+              </button>
+
+              <button
+                type="button"
+                disabled={isDeletingVenue}
+                onClick={handleConfirmDeleteVenue}
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-lg shadow-rose-950 disabled:opacity-50"
+              >
+                {isDeletingVenue ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>{language === 'ar' ? 'جارٍ الحذف...' : 'Deleting...'}</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    <span>{t('venues.confirmDeleteBtn', 'نعم، حذف نهائي')}</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 5: EDIT PARTNER VENUE                                               */}
+      {/* ========================================================================= */}
+      {isEditVenueModalOpen && editingVenue && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-[#0A261D] border border-[#E5B869]/40 rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl space-y-6">
+            <div className="flex items-center justify-between border-b border-[#E5B869]/20 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-[#E5B869]/20 text-[#F5D794]">
+                  <Edit2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold font-display text-white">
+                    {t('venues.editVenueModalTitle', 'تعديل بيانات المركب الرياضي')}
+                  </h3>
+                  <p className="text-xs text-emerald-200/70 mt-0.5">
+                    {editingVenue.name}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditVenueModalOpen(false);
+                  setEditingVenue(null);
+                }}
+                className="p-2 rounded-xl bg-[#061e16] text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateVenueSubmit} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-emerald-200 font-bold mb-1">
+                  {t('venues.venueNameLabel')} *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editVenueName}
+                  onChange={(e) => setEditVenueName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-[#061e16] border border-[#E5B869]/30 rounded-xl text-white focus:outline-none focus:border-[#E5B869]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-emerald-200 font-bold mb-1">
+                    {t('venues.cityLabel')} *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editVenueCity}
+                    onChange={(e) => setEditVenueCity(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-[#061e16] border border-[#E5B869]/30 rounded-xl text-white focus:outline-none focus:border-[#E5B869]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-emerald-200 font-bold mb-1">
+                    {t('venues.rateLabel')} *
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    value={editVenueRate}
+                    onChange={(e) => setEditVenueRate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-[#061e16] border border-[#E5B869]/30 rounded-xl text-white focus:outline-none focus:border-[#E5B869]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-emerald-200 font-bold mb-1">
+                  {t('venues.addressLabel')} *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editVenueAddress}
+                  onChange={(e) => setEditVenueAddress(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-[#061e16] border border-[#E5B869]/30 rounded-xl text-white focus:outline-none focus:border-[#E5B869]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-emerald-200 font-bold mb-1">
+                  {t('venues.mapsLabel')}
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://maps.google.com/..."
+                  value={editVenueMapsUrl}
+                  onChange={(e) => setEditVenueMapsUrl(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-[#061e16] border border-[#E5B869]/30 rounded-xl text-white focus:outline-none focus:border-[#E5B869]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-emerald-200 font-bold mb-1">
+                    {t('venues.phoneLabel')} *
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={editVenuePhone}
+                    onChange={(e) => setEditVenuePhone(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-[#061e16] border border-[#E5B869]/30 rounded-xl text-white focus:outline-none focus:border-[#E5B869]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-emerald-200 font-bold mb-1">
+                    {t('venues.whatsappLabel')}
+                  </label>
+                  <input
+                    type="tel"
+                    value={editVenueWhatsapp}
+                    onChange={(e) => setEditVenueWhatsapp(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-[#061e16] border border-[#E5B869]/30 rounded-xl text-white focus:outline-none focus:border-[#E5B869]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-emerald-200 font-bold mb-1">
+                    {t('venues.filterTurf')}
+                  </label>
+                  <select
+                    value={editVenueTurf}
+                    onChange={(e) => setEditVenueTurf(e.target.value as any)}
+                    className="w-full px-3.5 py-2.5 bg-[#061e16] border border-[#E5B869]/30 rounded-xl text-[#F5D794] focus:outline-none focus:border-[#E5B869]"
+                  >
+                    <option value="synthetic_fifa">{t('venues.syntheticFifa')}</option>
+                    <option value="indoor_hall">{t('venues.indoorHall')}</option>
+                    <option value="natural_grass">{t('venues.naturalGrass')}</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-emerald-200 font-bold mb-1">
+                    {t('venues.managerLabel')}
+                  </label>
+                  <input
+                    type="text"
+                    value={editVenueManager}
+                    onChange={(e) => setEditVenueManager(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-[#061e16] border border-[#E5B869]/30 rounded-xl text-white focus:outline-none focus:border-[#E5B869]"
+                  />
+                </div>
+              </div>
+
+              {/* Photo Upload for Edit */}
+              <div className="p-3 bg-[#061e16] border border-[#E5B869]/25 rounded-2xl space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-emerald-200 flex items-center gap-1.5">
+                    <ImageIcon className="w-4 h-4 text-[#E5B869]" />
+                    {language === 'ar' ? 'صورة الملعب:' : 'Venue Photo:'}
+                  </label>
+                  <span className="text-[10px] text-emerald-400/60">
+                    {language === 'ar' ? 'JPG, PNG, WebP' : 'JPG, PNG, WebP'}
+                  </span>
+                </div>
+
+                <input
+                  type="file"
+                  ref={editVenueFileInputRef}
+                  onChange={handleEditVenueImageChange}
+                  accept="image/png,image/jpeg,image/webp,image/jpg"
+                  className="hidden"
+                />
+
+                {editVenueImageUrl ? (
+                  <div className="relative rounded-xl overflow-hidden border border-[#E5B869]/40 group h-36 w-full">
+                    <img
+                      src={editVenueImageUrl}
+                      alt="Venue Preview"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => editVenueFileInputRef.current?.click()}
+                        className="px-3 py-1.5 bg-[#0E4836] hover:bg-[#135d46] text-white rounded-lg text-xs font-bold border border-[#E5B869]/50 flex items-center gap-1 cursor-pointer"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        {language === 'ar' ? 'تغيير الصورة' : 'Change'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditVenueImageUrl('')}
+                        className="px-3 py-1.5 bg-red-900/80 hover:bg-red-800 text-white rounded-lg text-xs font-bold border border-red-500/50 flex items-center gap-1 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        {language === 'ar' ? 'حذف' : 'Remove'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => editVenueFileInputRef.current?.click()}
+                    disabled={isUploadingEditImage}
+                    className="w-full py-3 px-4 border border-dashed border-[#E5B869]/40 hover:border-[#E5B869] bg-[#081813]/60 hover:bg-[#0E4836]/40 rounded-xl flex items-center justify-center gap-2 text-xs text-emerald-200 transition-colors cursor-pointer"
+                  >
+                    {isUploadingEditImage ? (
+                      <>
+                        <Loader2 className="w-4 h-4 text-[#E5B869] animate-spin" />
+                        <span>{language === 'ar' ? 'جاري معالجة الصورة...' : 'Processing photo...'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 text-[#E5B869]" />
+                        <span>{language === 'ar' ? 'رفع صورة جديدة للملعب' : 'Upload new photo'}</span>
+                      </>
+                    )}
+                  </button>
+                )}
+
+                {editVenueImageError && (
+                  <p className="text-[11px] text-red-400 font-medium">{editVenueImageError}</p>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#E5B869]/20">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditVenueModalOpen(false);
+                    setEditingVenue(null);
+                  }}
+                  className="px-4 py-2 rounded-xl text-xs text-slate-300 hover:text-white cursor-pointer"
+                >
+                  {t('common.cancel')}
+                </button>
+
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 text-xs font-black shadow-lg flex items-center gap-2 cursor-pointer"
+                >
+                  <Save className="w-4 h-4 text-slate-950" />
+                  <span>{t('venues.saveVenueChangesBtn', 'حفظ التعديلات')}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

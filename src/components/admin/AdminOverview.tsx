@@ -8,7 +8,7 @@ interface AdminOverviewProps {
   users: UserProfile[];
   announcements: AdminAnnouncement[];
   onOpenMatchDetails: (match: SoccerMatch) => void;
-  onNavigateTab: (tab: 'users' | 'matches' | 'announcements') => void;
+  onNavigateTab: (tab: 'users' | 'matches' | 'announcements' | 'venues') => void;
 }
 
 export function AdminOverview({

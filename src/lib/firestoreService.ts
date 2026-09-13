@@ -689,9 +689,14 @@ export function subscribeToVenues(onUpdate: (venues: PartnerVenue[]) => void): (
         venuesCol,
         (snapshot) => {
           if (snapshot.empty) {
-            // If Firestore venues collection is empty, populate with INITIAL_PARTNER_VENUES
-            seedInitialVenuesIfEmpty();
-            onUpdate(INITIAL_PARTNER_VENUES);
+            const hasSeededBefore = typeof window !== 'undefined' && localStorage.getItem('pitchmate_venues_seeded_v1');
+            if (!hasSeededBefore) {
+              if (typeof window !== 'undefined') localStorage.setItem('pitchmate_venues_seeded_v1', 'true');
+              seedInitialVenuesIfEmpty();
+              onUpdate(INITIAL_PARTNER_VENUES);
+              return;
+            }
+            onUpdate([]);
             return;
           }
           const venues: PartnerVenue[] = [];
