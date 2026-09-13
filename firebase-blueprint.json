@@ -123,6 +123,25 @@
         "slots": { "type": "array", "items": { "type": "object" } }
       },
       "required": ["id", "name", "city", "address", "phone"]
+    },
+    "FootballReel": {
+      "title": "FootballReel",
+      "description": "Short football highlight clip, goal, skill, or save",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "videoUrl": { "type": "string" },
+        "thumbnailUrl": { "type": "string" },
+        "category": { "type": "string", "enum": ["goal", "skill", "save", "funny", "other"] },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "cityName": { "type": "string" },
+        "likes": { "type": "array", "items": { "type": "string" } },
+        "viewsCount": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "title", "videoUrl", "category", "authorId", "authorName", "createdAt"]
     }
   },
   "firestore": {
@@ -157,6 +176,10 @@
     "/password_resets/{resetId}": {
       "schema": "PasswordReset",
       "description": "Password reset OTP tokens"
+    },
+    "/reels/{reelId}": {
+      "schema": "FootballReel",
+      "description": "Football highlight clips, goals, and reels"
     }
   }
 }

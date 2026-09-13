@@ -15,6 +15,7 @@ import {
   Globe,
   Check,
   Building2,
+  Film,
 } from 'lucide-react';
 import { usePitchStore } from '../lib/usePitchStore';
 import { useLanguage } from '../lib/useLanguage';
@@ -22,8 +23,8 @@ import { SUPER_ADMIN_EMAIL, isSuperAdminEmail } from '../types';
 import { PitchMateLogo } from './PitchMateLogo';
 
 interface HeaderProps {
-  activeTab: 'matches' | 'venues' | 'leaderboard' | 'profile' | 'admin';
-  setActiveTab: (tab: 'matches' | 'venues' | 'leaderboard' | 'profile' | 'admin') => void;
+  activeTab: 'matches' | 'venues' | 'reels' | 'leaderboard' | 'profile' | 'admin';
+  setActiveTab: (tab: 'matches' | 'venues' | 'reels' | 'leaderboard' | 'profile' | 'admin') => void;
   onOpenCreateMatch: () => void;
   onOpenChangeAvatar?: () => void;
   onOpenDirectMessages?: () => void;
@@ -100,6 +101,20 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Building2 className={`w-4 h-4 ${activeTab === 'venues' ? 'text-slate-950' : 'text-[#E5B869]'}`} />
               <span>{t('nav.venues')}</span>
+            </button>
+
+            <button
+              id="nav-tab-reels"
+              type="button"
+              onClick={() => setActiveTab('reels')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeTab === 'reels'
+                  ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 shadow-lg shadow-amber-950/50 font-black'
+                  : 'text-slate-300 hover:text-[#F5D794] hover:bg-[#0D382B]/40'
+              }`}
+            >
+              <Film className={`w-4 h-4 ${activeTab === 'reels' ? 'text-slate-950' : 'text-[#E5B869]'}`} />
+              <span>{t('nav.reels')}</span>
             </button>
 
             <button
@@ -229,16 +244,16 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
-            {/* Direct Messages CTA (Hidden on mobile as it is in MobileBottomNav) */}
+            {/* Direct Messages CTA */}
             {onOpenDirectMessages && (
               <button
                 id="header-direct-messages-btn"
                 type="button"
                 onClick={onOpenDirectMessages}
-                className="hidden sm:flex relative p-2.5 rounded-2xl bg-[#0B211A] hover:bg-[#0E2C22] border border-[#E5B869]/30 hover:border-[#E5B869]/70 text-slate-300 hover:text-white transition-all cursor-pointer shrink-0"
+                className="relative p-2 sm:p-2.5 rounded-2xl bg-[#0B211A] hover:bg-[#0E2C22] border border-[#E5B869]/30 hover:border-[#E5B869]/70 text-slate-300 hover:text-white transition-all cursor-pointer shrink-0"
                 title={t('nav.messages')}
               >
-                <MessageSquare className="w-4 h-4 text-[#E5B869]" />
+                <MessageSquare className="w-4 h-4 text-[#E5B869] shrink-0" />
                 {unreadMessagesCount > 0 && (
                   <span className="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-[#F5D794] to-[#E5B869] text-slate-950 text-[9px] font-black animate-pulse shadow-sm shadow-amber-500/50">
                     {unreadMessagesCount}
@@ -444,6 +459,20 @@ export const Header: React.FC<HeaderProps> = ({
                 }`}
               >
                 {t('nav.venues')}
+              </button>
+
+              <button
+                onClick={() => {
+                  setActiveTab('reels');
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`py-2 rounded-xl text-xs font-bold text-center ${
+                  activeTab === 'reels'
+                    ? 'bg-gradient-to-r from-[#F5D794] via-[#E5B869] to-[#C69238] text-slate-950 font-black shadow-md'
+                    : 'bg-[#0B211A] text-slate-300 border border-[#E5B869]/20'
+                }`}
+              >
+                {t('nav.reels')}
               </button>
 
               <button

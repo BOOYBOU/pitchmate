@@ -12,6 +12,7 @@ import { ProfileView } from './components/ProfileView';
 import { LeaderboardView } from './components/LeaderboardView';
 import { AdminPanel } from './components/AdminPanel';
 import { VenuesView } from './components/VenuesView';
+import { ReelsView } from './components/ReelsView';
 import { CreateMatchModal } from './components/CreateMatchModal';
 import { MatchDetailModal } from './components/MatchDetailModal';
 import { ChangeAvatarModal } from './components/ChangeAvatarModal';
@@ -37,7 +38,7 @@ function PitchMateApp() {
 
   const { t, isRTL } = useLanguage();
 
-  const [activeTab, setActiveTab] = useState<'matches' | 'venues' | 'leaderboard' | 'profile' | 'admin'>('matches');
+  const [activeTab, setActiveTab] = useState<'matches' | 'venues' | 'reels' | 'leaderboard' | 'profile' | 'admin'>('matches');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<SoccerMatch | null>(null);
@@ -153,6 +154,15 @@ function PitchMateApp() {
           />
         )}
 
+        {activeTab === 'reels' && (
+          <ReelsView
+            onOpenMatch={(matchId) => {
+              const m = matches.find((x) => x.id === matchId);
+              if (m) handleOpenMatchDetails(m);
+            }}
+          />
+        )}
+
         {activeTab === 'leaderboard' && (
           <LeaderboardView
             onOpenDirectMessage={handleOpenDirectMessageWithUser}
@@ -250,6 +260,15 @@ function PitchMateApp() {
               className="text-emerald-300/70 hover:text-[#F5D794] cursor-pointer transition-colors"
             >
               {t('nav.venues')}
+            </button>
+
+            <span className="text-[#E5B869]/40">•</span>
+
+            <button
+              onClick={() => setActiveTab('reels')}
+              className="text-emerald-300/70 hover:text-[#F5D794] cursor-pointer transition-colors"
+            >
+              {t('nav.reels')}
             </button>
 
             <span className="text-[#E5B869]/40">•</span>

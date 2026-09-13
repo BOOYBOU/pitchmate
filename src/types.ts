@@ -330,3 +330,27 @@ export const getDefaultFormationForMatch = (format?: string, maxPlayers?: number
       return '7v7-2-3-1';
   }
 };
+
+/** Category types for football short videos/reels */
+export type ReelCategory = 'goal' | 'skill' | 'save' | 'funny' | 'other';
+
+/** Football short video / highlights reel item */
+export interface FootballReel {
+  id: string;
+  title: string;
+  description?: string;
+  videoUrl: string; // MP4/WebM direct URL, blob data, or embed video
+  thumbnailUrl?: string; // Poster thumbnail frame to prevent heavy video preload
+  category: ReelCategory;
+  authorId: string;
+  authorName: string;
+  authorAvatar?: string;
+  authorEmail?: string;
+  cityName?: string;
+  matchId?: string;
+  matchTitle?: string;
+  likes: string[]; // array of user IDs who liked this reel
+  viewsCount: number;
+  createdAt: string;
+  durationSeconds?: number;
+}

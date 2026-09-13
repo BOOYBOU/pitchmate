@@ -18,6 +18,7 @@ export const TRANSLATIONS = {
     nav: {
       matches: 'المباريات',
       venues: 'الملاعب',
+      reels: 'أهداف وريلز',
       leaderboard: 'لوحة الشرف و MOTM',
       profile: 'ملفي الشخصي',
       admin: 'لوحة التحكم الإدارية',
@@ -567,6 +568,7 @@ export const TRANSLATIONS = {
     nav: {
       matches: 'Matches',
       venues: 'Venues',
+      reels: 'Reels & Goals ⚽',
       leaderboard: 'Leaderboard & MOTM',
       profile: 'Profile',
       admin: 'Admin Center',

@@ -55,5 +55,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if true;
     }
+
+    // Football highlight reels and shorts collection
+    match /reels/{reelId} {
+      allow read: if true;
+      allow write: if true;
+    }
   }
 }

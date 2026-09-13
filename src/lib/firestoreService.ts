@@ -18,7 +18,8 @@ import {
   AdminAnnouncement,
   DirectMessage,
   InAppNotification,
-  PartnerVenue
+  PartnerVenue,
+  FootballReel,
 } from '../types';
 import {
   INITIAL_MATCHES,
@@ -26,6 +27,7 @@ import {
   INITIAL_ANNOUNCEMENTS
 } from './mockData';
 import { INITIAL_PARTNER_VENUES } from './mockVenues';
+import { INITIAL_REELS } from './mockReels';
 
 // Collection references
 export const COLLECTIONS = {
@@ -37,6 +39,7 @@ export const COLLECTIONS = {
   NOTIFICATIONS: 'notifications',
   PASSWORD_RESETS: 'password_resets',
   VENUES: 'venues',
+  REELS: 'reels',
 };
 
 export enum OperationType {
@@ -774,4 +777,96 @@ export async function deleteVenueFromFirestore(venueId: string): Promise<void> {
     handleFirestoreError(err, OperationType.DELETE, `${COLLECTIONS.VENUES}/${venueId}`);
   }
 }
+
+/**
+ * Seed initial reels if empty in Firestore
+ */
+export async function seedInitialReelsIfEmpty(): Promise<void> {
+  try {
+    const ready = await checkFirestoreAvailable();
+    if (!ready) return;
+    const reelsCol = collection(db, COLLECTIONS.REELS);
+    const snapshot = await getDocs(reelsCol);
+    if (snapshot.empty) {
+      const batch = writeBatch(db);
+      INITIAL_REELS.forEach((r) => {
+        const ref = doc(db, COLLECTIONS.REELS, r.id);
+        batch.set(ref, r);
+      });
+      await batch.commit();
+    }
+  } catch (err) {
+    console.warn('[Firestore] Note seeding initial reels:', err);
+  }
+}
+
+/**
+ * Real-time subscription to Reels collection
+ */
+export function subscribeToReels(callback: (reels: FootballReel[]) => void): () => void {
+  let active = true;
+  let unsub: (() => void) | null = null;
+
+  checkFirestoreAvailable().then((ready) => {
+    if (!ready || !active) return;
+    try {
+      const reelsCol = collection(db, COLLECTIONS.REELS);
+      unsub = onSnapshot(
+        reelsCol,
+        (snapshot) => {
+          if (!active) return;
+          const reels: FootballReel[] = [];
+          snapshot.forEach((d) => {
+            reels.push(d.data() as FootballReel);
+          });
+          // Sort descending by createdAt
+          reels.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          callback(reels);
+        },
+        (error) => {
+          console.warn('[Firestore] subscribeToReels listener failed, fallback to local:', error);
+        }
+      );
+    } catch (err) {
+      console.warn('[Firestore] subscribeToReels catch:', err);
+    }
+  });
+
+  return () => {
+    active = false;
+    if (unsub) unsub();
+  };
+}
+
+/**
+ * Save or update a Football Reel in Firestore
+ */
+export async function saveReelToFirestore(reel: FootballReel): Promise<void> {
+  try {
+    const ready = await checkFirestoreAvailable();
+    if (!ready) return;
+    const ref = doc(db, COLLECTIONS.REELS, reel.id);
+    await setDoc(ref, {
+      ...reel,
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `${COLLECTIONS.REELS}/${reel.id}`);
+  }
+}
+
+/**
+ * Delete a Football Reel from Firestore
+ */
+export async function deleteReelFromFirestore(reelId: string): Promise<void> {
+  try {
+    const ready = await checkFirestoreAvailable();
+    if (!ready) return;
+    const ref = doc(db, COLLECTIONS.REELS, reelId);
+    await deleteDoc(ref);
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, `${COLLECTIONS.REELS}/${reelId}`);
+  }
+}
+
 

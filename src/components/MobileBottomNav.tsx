@@ -6,14 +6,16 @@ import {
   MessageSquare,
   User,
   Shield,
+  Building2,
+  Film,
 } from 'lucide-react';
 import { useLanguage } from '../lib/useLanguage';
 import { usePitchStore } from '../lib/usePitchStore';
 import { isSuperAdminEmail } from '../types';
 
 interface MobileBottomNavProps {
-  activeTab: 'matches' | 'venues' | 'leaderboard' | 'profile' | 'admin';
-  setActiveTab: (tab: 'matches' | 'venues' | 'leaderboard' | 'profile' | 'admin') => void;
+  activeTab: 'matches' | 'venues' | 'reels' | 'leaderboard' | 'profile' | 'admin';
+  setActiveTab: (tab: 'matches' | 'venues' | 'reels' | 'leaderboard' | 'profile' | 'admin') => void;
   onOpenCreateMatch: () => void;
   onOpenDirectMessages: () => void;
 }
@@ -64,27 +66,27 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           </span>
         </button>
 
-        {/* MOTM Leaderboard Tab */}
+        {/* Reels Tab */}
         <button
           type="button"
-          onClick={() => setActiveTab('leaderboard')}
-          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer min-w-[56px] ${
-            activeTab === 'leaderboard'
+          onClick={() => setActiveTab('reels')}
+          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer min-w-[52px] ${
+            activeTab === 'reels'
               ? 'text-[#F5D794]'
               : 'text-emerald-300/60 hover:text-emerald-100'
           }`}
         >
           <div
             className={`p-1 rounded-xl transition-all ${
-              activeTab === 'leaderboard'
+              activeTab === 'reels'
                 ? 'bg-[#0E4836] border border-[#E5B869]/40 text-[#F5D794] shadow-sm shadow-amber-950'
                 : ''
             }`}
           >
-            <Trophy className="w-5 h-5" />
+            <Film className="w-5 h-5" />
           </div>
           <span className="text-[10px] font-bold mt-0.5 whitespace-nowrap">
-            MOTM
+            {language === 'ar' ? 'أهداف وريلز' : 'Reels'}
           </span>
         </button>
 
@@ -100,26 +102,31 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             <Plus className="w-6 h-6 stroke-[2.8]" />
           </div>
           <span className="text-[10px] font-extrabold text-[#F5D794] mt-1 whitespace-nowrap">
-            {language === 'ar' ? 'إنشاء' : 'Create'}
+            {language === 'ar' ? 'تنظيم' : 'Create'}
           </span>
         </button>
 
-        {/* Direct Messages Button with Unread Badge */}
+        {/* Venues Tab */}
         <button
           type="button"
-          onClick={onOpenDirectMessages}
-          className="flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition-all cursor-pointer min-w-[56px] text-emerald-300/60 hover:text-emerald-100 relative"
+          onClick={() => setActiveTab('venues')}
+          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all cursor-pointer min-w-[52px] ${
+            activeTab === 'venues'
+              ? 'text-[#F5D794]'
+              : 'text-emerald-300/60 hover:text-emerald-100'
+          }`}
         >
-          <div className="p-1 rounded-xl relative">
-            <MessageSquare className="w-5 h-5" />
-            {unreadMessagesCount > 0 && (
-              <span className="absolute -top-1 -right-1 px-1.5 py-0.2 rounded-full bg-[#E5B869] text-slate-950 text-[9px] font-black animate-pulse shadow-sm">
-                {unreadMessagesCount}
-              </span>
-            )}
+          <div
+            className={`p-1 rounded-xl transition-all ${
+              activeTab === 'venues'
+                ? 'bg-[#0E4836] border border-[#E5B869]/40 text-[#F5D794] shadow-sm shadow-amber-950'
+                : ''
+            }`}
+          >
+            <Building2 className="w-5 h-5" />
           </div>
           <span className="text-[10px] font-bold mt-0.5 whitespace-nowrap">
-            {language === 'ar' ? 'الرسائل' : 'Chat'}
+            {language === 'ar' ? 'الملاعب' : 'Venues'}
           </span>
         </button>
 

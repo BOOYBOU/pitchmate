@@ -19,9 +19,11 @@ import {
   MESSI_AVATAR_URL,
   PartnerVenue,
   VenueBookingSlot,
+  FootballReel,
 } from '../types';
 import { INITIAL_MATCHES, INITIAL_USERS, INITIAL_DIRECT_MESSAGES, INITIAL_NOTIFICATIONS, INITIAL_ANNOUNCEMENTS } from './mockData';
 import { INITIAL_PARTNER_VENUES } from './mockVenues';
+import { INITIAL_REELS } from './mockReels';
 import { SoundEffects } from './audioService';
 import { hashPassword, verifyPassword, generateSalt, sanitizeInput } from './security';
 import { balanceTeams } from './teamBalancer';
@@ -51,6 +53,10 @@ import {
   subscribeToVenues,
   saveVenueToFirestore,
   deleteVenueFromFirestore,
+  seedInitialReelsIfEmpty,
+  subscribeToReels,
+  saveReelToFirestore,
+  deleteReelFromFirestore,
 } from './firestoreService';
 import { pushNotificationService } from './pushNotificationService';
 import { MOROCCAN_CITIES_LOCALIZED } from './translations';
@@ -66,6 +72,7 @@ const STORAGE_KEYS = {
   DIRECT_MESSAGES: 'pitchmate_direct_messages_v2',
   NOTIFICATIONS: 'pitchmate_notifications_v2',
   VENUES: 'pitchmate_venues_v2',
+  REELS: 'pitchmate_reels_v2',
 };
 
 // Non-blocking asynchronous localStorage writer to keep 60/120fps UI completely fluid
@@ -297,6 +304,15 @@ interface PitchStoreContextType {
     pitchNumber: string
   ) => Promise<number>;
 
+  // Football Highlights & Reels
+  reels: FootballReel[];
+  addReel: (
+    reelData: Omit<FootballReel, 'id' | 'createdAt' | 'likes' | 'viewsCount'>
+  ) => Promise<FootballReel>;
+  deleteReel: (reelId: string) => Promise<boolean>;
+  toggleLikeReel: (reelId: string) => Promise<void>;
+  incrementReelViews: (reelId: string) => void;
+
   resetToDefaultData: () => void;
 }
 
@@ -407,6 +423,15 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   });
 
+  const [reels, setReels] = useState<FootballReel[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.REELS);
+      return saved ? JSON.parse(saved) : INITIAL_REELS;
+    } catch {
+      return INITIAL_REELS;
+    }
+  });
+
   const [isLoading] = useState(false);
   const knownMsgIdsRef = useRef<Set<string>>(new Set());
   const knownMatchIdsRef = useRef<Set<string>>(new Set());
@@ -454,6 +479,10 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   useEffect(() => {
     scheduleStorageSave(STORAGE_KEYS.VENUES, venues);
   }, [venues]);
+
+  useEffect(() => {
+    scheduleStorageSave(STORAGE_KEYS.REELS, reels);
+  }, [reels]);
 
   // Current User Object
   const currentUser: UserProfile = useMemo(() => {
@@ -699,6 +728,13 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
     });
 
+    seedInitialReelsIfEmpty();
+    const unsubReels = subscribeToReels((cloudReels) => {
+      if (cloudReels && cloudReels.length > 0) {
+        setReels(cloudReels);
+      }
+    });
+
     return () => {
       unsubMatches();
       unsubUsers();
@@ -707,6 +743,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       unsubMessages();
       unsubNotifications();
       unsubVenues();
+      unsubReels();
     };
   }, [mergeMatchesWithTimestamps]);
 
@@ -3196,6 +3233,67 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return generated.length;
   }, []);
 
+  // Football Reels Handlers
+  const addReel = useCallback(async (
+    reelData: Omit<FootballReel, 'id' | 'createdAt' | 'likes' | 'viewsCount'>
+  ): Promise<FootballReel> => {
+    const newReel: FootballReel = {
+      ...reelData,
+      id: `reel-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      likes: [],
+      viewsCount: 1,
+      createdAt: new Date().toISOString(),
+    };
+
+    setReels((prev) => [newReel, ...prev]);
+    saveReelToFirestore(newReel).catch(console.warn);
+    SoundEffects.playWhistle();
+    return newReel;
+  }, []);
+
+  const deleteReel = useCallback(async (reelId: string): Promise<boolean> => {
+    setReels((prev) => prev.filter((r) => r.id !== reelId));
+    deleteReelFromFirestore(reelId).catch(console.warn);
+    return true;
+  }, []);
+
+  const toggleLikeReel = useCallback(async (reelId: string): Promise<void> => {
+    const uid = currentUserIdRef.current;
+    if (!uid) return;
+
+    let updatedReel: FootballReel | null = null;
+    setReels((prev) =>
+      prev.map((r) => {
+        if (r.id === reelId) {
+          const alreadyLiked = (r.likes || []).includes(uid);
+          const newLikes = alreadyLiked
+            ? (r.likes || []).filter((id) => id !== uid)
+            : [...(r.likes || []), uid];
+          updatedReel = { ...r, likes: newLikes };
+          return updatedReel;
+        }
+        return r;
+      })
+    );
+
+    if (updatedReel) {
+      saveReelToFirestore(updatedReel).catch(console.warn);
+    }
+  }, []);
+
+  const incrementReelViews = useCallback((reelId: string) => {
+    setReels((prev) =>
+      prev.map((r) => {
+        if (r.id === reelId) {
+          const updated = { ...r, viewsCount: (r.viewsCount || 0) + 1 };
+          saveReelToFirestore(updated).catch(() => {});
+          return updated;
+        }
+        return r;
+      })
+    );
+  }, []);
+
   const resetToDefaultData = useCallback(() => {
     fetch('/api/reset-data', { method: 'POST', headers: getAuthHeaders() }).catch(() => {});
     setMatches(INITIAL_MATCHES);
@@ -3292,6 +3390,11 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     updateVenueBookingSlot,
     deleteVenueBookingSlot,
     batchGenerateVenueSlots,
+    reels,
+    addReel,
+    deleteReel,
+    toggleLikeReel,
+    incrementReelViews,
     resetToDefaultData,
   }), [
     matches,
@@ -3301,6 +3404,11 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     comments,
     announcements,
     venues,
+    reels,
+    addReel,
+    deleteReel,
+    toggleLikeReel,
+    incrementReelViews,
     directMessages,
     unreadMessagesCount,
     notifications,
