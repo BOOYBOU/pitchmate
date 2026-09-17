@@ -268,6 +268,44 @@ export const mediaStorage = {
       photoUrl: res.imageUrl,
       error: res.error,
     };
+  },
+
+  /**
+   * Upload Video (Football Reel / Goal) to Backend Server Disk
+   * Converts video blob/file to base64 and persists to /uploads/videos/
+   * Returns a publicly accessible, streamable URL like /uploads/videos/reel_123.mp4
+   */
+  async uploadVideo(videoBlobOrFile: Blob | File): Promise<{ success: boolean; videoUrl?: string; error?: string }> {
+    try {
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+      });
+      reader.readAsDataURL(videoBlobOrFile);
+      const base64Data = await base64Promise;
+
+      if (!base64Data) {
+        return { success: false, error: 'Failed to read video file' };
+      }
+
+      const res = await fetch('/api/upload/video', {
+        method: 'POST',
+        headers: getStorageAuthHeaders(),
+        body: JSON.stringify({ base64Data }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.videoUrl) {
+          return { success: true, videoUrl: data.videoUrl };
+        }
+      }
+      return { success: false, error: 'Server could not save video file' };
+    } catch (err: any) {
+      console.warn('[mediaStorage] Video upload notice:', err?.message || err);
+      return { success: false, error: err?.message || 'Video upload failed' };
+    }
   }
 };
 

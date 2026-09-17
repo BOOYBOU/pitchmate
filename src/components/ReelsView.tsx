@@ -31,6 +31,7 @@ import {
 import { usePitchStore } from '../lib/usePitchStore';
 import { FootballReel, ReelCategory, isSuperAdminEmail } from '../types';
 import { MOROCCAN_CITIES_LOCALIZED } from '../lib/translations';
+import { mediaStorage } from '../lib/mediaStorage';
 
 export interface MoroccanCityItem {
   id: string;
@@ -138,6 +139,7 @@ export const ReelsView: React.FC<ReelsViewProps> = ({ onOpenMatch }) => {
   const [videoSourceType, setVideoSourceType] = useState<'upload' | 'url'>('upload');
   const [videoUrlInput, setVideoUrlInput] = useState('');
   const [uploadedVideoBlobUrl, setUploadedVideoBlobUrl] = useState<string | null>(null);
+  const [uploadedVideoFile, setUploadedVideoFile] = useState<File | null>(null);
   const [extractedThumbnail, setExtractedThumbnail] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -264,6 +266,7 @@ export const ReelsView: React.FC<ReelsViewProps> = ({ onOpenMatch }) => {
       return;
     }
 
+    setUploadedVideoFile(file);
     const blobUrl = URL.createObjectURL(file);
     setUploadedVideoBlobUrl(blobUrl);
 
@@ -306,14 +309,37 @@ export const ReelsView: React.FC<ReelsViewProps> = ({ onOpenMatch }) => {
       return;
     }
 
-    const finalVideoUrl = videoSourceType === 'upload' ? uploadedVideoBlobUrl : videoUrlInput.trim();
-    if (!finalVideoUrl) {
-      setUploadError('يرجى اختيار ملف فيديو أو إدخال رابط صالح');
+    if (videoSourceType === 'upload' && !uploadedVideoFile && !uploadedVideoBlobUrl) {
+      setUploadError('يرجى اختيار ملف فيديو لرفعه');
+      return;
+    }
+
+    if (videoSourceType === 'url' && !videoUrlInput.trim()) {
+      setUploadError('يرجى إدخال رابط فيديو صالح');
       return;
     }
 
     setIsSubmitting(true);
     try {
+      let finalVideoUrl = '';
+
+      if (videoSourceType === 'upload' && uploadedVideoFile) {
+        // Upload video file directly to the backend disk so all users across devices can stream it!
+        const uploadResult = await mediaStorage.uploadVideo(uploadedVideoFile);
+        if (uploadResult.success && uploadResult.videoUrl) {
+          finalVideoUrl = uploadResult.videoUrl;
+        } else {
+          // Fallback to blob URL if network save failed
+          finalVideoUrl = uploadedVideoBlobUrl || '';
+        }
+      } else {
+        finalVideoUrl = videoUrlInput.trim();
+      }
+
+      if (!finalVideoUrl) {
+        throw new Error('فشل معالجة الفيديو، يرجى المحاولة مرة أخرى');
+      }
+
       const selectedMatch = matches.find((m) => m.id === newMatchId);
 
       await addReel({
@@ -337,11 +363,12 @@ export const ReelsView: React.FC<ReelsViewProps> = ({ onOpenMatch }) => {
       setNewTitle('');
       setNewDescription('');
       setUploadedVideoBlobUrl(null);
+      setUploadedVideoFile(null);
       setExtractedThumbnail(null);
       setVideoUrlInput('');
       setNewMatchId('');
       setIsUploadModalOpen(false);
-      showToast('تم نشر الهدف بنجاح! ⚽🔥');
+      showToast('تم نشر الهدف بنجاح! ⚽🔥 سيظهر الآن لجميع اللاعبين فوراً');
     } catch (err: any) {
       setUploadError(err.message || 'حدث خطأ أثناء حفظ الفيديو');
     } finally {

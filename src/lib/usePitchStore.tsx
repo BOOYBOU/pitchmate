@@ -569,6 +569,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       if (data.announcements && Array.isArray(data.announcements)) setAnnouncements(data.announcements);
       if (data.directMessages && Array.isArray(data.directMessages)) setDirectMessages(data.directMessages);
       if (data.notifications && Array.isArray(data.notifications)) setNotifications(data.notifications);
+      if (data.reels && Array.isArray(data.reels) && data.reels.length > 0) setReels(data.reels);
     } catch {}
   }, []);
 
@@ -791,6 +792,11 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
               case 'SYNC_NOTIFICATIONS':
                 if (payload) setNotifications(payload);
                 break;
+              case 'SYNC_REELS':
+                if (payload && Array.isArray(payload)) {
+                  setReels(payload);
+                }
+                break;
               case 'SYNC_USERS_AND_NOTIFS':
                 if (payload.users) setUsers(payload.users);
                 if (payload.notifications) setNotifications(payload.notifications);
@@ -802,6 +808,7 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 if (payload.announcements) setAnnouncements(payload.announcements);
                 if (payload.directMessages) setDirectMessages(payload.directMessages);
                 if (payload.notifications) setNotifications(payload.notifications);
+                if (payload.reels && Array.isArray(payload.reels)) setReels(payload.reels);
                 break;
             }
           } catch {}
@@ -3246,16 +3253,34 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
 
     setReels((prev) => [newReel, ...prev]);
+
+    // 1. Broadcast and save to Express Backend (triggers instant SSE to all connected users)
+    fetch('/api/reels', {
+      method: 'POST',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(newReel),
+    }).catch(console.warn);
+
+    // 2. Dual-save to Firestore if configured
     saveReelToFirestore(newReel).catch(console.warn);
+
     SoundEffects.playWhistle();
     return newReel;
-  }, []);
+  }, [getAuthHeaders]);
 
   const deleteReel = useCallback(async (reelId: string): Promise<boolean> => {
     setReels((prev) => prev.filter((r) => r.id !== reelId));
+
+    // Delete from backend API
+    fetch(`/api/reels/${reelId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    }).catch(console.warn);
+
+    // Dual-delete from Firestore
     deleteReelFromFirestore(reelId).catch(console.warn);
     return true;
-  }, []);
+  }, [getAuthHeaders]);
 
   const toggleLikeReel = useCallback(async (reelId: string): Promise<void> => {
     const uid = currentUserIdRef.current;
@@ -3276,10 +3301,17 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       })
     );
 
+    // Like in backend API (broadcasts to all users via SSE)
+    fetch(`/api/reels/${reelId}/like`, {
+      method: 'POST',
+      headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: uid }),
+    }).catch(console.warn);
+
     if (updatedReel) {
       saveReelToFirestore(updatedReel).catch(console.warn);
     }
-  }, []);
+  }, [getAuthHeaders]);
 
   const incrementReelViews = useCallback((reelId: string) => {
     setReels((prev) =>
@@ -3292,6 +3324,11 @@ export const PitchStoreProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         return r;
       })
     );
+
+    fetch(`/api/reels/${reelId}/view`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    }).catch(() => {});
   }, []);
 
   const resetToDefaultData = useCallback(() => {

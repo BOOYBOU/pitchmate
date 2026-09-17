@@ -22,6 +22,7 @@ import {
   isSuperAdminEmail,
   getDefaultFormationForMatch,
   MatchGoal,
+  FootballReel,
 } from './src/types';
 import {
   INITIAL_MATCHES,
@@ -30,6 +31,7 @@ import {
   INITIAL_NOTIFICATIONS,
   INITIAL_ANNOUNCEMENTS,
 } from './src/lib/mockData';
+import { INITIAL_REELS } from './src/lib/mockReels';
 import { balanceTeams } from './src/lib/teamBalancer';
 
 const PORT = 3000;
@@ -38,10 +40,11 @@ const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
 const AUDIO_DIR = path.join(UPLOADS_DIR, 'audio');
 const AVATAR_DIR = path.join(UPLOADS_DIR, 'avatars');
 const IMAGES_DIR = path.join(UPLOADS_DIR, 'images');
+const VIDEOS_DIR = path.join(UPLOADS_DIR, 'videos');
 const DB_FILE = path.join(DATA_DIR, 'pitchmate_db.json');
 
 // Ensure all upload directories exist
-[DATA_DIR, UPLOADS_DIR, AUDIO_DIR, AVATAR_DIR, IMAGES_DIR].forEach((dir) => {
+[DATA_DIR, UPLOADS_DIR, AUDIO_DIR, AVATAR_DIR, IMAGES_DIR, VIDEOS_DIR].forEach((dir) => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -56,6 +59,7 @@ interface DatabaseSchema {
   announcements: AdminAnnouncement[];
   directMessages: DirectMessage[];
   notifications: InAppNotification[];
+  reels?: FootballReel[];
 }
 
 // Initial State Generator
@@ -99,6 +103,7 @@ function getInitialData(): DatabaseSchema {
     announcements: INITIAL_ANNOUNCEMENTS,
     directMessages: [],
     notifications: [],
+    reels: INITIAL_REELS,
   };
 }
 
@@ -168,6 +173,9 @@ try {
         formationGreen: m.formationGreen || getDefaultFormationForMatch(m.format, m.maxPlayers),
         formationBlue: m.formationBlue || getDefaultFormationForMatch(m.format, m.maxPlayers),
       }));
+    }
+    if (!db.reels || !Array.isArray(db.reels) || db.reels.length === 0) {
+      db.reels = INITIAL_REELS;
     }
     console.log('[PitchMate DB] Loaded database from disk.');
   } else {
@@ -504,6 +512,7 @@ async function startServer() {
       announcements: db.announcements,
       directMessages: db.directMessages,
       notifications: db.notifications,
+      reels: db.reels || INITIAL_REELS,
       version: db.version,
       lastUpdated: db.lastUpdated,
     });
@@ -662,6 +671,39 @@ async function startServer() {
     } catch (err) {
       console.error('[Upload Error]:', err);
       res.status(500).json({ success: false, error: 'Failed to save image file' });
+    }
+  });
+
+  app.post('/api/upload/video', async (req: AuthenticatedRequest, res) => {
+    try {
+      const { base64Data, format } = req.body;
+      if (!base64Data) {
+        return res.status(400).json({ success: false, error: 'No video data provided' });
+      }
+
+      let ext = 'mp4';
+      if (format === 'webm' || base64Data.startsWith('data:video/webm') || base64Data.includes('video/webm')) {
+        ext = 'webm';
+      } else if (format === 'mov' || base64Data.startsWith('data:video/quicktime')) {
+        ext = 'mov';
+      }
+
+      const filename = `reel_${Date.now()}_${Math.random().toString(36).substring(2, 6)}.${ext}`;
+      const filePath = path.join(VIDEOS_DIR, filename);
+
+      const base64Pure = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
+      const buffer = Buffer.from(base64Pure, 'base64');
+      if (buffer.length === 0) {
+        return res.status(400).json({ success: false, error: 'Decoded video data is empty' });
+      }
+      await fs.promises.writeFile(filePath, buffer);
+      console.log(`[Upload Video] Saved ${filename}, size: ${buffer.length} bytes`);
+
+      const videoUrl = `/uploads/videos/${filename}`;
+      res.json({ success: true, videoUrl, size: buffer.length });
+    } catch (err) {
+      console.error('[Upload Video Error]:', err);
+      res.status(500).json({ success: false, error: 'Failed to save video file' });
     }
   });
 
@@ -2752,6 +2794,98 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  // ---------------------------------------------------------
+  // REELS / GOALS SOCIAL HIGHLIGHTS ENDPOINTS
+  // ---------------------------------------------------------
+  app.get('/api/reels', (req, res) => {
+    res.json({ success: true, reels: db.reels || INITIAL_REELS });
+  });
+
+  app.post('/api/reels', (req: AuthenticatedRequest, res) => {
+    const reelData = req.body;
+    if (!reelData || !reelData.title || !reelData.videoUrl) {
+      return res.status(400).json({ success: false, error: 'Title and video URL are required' });
+    }
+
+    const newReel: FootballReel = {
+      ...reelData,
+      id: reelData.id || `reel-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      likes: Array.isArray(reelData.likes) ? reelData.likes : [],
+      viewsCount: typeof reelData.viewsCount === 'number' ? reelData.viewsCount : 1,
+      createdAt: reelData.createdAt || new Date().toISOString(),
+    };
+
+    if (!Array.isArray(db.reels)) {
+      db.reels = [...INITIAL_REELS];
+    }
+
+    const existingIdx = db.reels.findIndex((r) => r.id === newReel.id);
+    if (existingIdx >= 0) {
+      db.reels[existingIdx] = { ...db.reels[existingIdx], ...newReel };
+    } else {
+      db.reels.unshift(newReel);
+    }
+
+    broadcastSSE('SYNC_REELS', db.reels);
+    res.json({ success: true, reel: newReel });
+  });
+
+  app.delete('/api/reels/:id', (req: AuthenticatedRequest, res) => {
+    const reelId = req.params.id;
+    if (!Array.isArray(db.reels)) {
+      db.reels = [...INITIAL_REELS];
+    }
+    db.reels = db.reels.filter((r) => r.id !== reelId);
+    broadcastSSE('SYNC_REELS', db.reels);
+    res.json({ success: true });
+  });
+
+  app.post('/api/reels/:id/like', (req: AuthenticatedRequest, res) => {
+    const reelId = req.params.id;
+    const userId = req.body?.userId || req.user?.id;
+    if (!userId) {
+      return res.status(400).json({ success: false, error: 'User ID is required to like reel' });
+    }
+
+    if (!Array.isArray(db.reels)) {
+      db.reels = [...INITIAL_REELS];
+    }
+
+    let targetReel: FootballReel | null = null;
+    db.reels = db.reels.map((r) => {
+      if (r.id === reelId) {
+        const likes = r.likes || [];
+        const alreadyLiked = likes.includes(userId);
+        const newLikes = alreadyLiked ? likes.filter((uid) => uid !== userId) : [...likes, userId];
+        targetReel = { ...r, likes: newLikes };
+        return targetReel;
+      }
+      return r;
+    });
+
+    if (targetReel) {
+      broadcastSSE('SYNC_REELS', db.reels);
+      return res.json({ success: true, reel: targetReel });
+    }
+    res.status(404).json({ success: false, error: 'Reel not found' });
+  });
+
+  app.post('/api/reels/:id/view', (req, res) => {
+    const reelId = req.params.id;
+    if (!Array.isArray(db.reels)) {
+      db.reels = [...INITIAL_REELS];
+    }
+
+    db.reels = db.reels.map((r) => {
+      if (r.id === reelId) {
+        return { ...r, viewsCount: (r.viewsCount || 0) + 1 };
+      }
+      return r;
+    });
+
+    res.json({ success: true });
+  });
+
   app.post('/api/reset-data', requireAdmin, (req: AuthenticatedRequest, res) => {
     db = getInitialData();
     saveDatabaseSync();
@@ -2762,6 +2896,7 @@ async function startServer() {
       announcements: db.announcements,
       directMessages: db.directMessages,
       notifications: db.notifications,
+      reels: db.reels,
     });
     res.json({ success: true });
   });
