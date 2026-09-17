@@ -129,6 +129,7 @@ export const ReelsView: React.FC<ReelsViewProps> = ({ onOpenMatch }) => {
   const [fullscreenReelIndex, setFullscreenReelIndex] = useState<number | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [videoPlaybackErrors, setVideoPlaybackErrors] = useState<Record<string, boolean>>({});
 
   // New Reel Form State
   const [newTitle, setNewTitle] = useState('');
@@ -715,17 +716,47 @@ export const ReelsView: React.FC<ReelsViewProps> = ({ onOpenMatch }) => {
                   {/* Media Container */}
                   <div className="relative aspect-[9/14] bg-black overflow-hidden flex items-center justify-center">
                     {isPlaying ? (
-                      <video
-                        ref={videoPlayerRef}
-                        src={reel.videoUrl}
-                        controls
-                        autoPlay
-                        muted={isMuted}
-                        playsInline
-                        loop
-                        className="w-full h-full object-cover"
-                        onEnded={() => setActivePlayingId(null)}
-                      />
+                      videoPlaybackErrors[reel.id] ? (
+                        <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-slate-900 text-white">
+                          <AlertTriangle className="w-10 h-10 text-amber-400 mb-2" />
+                          <p className="text-xs font-bold mb-1">تعذر تشغيل الفيديو مباشرة</p>
+                          <p className="text-[11px] text-slate-400 mb-3">قد تكون صيغة الفيديو غير مدعومة من هذا المتصفح</p>
+                          <a
+                            href={reel.videoUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs bg-[#E5B869] text-[#05110D] font-bold px-3 py-1.5 rounded-lg hover:bg-[#F5D794] transition"
+                          >
+                            فتح الفيديو في نافذة جديدة ↗
+                          </a>
+                          <button
+                            onClick={() => {
+                              setVideoPlaybackErrors((prev) => ({ ...prev, [reel.id]: false }));
+                              setActivePlayingId(null);
+                            }}
+                            className="text-[11px] text-slate-400 hover:text-white mt-2 underline"
+                          >
+                            إغلاق
+                          </button>
+                        </div>
+                      ) : (
+                        <video
+                          ref={videoPlayerRef}
+                          src={reel.videoUrl}
+                          controls
+                          autoPlay
+                          muted={isMuted}
+                          playsInline
+                          loop
+                          preload="metadata"
+                          className="w-full h-full object-cover"
+                          onError={() => {
+                            console.warn(`[ReelsView] Failed to play video: ${reel.videoUrl}`);
+                            setVideoPlaybackErrors((prev) => ({ ...prev, [reel.id]: true }));
+                          }}
+                          onEnded={() => setActivePlayingId(null)}
+                        />
+                      )
                     ) : (
                       <div
                         onClick={() => handleTogglePlay(reel.id)}
@@ -925,15 +956,39 @@ export const ReelsView: React.FC<ReelsViewProps> = ({ onOpenMatch }) => {
 
             {/* Video Canvas */}
             <div className="relative flex-1 bg-black flex items-center justify-center overflow-hidden">
-              <video
-                key={currentFullscreenReel.id}
-                src={currentFullscreenReel.videoUrl}
-                autoPlay
-                loop
-                muted={isMuted}
-                playsInline
-                className="w-full h-full object-cover"
-              />
+              {videoPlaybackErrors[currentFullscreenReel.id] ? (
+                <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-slate-950 text-white z-10">
+                  <AlertTriangle className="w-12 h-12 text-amber-400 mb-3" />
+                  <h4 className="text-base font-bold mb-1">تعذر تشغيل هذا الفيديو على المتصفح الحالي</h4>
+                  <p className="text-xs text-slate-300 max-w-sm mb-4">
+                    قد تكون صيغة الفيديو (مثل QuickTime/MOV) تتطلب مشغل النظام المباشر
+                  </p>
+                  <a
+                    href={currentFullscreenReel.videoUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 bg-[#E5B869] text-[#05110D] font-bold px-4 py-2.5 rounded-xl hover:bg-[#F5D794] transition shadow-lg text-sm"
+                  >
+                    <span>مشاهدة الفيديو في نافذة مستقلة</span>
+                    <Maximize2 className="w-4 h-4" />
+                  </a>
+                </div>
+              ) : (
+                <video
+                  key={currentFullscreenReel.id}
+                  src={currentFullscreenReel.videoUrl}
+                  autoPlay
+                  loop
+                  muted={isMuted}
+                  playsInline
+                  preload="metadata"
+                  className="w-full h-full object-cover"
+                  onError={() => {
+                    console.warn(`[ReelsView Fullscreen] Error playing ${currentFullscreenReel.videoUrl}`);
+                    setVideoPlaybackErrors((prev) => ({ ...prev, [currentFullscreenReel.id]: true }));
+                  }}
+                />
+              )}
 
               {/* Side Floating Actions (Like, Share, etc.) */}
               <div className="absolute right-4 bottom-24 z-20 flex flex-col items-center gap-5">

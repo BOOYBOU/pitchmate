@@ -1,12 +1,12 @@
 {
-  "version": 38,
-  "lastUpdated": "2026-09-09T15:09:03.019Z",
+  "version": 40,
+  "lastUpdated": "2026-09-17T12:33:36.111Z",
   "users": [
     {
       "id": "user_mustapha",
       "email": "bouhbousmustapha@gmail.com",
       "name": "Mustapha Bouhbous",
-      "avatarUrl": "https://upload.wikimedia.org/wikipedia/commons/b/b4/Lionel-Messi-Argentina-2022-FIFA-World-Cup_%28cropped%29.jpg",
+      "avatarUrl": "/images/avatars/messi.jpg",
       "phone": "+212 661-234567",
       "city": "Casablanca",
       "isAdmin": true,
@@ -389,6 +389,93 @@
       "linkId": "user_g_SBbwpK8JD3NUgb2EPnXZIEM5tYS2",
       "createdAt": "2026-09-07T10:50:36.973Z",
       "read": false
+    }
+  ],
+  "reels": [
+    {
+      "id": "reel-1",
+      "title": "هدف خرافي على الطاير في الدقيقة الأخيرة 🚀⚽",
+      "description": "تسديدة صاروخية سكنت الزاوية 90 في ملعب مركب محمد الخامس بالدار البيضاء.",
+      "videoUrl": "https://assets.mixkit.co/videos/preview/mixkit-football-player-taking-a-penalty-kick-41484-large.mp4",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=800&q=80",
+      "category": "goal",
+      "authorId": "user-mustapha-admin",
+      "authorName": "مصطفى بوهبوس (Mustapha)",
+      "authorAvatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80",
+      "authorEmail": "moustafa325476@gmail.com",
+      "cityName": "الدار البيضاء",
+      "matchTitle": "كلاسيكو الدار البيضاء 7 ضد 7",
+      "likes": [
+        "user-1",
+        "user-2",
+        "user-3",
+        "user-4"
+      ],
+      "viewsCount": 342,
+      "createdAt": "2026-09-12T18:30:00.000Z",
+      "durationSeconds": 14
+    },
+    {
+      "id": "reel-2",
+      "title": "مراوغة ميسي في ملعب ليدو بالرباط 🔥✨",
+      "description": "تمريرة بينية ثم مراوغة الدفاع وتسجيل هدف سلس وجميل.",
+      "videoUrl": "https://assets.mixkit.co/videos/preview/mixkit-player-practicing-tricks-with-a-soccer-ball-41488-large.mp4",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=800&q=80",
+      "category": "skill",
+      "authorId": "user-amine-kabbaj",
+      "authorName": "أمين قباج",
+      "authorAvatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80",
+      "cityName": "الرباط",
+      "matchTitle": "سهرة الخميس في أكاديمية الفتح",
+      "likes": [
+        "user-mustapha-admin",
+        "user-1",
+        "user-5"
+      ],
+      "viewsCount": 219,
+      "createdAt": "2026-09-11T20:15:00.000Z",
+      "durationSeconds": 12
+    },
+    {
+      "id": "reel-3",
+      "title": "تصدٍّ أسطوري من حارس المرمى على خط المرمى! 🧤🛡️",
+      "description": "ردة فعل خيالية في الثواني الأخيرة أنقذت الفريق من الهزيمة.",
+      "videoUrl": "https://assets.mixkit.co/videos/preview/mixkit-goalkeeper-catching-a-ball-in-the-air-41486-large.mp4",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=800&q=80",
+      "category": "save",
+      "authorId": "user-youssef-tazi",
+      "authorName": "يوسف التازي (الأخطبوط)",
+      "authorAvatar": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=256&q=80",
+      "cityName": "مراكش",
+      "matchTitle": "ديربي مراكش في ملعب النخيل",
+      "likes": [
+        "user-mustapha-admin",
+        "user-3",
+        "user-6"
+      ],
+      "viewsCount": 188,
+      "createdAt": "2026-09-10T19:40:00.000Z",
+      "durationSeconds": 15
+    },
+    {
+      "id": "reel-4",
+      "title": "تيكي تاكا وتمريرات سريعة انتهت بهدف خيالي ⚽🪄",
+      "description": "تفاهم كروي رائع وتناغم بين لاعبي الوسط والهجوم في طنجة.",
+      "videoUrl": "https://assets.mixkit.co/videos/preview/mixkit-soccer-players-passing-the-ball-in-a-match-41490-large.mp4",
+      "thumbnailUrl": "https://images.unsplash.com/photo-1551958219-acbc608c6377?auto=format&fit=crop&w=800&q=80",
+      "category": "goal",
+      "authorId": "user-hamza-slaoui",
+      "authorName": "حمزة السلاوي",
+      "authorAvatar": "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=256&q=80",
+      "cityName": "طنجة",
+      "matchTitle": "مباراة سريعة 6 ضد 6",
+      "likes": [
+        "user-2",
+        "user-4"
+      ],
+      "viewsCount": 154,
+      "createdAt": "2026-09-09T21:10:00.000Z",
+      "durationSeconds": 11
     }
   ]
 }

@@ -289,10 +289,16 @@ export const mediaStorage = {
         return { success: false, error: 'Failed to read video file' };
       }
 
+      let detectedFormat = 'mp4';
+      if ('type' in videoBlobOrFile && videoBlobOrFile.type) {
+        if (videoBlobOrFile.type.includes('webm')) detectedFormat = 'webm';
+        else if (videoBlobOrFile.type.includes('quicktime') || videoBlobOrFile.type.includes('mov')) detectedFormat = 'mov';
+      }
+
       const res = await fetch('/api/upload/video', {
         method: 'POST',
         headers: getStorageAuthHeaders(),
-        body: JSON.stringify({ base64Data }),
+        body: JSON.stringify({ base64Data, format: detectedFormat }),
       });
 
       if (res.ok) {
