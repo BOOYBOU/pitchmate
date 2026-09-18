@@ -102,7 +102,7 @@ export function AdminOverview({
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-sm font-bold text-white truncate">مصطفى بوهبوس (Mustapha Bouhbous)</span>
+            <span className="text-sm font-bold text-white truncate">مصطفى بحبوس (Mustapha Bouhbous)</span>
           </div>
           <div className="mt-2 text-[11px] text-[#F5D794] truncate">{SUPER_ADMIN_EMAIL}</div>
         </div>

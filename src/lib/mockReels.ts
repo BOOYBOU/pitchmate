@@ -13,7 +13,7 @@ export const INITIAL_REELS: FootballReel[] = [
     thumbnailUrl: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=800&q=80',
     category: 'goal',
     authorId: 'user-mustapha-admin',
-    authorName: 'مصطفى بوهبوس (Mustapha)',
+    authorName: 'مصطفى بحبوس (Mustapha)',
     authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
     authorEmail: 'moustafa325476@gmail.com',
     cityName: 'الدار البيضاء',

@@ -771,19 +771,19 @@ export const AuthView: React.FC = () => {
       </div>
 
       {/* Top Navigation Bar */}
-      <header className="relative z-20 w-full max-w-5xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between">
-        {/* Brand identity using authentic GoMatch logo */}
+      <header className="relative z-20 w-full max-w-5xl mx-auto px-4 sm:px-6 py-5 sm:py-6 flex items-center justify-between">
+        {/* Brand identity using authentic GoMatch logo - Enlarged for impact & elegance */}
         <div className="flex items-center gap-3">
-          <PitchMateLogo size="sm" />
+          <PitchMateLogo size="md" />
         </div>
 
-        {/* Clean Language Selector */}
+        {/* Clean Language Selector - Enlarged & harmonious with form inputs */}
         <button
           type="button"
           onClick={toggleLanguage}
-          className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#08130E]/90 hover:bg-[#0E221A] border border-[#E5B869]/30 hover:border-[#E5B869]/70 text-xs font-semibold text-slate-200 hover:text-[#F5D794] transition-all cursor-pointer shadow-sm active:scale-95"
+          className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-[#08130E]/95 hover:bg-[#0E221A] border border-[#E5B869]/40 hover:border-[#E5B869]/80 text-sm font-bold text-slate-100 hover:text-[#F5D794] transition-all cursor-pointer shadow-md shadow-black/50 active:scale-95"
         >
-          <Globe className="w-3.5 h-3.5 text-[#E5B869]" />
+          <Globe className="w-4 h-4 text-[#E5B869]" />
           <span>{language === 'ar' ? 'English' : 'العربية'}</span>
         </button>
       </header>
@@ -1874,20 +1874,23 @@ export const AuthView: React.FC = () => {
       </main>
 
       {/* Clean Professional Brand & Copyright Footer */}
-      <footer className="relative z-20 w-full max-w-5xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs text-slate-400 border-t border-[#E5B869]/15">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-[#10B981] animate-pulse shadow-[0_0_8px_#10B981]" />
-          <span className="font-medium text-slate-300">
+      <footer className="relative z-20 w-full max-w-5xl mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm border-t border-[#E5B869]/25 bg-[#050C0A]/40 backdrop-blur-md rounded-t-2xl">
+        {/* Creator attribution - prominent, clear, and high-contrast */}
+        <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-[#081813]/80 border border-[#E5B869]/30 shadow-sm">
+          <div className="w-2.5 h-2.5 rounded-full bg-[#E5B869] animate-pulse shadow-[0_0_10px_#E5B869]" />
+          <span className="font-bold text-sm sm:text-[15px] text-[#F5D794] tracking-wide">
             {language === 'ar'
-              ? 'المنصة المغربية الأولى لمجتمع كرة القدم وتنظيم المباريات 🇲🇦'
-              : "Morocco's Premier Football & Pitch Booking Platform 🇲🇦"}
+              ? 'مطور ومؤسس التطبيق: مصطفى بحبوس (Mustapha Bouhbous)'
+              : 'Founder & Lead Creator: Mustapha Bouhbous'}
           </span>
         </div>
-        <div className="flex items-center gap-2 text-[11px] text-[#E5B869]/90 font-medium">
+
+        {/* All Rights Reserved - prominent, clear font on the side */}
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#081813]/60 border border-[#E5B869]/20 text-xs sm:text-sm text-[#F5D794]/95 font-bold tracking-wide">
           <span>
             {language === 'ar'
-              ? `© ${new Date().getFullYear()} GoMatch FC • جميع الحقوق محفوظة`
-              : `© ${new Date().getFullYear()} GoMatch FC • All Rights Reserved`}
+              ? `© ${new Date().getFullYear()} GoMatch • جميع الحقوق محفوظة`
+              : `© ${new Date().getFullYear()} GoMatch • All Rights Reserved`}
           </span>
         </div>
       </footer>
