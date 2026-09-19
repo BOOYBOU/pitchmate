@@ -277,7 +277,6 @@ export interface PartnerVenue {
 
 export const SUPER_ADMIN_EMAILS: readonly string[] = [
   'bouhbousmustapha@gmail.com',
-  'moustafa325476@gmail.com',
 ];
 
 export const SUPER_ADMIN_EMAIL = 'bouhbousmustapha@gmail.com';
@@ -285,11 +284,11 @@ export const MESSI_AVATAR_URL = '/images/avatars/messi.jpg';
 export const DEFAULT_CURRENCY = 'MAD';
 export const MOROCCO_TIMEZONE = 'Africa/Casablanca';
 
-/** Strict check if an email matches the authorized Super Admin email (bouhbousmustapha@gmail.com or moustafa325476@gmail.com) */
+/** Strict check if an email matches the sole authorized Super Admin email (bouhbousmustapha@gmail.com only) */
 export const isSuperAdminEmail = (email?: string): boolean => {
   if (!email) return false;
   const clean = email.trim().toLowerCase();
-  return clean === 'bouhbousmustapha@gmail.com' || clean === 'moustafa325476@gmail.com';
+  return clean === 'bouhbousmustapha@gmail.com';
 };
 
 /** Strict check to verify if a user object holds administrative privileges (bouhbousmustapha@gmail.com only) */

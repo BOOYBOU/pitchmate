@@ -287,7 +287,7 @@ export const AuthView: React.FC = () => {
     }
 
     // Check duplicate
-    const isSuper = cleanEmail === 'moustafa325476@gmail.com' || cleanEmail === 'mustapha.bouhbous@pitchmate.ma';
+    const isSuper = isSuperAdminEmail(cleanEmail);
     const isAlreadyRegistered = users.some((u) => u.email.toLowerCase() === cleanEmail) || isSuper;
     if (isAlreadyRegistered) {
       setSignUpError(

@@ -831,7 +831,7 @@ export const ReelsView: React.FC<ReelsViewProps> = ({ onOpenMatch }) => {
                             <span className="text-xs font-bold text-[#F5D794] block truncate max-w-[130px]">
                               {reel.authorName}
                             </span>
-                            {reel.authorEmail === 'moustafa325476@gmail.com' && (
+                            {isSuperAdminEmail(reel.authorEmail) && (
                               <span className="text-[10px] text-[#F5D794] bg-[#0E4836] border border-[#E5B869]/40 px-1 rounded font-bold inline-block">
                                 مشرف عام
                               </span>
